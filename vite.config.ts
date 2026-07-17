@@ -3,8 +3,11 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 
+// En GitHub Pages la app se sirve bajo /clauderoutine/ ; en local usa rutas relativas.
+const base = process.env.GITHUB_PAGES ? '/clauderoutine/' : './'
+
 export default defineConfig({
-  base: './',
+  base,
   plugins: [
     react(),
     VitePWA({
