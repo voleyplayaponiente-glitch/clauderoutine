@@ -11,7 +11,20 @@ exporta el **registro de jornada firmado** en PDF y Excel.
 
 ---
 
-## 1. Requisitos previos (una sola vez)
+## Dos formas de usarla
+
+1. **App de escritorio (Electron):** se instala en un ordenador y se abre como un programa
+   con su ventana. Es la opción más sencilla y privada. Sigue los pasos de abajo.
+2. **Versión web (para servidor/Umbrel):** se ejecuta en un servidor y se abre desde el
+   navegador de cualquier dispositivo de tu red, con contraseña. Guía completa en
+   **[INSTALACION-UMBREL.md](INSTALACION-UMBREL.md)**.
+
+Ambas comparten el mismo motor de cálculo y guardan los datos **en local** (fichero SQLite),
+nunca en la nube.
+
+---
+
+## 1. Requisitos previos (una sola vez) — versión de escritorio
 
 Necesitas tener instalado **Node.js 18 o superior** (incluye `npm`).
 

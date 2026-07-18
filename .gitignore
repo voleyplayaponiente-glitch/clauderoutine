@@ -1,6 +1,8 @@
 node_modules
 out
 dist
+dist-web
+dist-server
 dist-ssr
 *.local
 .DS_Store
@@ -12,3 +14,5 @@ coverage
 *.db-shm
 *.db-wal
 datos/
+
+*.tsbuildinfo

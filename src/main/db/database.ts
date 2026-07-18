@@ -1,16 +1,26 @@
 import Database from 'better-sqlite3'
-import { app } from 'electron'
 import { join } from 'path'
+import { mkdirSync } from 'fs'
 import { SCHEMA_SQL, SCHEMA_VERSION } from './schema'
 
 let db: Database.Database | null = null
 
+/**
+ * Carpeta de datos. La define el arranque:
+ * - Electron: se fija GESTOR_DATA_DIR = app.getPath('userData').
+ * - Servidor web/Docker: GESTOR_DATA_DIR = /datos (volumen) o ./datos por defecto.
+ */
+export function carpetaDatos(): string {
+  return process.env.GESTOR_DATA_DIR || join(process.cwd(), 'datos')
+}
+
 export function rutaBaseDatos(): string {
-  return join(app.getPath('userData'), 'gestor-laboral.db')
+  return join(carpetaDatos(), 'gestor-laboral.db')
 }
 
 export function getDb(): Database.Database {
   if (db) return db
+  mkdirSync(carpetaDatos(), { recursive: true })
   db = new Database(rutaBaseDatos())
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')

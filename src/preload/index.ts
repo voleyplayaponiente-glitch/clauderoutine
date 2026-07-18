@@ -12,17 +12,11 @@ import type {
   Turno,
   ResultadoOperacion
 } from '../shared/types'
-
-export interface FiltroTrabajadores {
-  empresaId?: number
-  centroId?: number
-  tipo?: string
-  texto?: string
-}
+import type { ApiGestor, FiltroTrabajadores } from '../shared/api'
 
 const inv = ipcRenderer.invoke.bind(ipcRenderer)
 
-export const api = {
+export const api: ApiGestor = {
   empresas: {
     listar: (): Promise<Empresa[]> => inv('empresas:listar'),
     obtener: (id: number): Promise<Empresa | undefined> => inv('empresas:obtener', id),
@@ -91,6 +85,6 @@ export const api = {
   }
 }
 
-export type ApiGestor = typeof api
+export type { ApiGestor } from '../shared/api'
 
 contextBridge.exposeInMainWorld('api', api)

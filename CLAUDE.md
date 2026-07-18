@@ -26,12 +26,16 @@ por doble clic para un usuario no técnico.
 ## Comandos
 ```bash
 npm install          # en la máquina del usuario descarga binario Electron + compila better-sqlite3
-npm run dev          # desarrollo (abre la ventana Electron)
+npm run dev          # desarrollo escritorio (abre la ventana Electron)
 npm test             # 22 pruebas del motor puro (Vitest)
 npm run typecheck    # tsc de main (node) + renderer (web)
-npm run build        # bundles en out/ (electron-vite)
+npm run build        # bundles escritorio en out/ (electron-vite)
 npm run dist[:win|:mac|:linux]  # instalador nativo (electron-builder)
+npm run build:webapp # versión web: dist-web/ (Vite) + dist-server/ (tsc)
+npm run web          # arranca el servidor web (GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR)
 ```
+> Para validar la web en el entorno remoto: `npm install --ignore-scripts && npm rebuild
+> better-sqlite3`, luego `npm run build:webapp && npm run web`. Docker: ver INSTALACION-UMBREL.md.
 > En el entorno remoto de Claude, la descarga del binario de Electron y de prebuilds nativos puede
 > estar bloqueada por egress (403). Para validar aquí: `npm install --ignore-scripts` y luego
 > `npm test` + `npm run typecheck` + `npm run build` (no requieren el binario de Electron).
@@ -47,6 +51,14 @@ npm run dist[:win|:mac|:linux]  # instalador nativo (electron-builder)
 - `src/preload/index.ts` — puente seguro `window.api` (contextIsolation).
 - `src/renderer/` — UI React: `screens/` (Empresas, Centros, Trabajadores, Cuadrante, Informes,
   Exportar, Ajustes), `components.tsx`, `styles.css` (claro/oscuro).
+- `src/shared/api.ts` — interfaz `ApiGestor` (window.api), implementada por dos backends.
+- `src/main/rpc.ts` — tabla de manejadores de datos electron-free, compartida por IPC y web.
+- `src/server/index.ts` — **versión web** (Express): sirve `dist-web`, expone `/api/rpc` con los
+  mismos canales, login por contraseña (`GESTOR_PASSWORD`), export (descarga xlsx / HTML imprimible)
+  y backup (descarga/subida del `.db`). Cliente web: `src/renderer/src/web-api.ts` (+ `main-web.tsx`,
+  `web.html`). Build: `vite.web.config.ts` → `dist-web`; `tsconfig.server.json` → `dist-server`.
+  Empaquetado: `Dockerfile` + `docker-compose.yml` (ver `INSTALACION-UMBREL.md`).
+  Datos: carpeta configurable por `GESTOR_DATA_DIR` (Electron la fija a userData; Docker a /datos).
 
 ## Modelo de datos (SQLite)
 `empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.

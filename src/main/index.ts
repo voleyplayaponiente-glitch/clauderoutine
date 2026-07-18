@@ -35,6 +35,8 @@ function crearVentana(): void {
 }
 
 app.whenReady().then(() => {
+  // La versión de escritorio guarda los datos en la carpeta de usuario del sistema.
+  if (!process.env.GESTOR_DATA_DIR) process.env.GESTOR_DATA_DIR = app.getPath('userData')
   getDb() // inicializa/migra la base de datos al arrancar
   registrarIpc()
   crearVentana()

@@ -1,0 +1,16 @@
+services:
+  gestor-laboral:
+    build: .
+    container_name: gestor-laboral
+    restart: unless-stopped
+    ports:
+      # Accede desde el navegador en http://IP-DE-TU-UMBREL:3000
+      - "3000:3000"
+    environment:
+      # ⚠️ CAMBIA esta contraseña antes de usarla. Protege DNI, IBAN, etc.
+      - GESTOR_PASSWORD=cambia-esta-contrasena
+      - PORT=3000
+      - GESTOR_DATA_DIR=/datos
+    volumes:
+      # La base de datos (fichero SQLite) se guarda aquí, en tu servidor.
+      - ./datos:/datos
