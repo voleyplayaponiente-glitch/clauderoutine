@@ -1,4 +1,5 @@
 node_modules
+out
 dist
 dist-ssr
 *.local
@@ -6,3 +7,8 @@ dist-ssr
 .vite
 coverage
 *.log
+# Datos locales de la aplicación (nunca subir a git)
+*.db
+*.db-shm
+*.db-wal
+datos/

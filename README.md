@@ -1,181 +1,126 @@
-# 🏐 Gestor de Torneos de Vóley Playa
+# Gestor Laboral — Cuadrantes y control de horas
 
-Aplicación web **responsive** y **offline-first (PWA)** para gestionar cuadros de
-competición de torneos deportivos, especialmente de vóley playa. Permite crear
-torneos de **8, 16 o 32 equipos**, con **fase de grupos** previa y **fase final
-eliminatoria**, gestionando **varias categorías simultáneamente** (p. ej. SUB-17
-y SÉNIOR) de forma totalmente independiente.
+Aplicación de **escritorio, local y sin conexión** para un despacho de graduado social que
+gestiona el personal de varias tiendas. Planifica cuadrantes mensuales por trabajador y por
+centro, calcula las horas, controla horas complementarias, vacaciones y avisos laborales, y
+exporta el **registro de jornada firmado** en PDF y Excel.
 
-La interfaz está **en español**, con una estética limpia y minimalista inspirada
-en el estilo de Apple, **modo claro y oscuro**, y funciona **sin conexión**
-guardando los datos en el dispositivo (IndexedDB).
-
----
-
-## ✨ Funcionalidades principales
-
-- **Torneos y categorías**: varias categorías por torneo, cada una con su propio
-  formato (8/16/32), color, equipos, grupos, resultados y cuadro. Añadir nuevas
-  categorías (SUB-10, veteranos, mixto…) no afecta al resto.
-- **Equipos y jugadores**: alta manual, **importar/exportar CSV**, cabezas de
-  serie, estado de inscripción, importe pagado, teléfono y observaciones.
-- **Sorteo de grupos**: automático o manual, con cabezas de serie repartidas y
-  posibilidad de **impedir que dos equipos coincidan** en el mismo grupo.
-- **Liga de grupos**: calendario round-robin generado automáticamente.
-- **Clasificación automática** con criterios de desempate **reordenables**:
-  partidos ganados → dif. de sets → sets a favor → dif. de puntos → puntos a
-  favor → **enfrentamiento directo** (mini-liga entre empatados) → decisión
-  manual. Avisa de los empates que los criterios no resuelven.
-- **Cuadro eliminatorio** (octavos/cuartos/semifinales/3.º puesto/final) generado
-  con siembra que **evita cruces del mismo grupo** antes de la final. Se
-  **actualiza automáticamente** al guardar cada resultado y determina el campeón.
-- **Resultados**: sets al mejor de 3 o a un set, puntos configurables, diferencia
-  de 2 puntos, estados (pendiente/en juego/finalizado/aplazado/cancelado).
-  Al **corregir** un resultado de una ronda avanzada, avisa si afecta a cruces
-  posteriores.
-- **Horarios y pistas**: generador que asigna pistas y horas evitando que un
-  equipo juegue dos partidos a la vez, con descanso mínimo, edición manual y
-  **detección de conflictos**. **Vista general** de todas las categorías por hora
-  y pista.
-- **Roles**: **Administrador** (edición completa) y **Vista pública** (solo
-  lectura) compartible por **enlace y código QR**.
-- **Exportación**: PDF de equipos, grupos, horario, hoja de resultados,
-  clasificaciones, cuadro e **informe completo**; **impresión A4** optimizada;
-  exportación **CSV**.
-- **Copia de seguridad**: exportar/restaurar todos los datos en **JSON**.
-- **PWA**: instalable y funcional sin conexión.
-- **Datos de demostración** para torneos de 8, 16 y 32 equipos.
+> 🔒 **Todos los datos se guardan en tu ordenador** en un único fichero SQLite. Nada se sube a
+> internet ni a la nube. Cumple el requisito de RGPD de no sacar del equipo datos sensibles
+> (DNI/NIE, nº de Seguridad Social, IBAN, dirección).
 
 ---
 
-## 🚀 Instalación y uso
+## 1. Requisitos previos (una sola vez)
 
-Requisitos: **Node.js 20+**.
+Necesitas tener instalado **Node.js 18 o superior** (incluye `npm`).
+
+- Descárgalo desde <https://nodejs.org> (botón «LTS») e instálalo con «Siguiente → Siguiente».
+- Para comprobar que está instalado, abre una terminal y escribe: `node --version`
+
+## 2. Instalación de la aplicación (una sola vez)
+
+1. Descarga o copia esta carpeta en tu ordenador.
+2. Entra en la carpeta y ejecuta:
+
+   ```bash
+   npm install
+   ```
+
+   (Descarga las piezas necesarias; puede tardar unos minutos la primera vez.)
+
+## 3. Arrancar la aplicación
+
+### Opción fácil: doble clic
+
+- **Windows:** doble clic en `Iniciar-Windows.bat`
+- **macOS:** doble clic en `Iniciar-macOS.command` (la primera vez: clic derecho → Abrir)
+- **Linux:** ejecuta `./Iniciar-Linux.sh`
+
+### Opción manual (terminal)
 
 ```bash
-# 1. Instalar dependencias
-npm install
-
-# 2. Arrancar en modo desarrollo
 npm run dev
-# Abre la URL que aparece (por defecto http://localhost:5173)
-
-# 3. Ejecutar las pruebas unitarias
-npm test
-
-# 4. Compilar para producción
-npm run build
-
-# 5. Previsualizar la versión de producción (PWA)
-npm run preview
 ```
 
-### Primeros pasos
-1. En el **Panel principal**, pulsa **«Cargar demo»** para ver un torneo completo,
-   o **«Crear torneo»** para empezar de cero.
-2. En **Categorías**, define SUB-17 / SÉNIOR (u otras) y su número de equipos.
-3. En **Equipos**, añade o importa los equipos (CSV).
-4. En **Sorteo y grupos**, genera los grupos.
-5. En **Resultados**, introduce los marcadores: la clasificación y el cuadro se
-   actualizan solos.
-6. En **Calendario**, genera y ajusta los horarios.
-7. Comparte la **Vista pública** por enlace/QR y exporta en **PDF/CSV**.
+La ventana de la aplicación se abrirá sola.
 
----
+## 4. Crear un instalador de escritorio (opcional)
 
-## 🧱 Arquitectura y modelo de datos
+Para tener un icono en el escritorio y no depender de la terminal, genera un instalador nativo:
 
-```
-Torneo
- ├── ScheduleConfig (horarios, pistas)
- └── Categoría[]            (SUB-17, SÉNIOR, …)  ← independientes entre sí
-      ├── CompetitionConfig (formato, puntos, desempates…)
-      ├── Team[]            (equipos + jugadores)
-      ├── Group[]           (grupos y sus equipos)
-      ├── Match[]           (grupos + eliminatoria, con enlaces de avance)
-      └── manualTiebreaks   (desempates manuales)
+```bash
+npm run dist        # instalador para tu sistema operativo actual
+npm run dist:win    # Windows (.exe)
+npm run dist:mac    # macOS (.dmg)
+npm run dist:linux  # Linux (AppImage)
 ```
 
-- **Motor de cálculo en TypeScript puro**, separado de la interfaz, en
-  [`src/engine/`](src/engine/):
-  - `standings.ts` — clasificación y desempates (partición jerárquica con
-    mini-liga de enfrentamiento directo, correcta ante empates cíclicos).
-  - `groups.ts` / `fixtures.ts` — sorteo y liga round-robin.
-  - `bracket.ts` — generación y resolución del cuadro (8/16/32).
-  - `schedule.ts` — horarios y detección de conflictos.
-  - `match.ts` — cómputo y validación de resultados.
-- **Persistencia** offline en IndexedDB (con respaldo en localStorage) —
-  [`src/lib/persist.ts`](src/lib/persist.ts).
-- **Estado** con Zustand — [`src/store/store.ts`](src/store/store.ts).
-- **Interfaz** React + Tailwind CSS v4, componentes reutilizables en
-  [`src/components/`](src/components/) y pantallas en
-  [`src/screens/`](src/screens/).
-
-### ¿Por qué Vite en lugar de Next.js + Prisma?
-El enunciado recomienda Next.js/Prisma/SQLite pero permite alternativas
-justificadas. El requisito central es **funcionar sin conexión y no perder
-resultados**. Una arquitectura **100 % en cliente con IndexedDB** cumple ese
-objetivo de forma más robusta que un servidor con base de datos, se despliega
-como **PWA estática** en cualquier hosting y no necesita backend. El motor de
-cálculo queda aislado en TypeScript puro, por lo que añadir en el futuro una
-capa de **sincronización remota** (PostgreSQL) no requeriría reescribir la
-lógica. Se mantienen el resto de tecnologías recomendadas (React, TypeScript,
-Tailwind, Zod-like validación en el motor, PWA + IndexedDB, librería de PDF).
+El instalador aparecerá en la carpeta `dist/`.
 
 ---
 
-## 🧪 Pruebas
+## 5. Cómo se usa (resumen)
 
-`npm test` ejecuta pruebas unitarias (Vitest) sobre el motor:
+La barra lateral tiene las secciones en el orden natural de trabajo:
 
-- Clasificaciones y **todos los criterios de desempate**, incluidos empates
-  cíclicos de 3 equipos y desempate manual.
-- Cómputo y **validación de resultados** (mejor de 3 / a un set, diferencia de 2).
-- **Generación de cruces** para 8/16/32 y verificación de que no se cruzan
-  equipos del mismo grupo antes de la final; propagación de ganadores hasta el
-  campeón.
-- **Sorteo** (reparto equilibrado, cabezas de serie, restricciones) y **round-robin**.
-- **Horarios** y **detección de conflictos** (pista, equipo, descanso).
+1. **Empresas** — da de alta cada empresa (razón social, CIF, administrador y **sello** para los PDF).
+2. **Centros** — cada tienda: código, convenio, **horas anuales de referencia**, horario y **días de apertura** (laborables/sábados/domingos/festivos), color y **festivos**.
+3. **Trabajadores** — ficha completa: identificación, contrato, jornada, coeficiente de parcialidad,
+   sueldo, vacaciones y **centros donde puede trabajar** (uno principal + secundarios).
+   Distingue **cuenta ajena** y **autónomo**.
+4. **Cuadrantes / Agenda** — el núcleo. Elige mes y trabajador y rellena los turnos día a día
+   (con turno partido). Botones de **copiar semana anterior** y **patrón rápido**. Dos vistas:
+   - **Por trabajador**: todos sus días, con el centro de cada día, totales y avisos.
+   - **Por centro**: qué trabajadores cubren cada día en cada tienda (código de colores).
+5. **Informes** — horas por trabajador y por centro, desviaciones, complementarias y vacaciones.
+6. **Exportación** — cuadrante firmado (PDF/Excel) y resumen mensual por centro.
+7. **Ajustes** — copia de seguridad (exportar/importar) y ubicación del fichero de datos.
 
----
+### Avisos automáticos al planificar
 
-## 🎨 Diseño y accesibilidad
-- Fuente **Inter / SF Pro** (con la tipografía del sistema Apple como base legal
-  por defecto, sin dependencias externas para funcionar offline).
-- Tarjetas con esquinas redondeadas, sombras discretas y mucho espacio en blanco.
-- Color principal azul y **un color por categoría**.
-- Tipografía grande y legible, pensada para buena accesibilidad.
-- **Responsive** (ordenador, tablet y móvil), con el cuadro desplazable en
-  horizontal y una vista de impresión **A4** simplificada.
+- Supera las horas de contrato o la media mensual.
+- Se generan **horas complementarias** (Art. 12.5 ET), valoradas al precio configurado.
+- Descanso inferior a **12 h** entre jornadas.
+- No se respeta el **descanso semanal** de día y medio (36 h).
+- Turno **fuera del horario de apertura** o en un día que el centro **no abre**.
+- **Fin del periodo de prueba** próximo.
+- **Solapamiento** de tramos en un mismo día.
 
----
+### Cálculos que hace la app
 
-## ✅ Estado de las funciones
-
-**Terminadas y funcionales**
-- Torneos y categorías múltiples e independientes (formatos 8/16/32).
-- Equipos/jugadores con import/export CSV.
-- Sorteo (auto/manual, cabezas de serie, restricciones) y grupos.
-- Clasificación automática con desempates reordenables y avisos.
-- Cuadro eliminatorio automático con campeón y 3.º puesto.
-- Introducción y corrección de resultados con recálculo y avisos.
-- Generador de horarios con pistas, conflictos y vista general multi-categoría.
-- Roles admin/público + compartir por enlace y QR.
-- Exportación PDF/CSV, impresión A4, copia/restauración JSON.
-- PWA offline + datos de demostración (8/16/32).
-- Pruebas unitarias del motor.
-
-**Mejoras pendientes / posibles ampliaciones**
-- **Arrastrar y soltar** en el calendario (actualmente edición mediante
-  selectores de pista/hora, que es plenamente funcional).
-- **Clasificación de mejores terceros** en el cuadro: configurable en la interfaz;
-  la siembra automática de terceros en el bracket queda como ampliación (el
-  formato predeterminado clasifica a los 2 primeros de cada grupo).
-- **Sincronización remota** (PostgreSQL) para compartir datos entre dispositivos
-  en tiempo real; hoy se comparte por copia JSON o enlace en el mismo dispositivo.
-- Exportación a **.xlsx** nativo (actualmente CSV compatible con Excel).
+- **Media mensual** = horas anuales del convenio × coeficiente de parcialidad ÷ 12 (constante todo el año).
+- **Sueldo prorrateado** = sueldo de jornada completa × coeficiente de parcialidad.
+- **Horas complementarias** = horas realizadas − horas de la jornada contratada.
+- **Vacaciones pendientes** = días anuales − días disfrutados.
+- Totales por trabajador y por centro, y desviaciones frente a media y contrato.
 
 ---
 
-## 📄 Licencia
-Proyecto de ejemplo. Úsalo y adáptalo libremente.
+## 6. Copias de seguridad
+
+En **Ajustes → Exportar copia** guardas todo en un fichero `.db`. Guárdalo en un lugar seguro
+(disco externo, etc.). Para recuperarlo, **Ajustes → Restaurar copia** (sobrescribe los datos
+actuales; reinicia la app después).
+
+El fichero de datos vivo está en la carpeta de datos de usuario de la aplicación; su ruta exacta
+se muestra en **Ajustes → Ubicación de los datos**.
+
+---
+
+## 7. Para desarrolladores
+
+- **Stack:** Electron + React + TypeScript + Vite (`electron-vite`), SQLite (`better-sqlite3`),
+  Excel (`exceljs`), PDF (impresión nativa de Electron). Empaquetado con `electron-builder`.
+- **Motor de cálculo puro** en `src/shared/` (sin Electron ni React), con pruebas en Vitest:
+
+  ```bash
+  npm test          # pruebas del motor (cálculos y avisos)
+  npm run typecheck # comprobación de tipos
+  ```
+
+- **Arquitectura:**
+  - `src/main/` — proceso principal: base de datos, repositorios, IPC y servicios (backup, export).
+  - `src/preload/` — puente seguro `window.api` (contextIsolation).
+  - `src/renderer/` — interfaz React (pantallas y componentes).
+  - `src/shared/` — tipos y motor de cálculo/avisos compartido.

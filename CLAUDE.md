@@ -1,70 +1,71 @@
-# CLAUDE.md — Gestor de Torneos de Vóley Playa
+# CLAUDE.md — Gestor Laboral (cuadrantes y control de horas)
 
-Memoria del proyecto para Claude Code. Léelo al empezar cualquier sesión en este repo.
+Memoria del proyecto para Claude Code. Léelo al empezar cualquier sesión en esta rama.
 
 ## Qué es
-Aplicación web **responsive** y **PWA offline-first** (en español) para gestionar
-cuadros de competición de torneos de vóley playa: fase de grupos + fase final
-eliminatoria, con **varias categorías independientes** por torneo (p. ej. SUB-17
-y SÉNIOR), formatos de **8/16/32 equipos**. Estética estilo Apple, modo claro/oscuro.
+Aplicación de **escritorio local-first** (Electron) en **español** para un despacho de graduado
+social que gestiona el personal de varias tiendas. Planifica cuadrantes mensuales por trabajador y
+por centro, calcula horas, controla horas complementarias/vacaciones, emite avisos laborales y
+exporta el **registro de jornada firmado** (PDF/Excel). **Sin nube**: todos los datos en un único
+fichero SQLite local (RGPD: DNI/NIE, NSS, IBAN, dirección no salen del equipo).
 
-- **App en producción:** https://voleyplayaponiente-glitch.github.io/clauderoutine/
-- **Repo:** voleyplayaponiente-glitch/clauderoutine
-- **Rama de desarrollo:** `claude/tournament-bracket-manager-gvrcdt`
-- **Rama base / default:** `main` (se creó como commit inicial vacío; el repo estaba vacío)
-- **PR principal:** #1 (rama → `main`)
+- **Rama de desarrollo:** `claude/labor-management-scheduling-app-jd2hcj`
+- **Rama base / default:** `main`
+- Nota: la app de **vóley playa** (anterior contenido del repo) vive en la rama
+  `claude/tournament-bracket-manager-gvrcdt`; no mezclar.
 
 ## Stack (decisión deliberada)
-Vite + React + TypeScript + Tailwind CSS v4 + Zustand + IndexedDB (idb-keyval),
-jsPDF + jspdf-autotable (PDF), qrcode (QR), vite-plugin-pwa (PWA), Vitest (tests).
+Electron + React + TypeScript + Vite (`electron-vite`), SQLite (`better-sqlite3`),
+Excel (`exceljs`), PDF (impresión nativa de Electron vía `printToPDF`, sin fuentes externas),
+empaquetado con `electron-builder`. Salida **CommonJS** (sin `"type":"module"`) para que `__dirname`
+funcione en el proceso principal/preload.
 
-**No** se usa Next.js/Prisma/SQLite a propósito: el requisito central es funcionar
-sin conexión sin perder resultados → arquitectura 100 % cliente con IndexedDB,
-desplegable como PWA estática. El motor de cálculo queda aislado en TS puro para
-poder añadir sincronización remota (PostgreSQL) en el futuro sin reescribir lógica.
+**No** se usa navegador/servidor: el requisito central es local-first con fichero SQLite y arranque
+por doble clic para un usuario no técnico.
 
 ## Comandos
 ```bash
-npm install
-npm run dev      # desarrollo (http://localhost:5173)
-npm test         # 38 pruebas unitarias (Vitest) del motor
-npm run build    # tsc -b && vite build  (usa GITHUB_PAGES=true para base /clauderoutine/)
-npm run preview  # previsualizar producción / PWA
+npm install          # en la máquina del usuario descarga binario Electron + compila better-sqlite3
+npm run dev          # desarrollo (abre la ventana Electron)
+npm test             # 22 pruebas del motor puro (Vitest)
+npm run typecheck    # tsc de main (node) + renderer (web)
+npm run build        # bundles en out/ (electron-vite)
+npm run dist[:win|:mac|:linux]  # instalador nativo (electron-builder)
 ```
+> En el entorno remoto de Claude, la descarga del binario de Electron y de prebuilds nativos puede
+> estar bloqueada por egress (403). Para validar aquí: `npm install --ignore-scripts` y luego
+> `npm test` + `npm run typecheck` + `npm run build` (no requieren el binario de Electron).
 
 ## Arquitectura
-Jerarquía de datos: `Torneo → Categoría[] → {CompetitionConfig, Team[], Group[], Match[], manualTiebreaks}`.
-Cada categoría es totalmente independiente (equipos, grupos, resultados, cuadro, color).
+- `src/shared/` — **motor puro** (sin Electron ni React), testeable:
+  - `types.ts` — modelo de dominio. `fechas.ts` — utilidades fecha/hora (dd/mm/aaaa, coma decimal).
+  - `calculos.ts` — horas/día, media mensual = h_anuales×coef÷12, complementarias, resúmenes.
+  - `avisos.ts` — validaciones: 12 h entre jornadas, descanso semanal 36 h, fuera de apertura/día
+    cerrado, supera contrato/media, complementarias, fin periodo prueba, solapamiento de tramos.
+- `src/main/` — proceso principal: `db/` (schema + `better-sqlite3` + repos), `ipc.ts`, `services/`
+  (backup por copia de fichero, export Excel/PDF).
+- `src/preload/index.ts` — puente seguro `window.api` (contextIsolation).
+- `src/renderer/` — UI React: `screens/` (Empresas, Centros, Trabajadores, Cuadrante, Informes,
+  Exportar, Ajustes), `components.tsx`, `styles.css` (claro/oscuro).
 
-- `src/engine/` — **motor puro en TS, separado de la UI** (aquí vive la lógica):
-  - `standings.ts` — clasificación + desempates reordenables. Usa **partición
-    jerárquica** con mini-liga de enfrentamiento directo (correcta ante empates
-    cíclicos de 3 equipos). NO usar comparación pairwise de h2h.
-  - `groups.ts` / `fixtures.ts` — sorteo (cabezas de serie, keep-apart) + round-robin.
-  - `bracket.ts` — genera/resuelve cuadro 8/16/32; `buildFirstRoundSeeds` evita
-    cruces del mismo grupo antes de la final; propaga ganadores hasta el campeón.
-  - `schedule.ts` — horarios/pistas + detección de conflictos.
-  - `match.ts` — cómputo/validación de resultados (mejor de 3 / a un set, dif. 2).
-  - `defaults.ts` — config y colores por defecto.
-- `src/lib/` — persistencia (IndexedDB), store helpers de categoría, CSV, PDF, backup JSON, demo, router hash.
-- `src/store/store.ts` — estado global (Zustand) + persistencia con debounce.
-- `src/screens/` — 13 pantallas. `src/components/` — UI reutilizable.
+## Modelo de datos (SQLite)
+`empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.
+Multiempresa; cada centro con horas anuales de convenio, horario y días de apertura. Trabajador
+`ajena|autonomo` (el autónomo no genera complementarias ni valida jornada de cuenta ajena).
 
 ## Reglas de negocio clave
-- Clasificación por defecto: PG → dif. sets → sets favor → dif. puntos → puntos favor → enfrentamiento directo → manual. **Orden configurable** en la pantalla de config.
-- Formatos por defecto: 8→2 grupos, 16→4, 32→8; clasifican 2 por grupo; partido 3.º puesto activable.
-- Al guardar/corregir un resultado se recalculan clasificación y cuadro; avisa si el cambio afecta rondas posteriores.
+- Media mensual constante (base anual). Complementarias = realizadas − contratadas del mes (solo
+  ajena, parcial). Vacaciones pendientes = anuales − disfrutadas. Sueldo prorrateado = completo×coef.
+- Turno partido = 2 tramos; horas/día = tramos − descanso.
 
 ## Convenciones
-- Interfaz **en español**; mensajes de error en español.
-- Mantener el motor sin dependencias de React (testeable de forma aislada).
-- Añadir categorías nuevas (SUB-10, veteranos, mixto…) NO debe requerir tocar el núcleo.
-- `crypto.randomUUID` con fallback en `src/engine/id.ts`; evitar `Date.now()`/`Math.random()` dentro del motor puro salvo en sorteo/id.
-
-## CI / Despliegue
-- `.github/workflows/deploy.yml`: en push a `main` o a la rama de desarrollo → tests + build (`GITHUB_PAGES=true`) + deploy a GitHub Pages (`enablement: true`).
-- Pages debe estar en **Settings → Pages → Source: GitHub Actions** (ya activado). El token por defecto no puede crear el site solo; requirió activación manual una vez.
+- Interfaz y mensajes **en español**; fechas dd/mm/aaaa; importes/decimales con coma.
+- Mantener el motor (`src/shared`) sin dependencias de Electron/React.
+- Confirmación antes de borrar. Copia de seguridad = copiar el fichero `.db`.
 
 ## Estado / pendientes
-Terminado: todo el flujo funcional + 38 tests + PWA + export PDF/CSV + backup JSON + vista pública/QR.
-Ampliable: drag-and-drop en calendario (hoy edición por selectores), siembra automática de mejores terceros en el cuadro, sincronización remota PostgreSQL, export `.xlsx` nativo.
+Hecho: Fases 1–7 (modelo + base + centros/trabajadores + agenda 2 vistas + cálculos + avisos +
+export PDF/Excel + copias + README + scripts de arranque). Typecheck y build en verde; 22 tests.
+Pendiente de validar en ejecución real de Electron (binario bloqueado en el entorno remoto).
+Ampliable: arrastrar-y-soltar en la agenda, calendario de festivos por provincia autocargado,
+export nativo `.xlsx` con más formato, firma digitalizada en el PDF.
