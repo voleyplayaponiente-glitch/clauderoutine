@@ -67,6 +67,26 @@ http://umbrel.local:3000
 
 ---
 
+## Acceso rápido: instalar como app (icono a un clic)
+
+La aplicación es **instalable** (PWA): puedes dejar un icono de *Gestor Laboral* en el
+escritorio o barra de tareas que la abre en su propia ventana, sin barra del navegador.
+
+**En el PC (Brave / Chrome / Edge):**
+1. Abre `http://umbrel.local:3000` y entra con la contraseña.
+2. En la barra de direcciones aparece un icono de **instalar** (un monitor con una flecha ⤓),
+   o ve al menú **⋮ → Guardar y compartir → Instalar Gestor Laboral…**
+3. Pulsa **Instalar**. Se crea el icono de *Gestor Laboral* (escritorio / barra de tareas /
+   menú inicio). A partir de ahí se abre a un clic, como un programa más.
+
+**En el móvil (Android/iPhone):** abre la web en el navegador → menú → **Añadir a la
+pantalla de inicio**. Queda un icono junto al resto de apps.
+
+> Es un acceso directo a la app que corre en tu Umbrel; los datos siguen en el servidor.
+> Requiere que el Umbrel esté encendido y en la misma red.
+
+---
+
 ## Comandos útiles (para después)
 Dentro de la carpeta de la app:
 ```bash
