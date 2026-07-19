@@ -218,17 +218,38 @@ const r2 = (n: number): number => Math.round(n * 100) / 100
 /** Nº de pagas extra al año que se prorratean en la mensualidad. */
 export const NUM_PAGAS_EXTRA = 3
 
+/**
+ * Tipos de cotización a cargo del TRABAJADOR (% sobre la base de cotización).
+ * Orientativos, según los tipos generales vigentes; revisar cada año.
+ */
+export const COTIZACION_TRABAJADOR = {
+  contingenciasComunes: 4.7,
+  desempleoIndefinido: 1.55,
+  desempleoTemporal: 1.6,
+  formacionProfesional: 0.1,
+  mei: 0.15 // Mecanismo de Equidad Intergeneracional (2026)
+}
+
 export interface DetalleRetribucion {
   prorrateoPagas: number // prorrateo mensual de las pagas extra (base × 3 ÷ 12)
   totalDevengado: number // suma de todas las percepciones
   baseSujetaIrpf: number // percepciones sujetas a IRPF (sin la especie exenta)
   retencionIrpf: number // IRPF% × base sujeta
-  totalDeducciones: number // deducción especie + deducción seguro salud + retención IRPF
+  // Cotización a la Seguridad Social a cargo del trabajador
+  baseCotizacion: number
+  cuotaContingencias: number
+  cuotaDesempleo: number
+  cuotaFormacion: number
+  cuotaMei: number
+  totalSeguridadSocial: number
+  totalDeducciones: number // deducciones especie/salud + retención IRPF + cotización SS
   neto: number // total a percibir estimado
 }
 
 type TrabRetrib = Pick<
   Trabajador,
+  | 'tipo'
+  | 'tipo_contrato'
   | 'sueldo_convenio_completo'
   | 'plus_productividad'
   | 'plus_transporte'
@@ -240,11 +261,12 @@ type TrabRetrib = Pick<
 >
 
 /**
- * Desglose de retribución mensual con retención de IRPF y neto estimado.
+ * Desglose de retribución mensual con retención de IRPF, cotización a la Seguridad
+ * Social del trabajador (contingencias comunes, desempleo, FP y MEI) y neto estimado.
  * - Base sujeta a IRPF = salario base + plus + prorrateo + retribución en especie SUJETA.
- * - La retribución en especie exenta (seguro de salud) NO entra en la base de IRPF.
- * - Retención IRPF = base sujeta × IRPF%.
- * - Neto = total devengado − (deducciones + retención IRPF).
+ *   La especie exenta (seguro de salud) NO entra en la base de IRPF.
+ * - Base de cotización ≈ base sujeta (aprox., sin topes máximo/mínimo por grupo).
+ * - Autónomo: no se le practican cotizaciones de cuenta ajena (cotiza por su cuenta).
  * Estimación orientativa, no sustituye a la nómina oficial.
  */
 export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
@@ -261,12 +283,30 @@ export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
   const totalDevengado = base + plus + transp + prorr + espSuj + espExe
   const baseSujetaIrpf = base + plus + transp + prorr + espSuj
   const retencionIrpf = r2(baseSujetaIrpf * ((t.irpf || 0) / 100))
-  const totalDeducciones = r2(dedEsp + dedSalud + retencionIrpf)
+
+  // Cotización a la Seguridad Social (solo cuenta ajena).
+  const esAjena = t.tipo !== 'autonomo'
+  const baseCotizacion = esAjena ? baseSujetaIrpf : 0
+  const c = COTIZACION_TRABAJADOR
+  const cuotaContingencias = r2(baseCotizacion * (c.contingenciasComunes / 100))
+  const tasaDesempleo = t.tipo_contrato === 'temporal' ? c.desempleoTemporal : c.desempleoIndefinido
+  const cuotaDesempleo = r2(baseCotizacion * (tasaDesempleo / 100))
+  const cuotaFormacion = r2(baseCotizacion * (c.formacionProfesional / 100))
+  const cuotaMei = r2(baseCotizacion * (c.mei / 100))
+  const totalSeguridadSocial = r2(cuotaContingencias + cuotaDesempleo + cuotaFormacion + cuotaMei)
+
+  const totalDeducciones = r2(dedEsp + dedSalud + retencionIrpf + totalSeguridadSocial)
   const neto = r2(totalDevengado - totalDeducciones)
   return {
     prorrateoPagas: prorr,
     totalDevengado: r2(totalDevengado),
     baseSujetaIrpf: r2(baseSujetaIrpf),
+    baseCotizacion: r2(baseCotizacion),
+    cuotaContingencias,
+    cuotaDesempleo,
+    cuotaFormacion,
+    cuotaMei,
+    totalSeguridadSocial,
     retencionIrpf,
     totalDeducciones,
     neto

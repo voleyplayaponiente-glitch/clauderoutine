@@ -1,6 +1,6 @@
 // Tabla de manejadores de datos (electron-free) compartida por el IPC de
 // escritorio y por el servidor web. Cada clave es un "canal" namespace:método.
-import { empresas, centros, festivos, trabajadores, cuadrantes } from './db/repos'
+import { empresas, centros, festivos, trabajadores, cuadrantes, vacaciones } from './db/repos'
 import { rutaBaseDatos } from './db/database'
 import type { FiltroTrabajadores } from './db/repos'
 import type { NuevaEmpresa, NuevoCentro, NuevoTrabajador, Turno } from '../shared/types'
@@ -40,6 +40,11 @@ export const handlers: Record<string, Manejador> = {
     id: number,
     asignaciones: Array<{ centro_id: number; es_principal: boolean }>
   ) => trabajadores.fijarCentros(id, asignaciones),
+
+  // Vacaciones (días disfrutados)
+  'vacaciones:listar': (trabajadorId: number) => vacaciones.listar(trabajadorId),
+  'vacaciones:fijar': (trabajadorId: number, fechas: string[]) =>
+    vacaciones.fijar(trabajadorId, fechas),
 
   // Cuadrantes
   'cuadrante:obtenerOCrear': (trabId: number, anio: number, mes: number) =>

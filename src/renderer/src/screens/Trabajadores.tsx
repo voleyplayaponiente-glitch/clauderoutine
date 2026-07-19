@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { Centro, NuevoTrabajador, Trabajador } from '@shared/types'
 import { useApp } from '../App'
-import { Campo, Modal, Vacio, useUI } from '../components'
+import { Campo, Modal, Vacio, useUI, CalendarioMes } from '../components'
 import { trabajadorVacio, COLORES_TRABAJADOR, colorTrabajador } from '../defaults'
 import { mediaMensual, sueldoProrrateado, calcRetribucion, vacacionesPendientes } from '@shared/calculos'
 import { euros, numEs } from '@shared/fechas'
@@ -17,9 +17,12 @@ export function PantallaTrabajadores(): React.JSX.Element {
   const [texto, setTexto] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroCentro, setFiltroCentro] = useState('')
-  const [edit, setEdit] = useState<{ id: number | null; data: NuevoTrabajador; asig: Asig[] } | null>(
-    null
-  )
+  const [edit, setEdit] = useState<{
+    id: number | null
+    data: NuevoTrabajador
+    asig: Asig[]
+    vac: string[]
+  } | null>(null)
 
   const recargar = async (): Promise<void> => {
     if (!empresa) return setLista([])
@@ -43,7 +46,7 @@ export function PantallaTrabajadores(): React.JSX.Element {
   const abrirNuevo = (): void => {
     if (!empresa) return
     const color = COLORES_TRABAJADOR[lista.length % COLORES_TRABAJADOR.length]
-    setEdit({ id: null, data: trabajadorVacio(empresa.id, color), asig: [] })
+    setEdit({ id: null, data: trabajadorVacio(empresa.id, color), asig: [], vac: [] })
   }
   const abrirEdicion = async (t: Trabajador): Promise<void> => {
     const { id, ...rest } = t
@@ -51,7 +54,8 @@ export function PantallaTrabajadores(): React.JSX.Element {
       centro_id: a.centro_id,
       es_principal: a.es_principal === 1
     }))
-    setEdit({ id, data: rest, asig })
+    const vac = await window.api.vacaciones.listar(id)
+    setEdit({ id, data: rest, asig, vac })
   }
 
   const upd = (patch: Partial<NuevoTrabajador>): void =>
@@ -72,6 +76,15 @@ export function PantallaTrabajadores(): React.JSX.Element {
         : prev
     )
   }
+  const toggleVac = (fecha: string): void => {
+    setEdit((prev) => {
+      if (!prev) return prev
+      const set = new Set(prev.vac)
+      if (set.has(fecha)) set.delete(fecha)
+      else set.add(fecha)
+      return { ...prev, vac: [...set].sort() }
+    })
+  }
 
   const guardar = async (): Promise<void> => {
     if (!edit) return
@@ -79,10 +92,13 @@ export function PantallaTrabajadores(): React.JSX.Element {
     if (!d.nombre.trim()) return toast('El nombre es obligatorio')
     if (d.dni_nie && !dniNieValido(d.dni_nie)) return toast('El DNI/NIE no es válido')
     if (d.iban && !ibanValido(d.iban)) return toast('El IBAN no es válido')
+    // Los días disfrutados de vacaciones salen del calendario.
+    d.vacaciones_disfrutadas = edit.vac.length
     let id = edit.id
     if (id) await window.api.trabajadores.actualizar(id, d)
     else id = (await window.api.trabajadores.crear(d)).id
     await window.api.trabajadores.fijarCentros(id, edit.asig)
+    await window.api.vacaciones.fijar(id, edit.vac)
     setEdit(null)
     await recargar()
     toast('Trabajador guardado')
@@ -192,6 +208,7 @@ export function PantallaTrabajadores(): React.JSX.Element {
           upd={upd}
           toggleCentro={toggleCentro}
           marcarPrincipal={marcarPrincipal}
+          onToggleVac={toggleVac}
         />
       )}
     </>
@@ -199,15 +216,31 @@ export function PantallaTrabajadores(): React.JSX.Element {
 }
 
 function FichaTrabajador(props: {
-  edit: { id: number | null; data: NuevoTrabajador; asig: Asig[] }
+  edit: { id: number | null; data: NuevoTrabajador; asig: Asig[]; vac: string[] }
   centros: Centro[]
   onClose: () => void
   onGuardar: () => void
   upd: (p: Partial<NuevoTrabajador>) => void
   toggleCentro: (id: number, on: boolean) => void
   marcarPrincipal: (id: number) => void
+  onToggleVac: (fecha: string) => void
 }): React.JSX.Element {
   const { edit, centros, upd } = props
+  const ahora = new Date()
+  const [vacMes, setVacMes] = useState({ anio: ahora.getFullYear(), mes: ahora.getMonth() + 1 })
+  const cambiarVacMes = (delta: number): void =>
+    setVacMes((p) => {
+      let m = p.mes + delta
+      let a = p.anio
+      if (m < 1) {
+        m = 12
+        a--
+      } else if (m > 12) {
+        m = 1
+        a++
+      }
+      return { anio: a, mes: m }
+    })
   const d = edit.data
   const esAuto = d.tipo === 'autonomo'
   const media = mediaMensual(d.horas_convenio_completa, d.coef_parcialidad)
@@ -388,6 +421,18 @@ function FichaTrabajador(props: {
           <Campo label="Deducción retribución en especie" type="number" step="0.01" value={d.deduccion_especie} onChange={(v) => upd({ deduccion_especie: Number(v) })} />
           <Campo label="Deducción seguro de salud" type="number" step="0.01" value={d.deduccion_seguro_salud} onChange={(v) => upd({ deduccion_seguro_salud: Number(v) })} />
         </div>
+        {d.tipo === 'ajena' && (
+          <div className="card" style={{ background: 'var(--panel)', marginTop: 12, marginBottom: 0 }}>
+            <h3 style={{ fontSize: 14 }}>Cotización Seguridad Social (trabajador)</h3>
+            <div className="legend" style={{ fontSize: 13 }}>
+              <span>Contingencias comunes ({numEs(4.7)} %): <b>{euros(retrib.cuotaContingencias)}</b></span>
+              <span>Desempleo ({numEs(d.tipo_contrato === 'temporal' ? 1.6 : 1.55)} %): <b>{euros(retrib.cuotaDesempleo)}</b></span>
+              <span>Formación Profesional ({numEs(0.1)} %): <b>{euros(retrib.cuotaFormacion)}</b></span>
+              <span>MEI ({numEs(0.15)} %): <b>{euros(retrib.cuotaMei)}</b></span>
+              <span>Total SS: <b>{euros(retrib.totalSeguridadSocial)}</b> (base {euros(retrib.baseCotizacion)})</span>
+            </div>
+          </div>
+        )}
         <div className="row" style={{ marginTop: 12 }}>
           <div className="kpi">
             <div className="n">{euros(retrib.totalDevengado)}</div>
@@ -395,7 +440,11 @@ function FichaTrabajador(props: {
           </div>
           <div className="kpi">
             <div className="n">{euros(retrib.retencionIrpf)}</div>
-            <div className="l">Retención IRPF ({numEs(d.irpf)} % sobre {euros(retrib.baseSujetaIrpf)})</div>
+            <div className="l">Retención IRPF ({numEs(d.irpf)} % s/ {euros(retrib.baseSujetaIrpf)})</div>
+          </div>
+          <div className="kpi">
+            <div className="n">{euros(retrib.totalSeguridadSocial)}</div>
+            <div className="l">Seguridad Social (trabajador)</div>
           </div>
           <div className="kpi">
             <div className="n" style={{ color: 'var(--ok)' }}>{euros(retrib.neto)}</div>
@@ -403,8 +452,9 @@ function FichaTrabajador(props: {
           </div>
         </div>
         <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-          La especie exenta (seguro de salud) no computa en la base de IRPF. Estimación orientativa;
-          no sustituye a la nómina oficial. Exportable a Excel desde «Exportación».
+          Incluye la cotización a la Seguridad Social del trabajador (contingencias comunes, desempleo,
+          FP y MEI) según los tipos legales. La especie exenta no computa en IRPF ni cotización.
+          Estimación orientativa (sin topes máx./mín. de cotización); no sustituye a la nómina oficial.
         </p>
       </div>
 
@@ -412,12 +462,26 @@ function FichaTrabajador(props: {
         <h3>Vacaciones</h3>
         <div className="grid-3">
           <Campo label="Días anuales" type="number" value={d.vacaciones_anuales} onChange={(v) => upd({ vacaciones_anuales: Number(v) })} />
-          <Campo label="Días disfrutados" type="number" value={d.vacaciones_disfrutadas} onChange={(v) => upd({ vacaciones_disfrutadas: Number(v) })} />
           <div className="kpi">
-            <div className="n">{vacacionesPendientes(d.vacaciones_anuales, d.vacaciones_disfrutadas)}</div>
+            <div className="n">{edit.vac.length}</div>
+            <div className="l">Días disfrutados</div>
+          </div>
+          <div className="kpi">
+            <div className="n">{vacacionesPendientes(d.vacaciones_anuales, edit.vac.length)}</div>
             <div className="l">Días pendientes</div>
           </div>
         </div>
+        <p className="muted" style={{ marginTop: 10, marginBottom: 8, fontSize: 13 }}>
+          Marca en el calendario los <b>días de vacaciones disfrutados</b> (clic para poner/quitar). Se
+          cuentan solos.
+        </p>
+        <CalendarioMes
+          anio={vacMes.anio}
+          mes={vacMes.mes}
+          seleccion={new Set(edit.vac)}
+          onToggle={props.onToggleVac}
+          onMes={cambiarVacMes}
+        />
       </div>
 
       <div className="card" style={{ background: 'var(--panel-2)', marginBottom: 12 }}>

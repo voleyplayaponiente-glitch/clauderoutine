@@ -1,4 +1,69 @@
 import React, { createContext, useCallback, useContext, useState } from 'react'
+import { diasDelMes, diaSemanaIso, MESES } from '@shared/fechas'
+
+// ---------------------------------------------------------------- Calendario mensual (selección de días)
+export function CalendarioMes(props: {
+  anio: number
+  mes: number // 1-12
+  seleccion: Set<string> // fechas ISO seleccionadas
+  onToggle: (fecha: string) => void
+  onMes: (delta: number) => void
+}): React.JSX.Element {
+  const { anio, mes, seleccion, onToggle } = props
+  const total = diasDelMes(anio, mes)
+  const mm = String(mes).padStart(2, '0')
+  const primerDow = diaSemanaIso(`${anio}-${mm}-01`) // 0=domingo … 6=sábado
+  const offset = (primerDow + 6) % 7 // rejilla empezando en lunes
+  const celdas: Array<number | null> = []
+  for (let i = 0; i < offset; i++) celdas.push(null)
+  for (let d = 1; d <= total; d++) celdas.push(d)
+
+  return (
+    <div style={{ maxWidth: 340 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <button type="button" className="btn small" onClick={() => props.onMes(-1)}>
+          ‹
+        </button>
+        <b>
+          {MESES[mes - 1]} {anio}
+        </b>
+        <button type="button" className="btn small" onClick={() => props.onMes(1)}>
+          ›
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, textAlign: 'center' }}>
+        {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
+          <div key={d} style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600 }}>
+            {d}
+          </div>
+        ))}
+        {celdas.map((d, i) => {
+          if (d === null) return <div key={'e' + i} />
+          const fecha = `${anio}-${mm}-${String(d).padStart(2, '0')}`
+          const sel = seleccion.has(fecha)
+          return (
+            <button
+              key={fecha}
+              type="button"
+              onClick={() => onToggle(fecha)}
+              style={{
+                padding: '6px 0',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                cursor: 'pointer',
+                fontSize: 13,
+                background: sel ? 'var(--ok)' : 'var(--panel)',
+                color: sel ? '#fff' : 'var(--text)'
+              }}
+            >
+              {d}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------- Campo
 export function Campo(props: {

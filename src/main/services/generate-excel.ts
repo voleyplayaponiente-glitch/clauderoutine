@@ -135,9 +135,10 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
     { key: 'retirpf', width: 15 },
     { key: 'dedesp', width: 16 },
     { key: 'dedsalud', width: 18 },
+    { key: 'ss', width: 16 },
     { key: 'neto', width: 15 }
   ]
-  ws.mergeCells('A1:O1')
+  ws.mergeCells('A1:P1')
   ws.getCell('A1').value = `${empresa?.razon_social ?? ''} — Retribuciones mensuales (€)`
   ws.getCell('A1').font = { bold: true, size: 13 }
   const hr = ws.addRow([
@@ -155,6 +156,7 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
     'Retención IRPF',
     'Deduc. especie',
     'Deduc. seguro salud',
+    'Seguridad Social',
     'Neto a percibir'
   ])
   hr.font = { bold: true }
@@ -176,6 +178,7 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
       n2(r.retencionIrpf),
       n2(t.deduccion_especie),
       n2(t.deduccion_seguro_salud),
+      n2(r.totalSeguridadSocial),
       n2(r.neto)
     ])
   }

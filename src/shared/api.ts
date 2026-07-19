@@ -55,6 +55,10 @@ export interface ApiGestor {
       asignaciones: Array<{ centro_id: number; es_principal: boolean }>
     ): Promise<void>
   }
+  vacaciones: {
+    listar(trabajadorId: number): Promise<string[]>
+    fijar(trabajadorId: number, fechas: string[]): Promise<void>
+  }
   cuadrante: {
     obtenerOCrear(trabId: number, anio: number, mes: number): Promise<Cuadrante>
     turnos(cuadranteId: number): Promise<Turno[]>

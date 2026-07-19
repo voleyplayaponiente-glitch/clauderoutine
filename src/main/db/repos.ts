@@ -209,6 +209,27 @@ export const trabajadores = {
   }
 }
 
+// ---------------------------------------------------------------- VACACIONES
+export const vacaciones = {
+  listar(trabajadorId: number): string[] {
+    return (
+      getDb()
+        .prepare('SELECT fecha FROM vacacion WHERE trabajador_id = ? ORDER BY fecha')
+        .all(trabajadorId) as { fecha: string }[]
+    ).map((r) => r.fecha)
+  },
+  /** Reemplaza el conjunto de días de vacaciones disfrutados del trabajador. */
+  fijar(trabajadorId: number, fechas: string[]): void {
+    const d = getDb()
+    const tx = d.transaction(() => {
+      d.prepare('DELETE FROM vacacion WHERE trabajador_id = ?').run(trabajadorId)
+      const ins = d.prepare('INSERT OR IGNORE INTO vacacion (trabajador_id, fecha) VALUES (?, ?)')
+      for (const f of fechas) ins.run(trabajadorId, f)
+    })
+    tx()
+  }
+}
+
 // ---------------------------------------------------------------- CUADRANTES
 export const cuadrantes = {
   /** Devuelve el cuadrante del mes creándolo (con sus turnos vacíos) si no existe. */

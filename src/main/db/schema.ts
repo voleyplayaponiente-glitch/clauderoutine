@@ -119,6 +119,14 @@ CREATE TABLE IF NOT EXISTS turno (
   UNIQUE(cuadrante_id, fecha)
 );
 
+CREATE TABLE IF NOT EXISTS vacacion (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trabajador_id INTEGER NOT NULL REFERENCES trabajador(id) ON DELETE CASCADE,
+  fecha TEXT NOT NULL,
+  UNIQUE(trabajador_id, fecha)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vacacion_trab ON vacacion(trabajador_id);
 CREATE INDEX IF NOT EXISTS idx_centro_empresa ON centro(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_trabajador_empresa ON trabajador(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_turno_cuadrante ON turno(cuadrante_id);

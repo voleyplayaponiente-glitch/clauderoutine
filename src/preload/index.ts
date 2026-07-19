@@ -51,6 +51,11 @@ export const api: ApiGestor = {
       asignaciones: Array<{ centro_id: number; es_principal: boolean }>
     ): Promise<void> => inv('trabajadores:fijarCentros', id, asignaciones)
   },
+  vacaciones: {
+    listar: (trabajadorId: number): Promise<string[]> => inv('vacaciones:listar', trabajadorId),
+    fijar: (trabajadorId: number, fechas: string[]): Promise<void> =>
+      inv('vacaciones:fijar', trabajadorId, fechas)
+  },
   cuadrante: {
     obtenerOCrear: (trabId: number, anio: number, mes: number): Promise<Cuadrante> =>
       inv('cuadrante:obtenerOCrear', trabId, anio, mes),

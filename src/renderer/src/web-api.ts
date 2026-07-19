@@ -81,6 +81,10 @@ export const webApi: ApiGestor = {
     centrosDe: (id) => rpc('trabajadores:centrosDe', id),
     fijarCentros: (id, asignaciones) => rpc('trabajadores:fijarCentros', id, asignaciones)
   },
+  vacaciones: {
+    listar: (trabajadorId) => rpc('vacaciones:listar', trabajadorId),
+    fijar: (trabajadorId, fechas) => rpc('vacaciones:fijar', trabajadorId, fechas)
+  },
   cuadrante: {
     obtenerOCrear: (trabId, anio, mes) => rpc('cuadrante:obtenerOCrear', trabId, anio, mes),
     turnos: (cuadranteId) => rpc('cuadrante:turnos', cuadranteId),

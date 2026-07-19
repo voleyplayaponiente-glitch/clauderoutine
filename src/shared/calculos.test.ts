@@ -172,6 +172,8 @@ describe('horarioCentroDia', () => {
 
 describe('calcRetribucion', () => {
   const t = {
+    tipo: 'ajena',
+    tipo_contrato: 'indefinido',
     sueldo_convenio_completo: 1400,
     plus_productividad: 100,
     plus_transporte: 0,
@@ -181,7 +183,7 @@ describe('calcRetribucion', () => {
     deduccion_especie: 50,
     deduccion_seguro_salud: 30,
     irpf: 15
-  }
+  } as unknown as Trabajador
   it('prorratea automáticamente las 3 pagas desde el salario base', () => {
     // 1400 × 3 ÷ 12 = 350
     expect(calcRetribucion(t).prorrateoPagas).toBeCloseTo(350, 2)
@@ -197,8 +199,20 @@ describe('calcRetribucion', () => {
   it('retención IRPF = IRPF% × base sujeta', () => {
     expect(calcRetribucion(t).retencionIrpf).toBeCloseTo(285, 2)
   })
-  it('neto = devengado − deducciones − retención IRPF', () => {
-    // 1940 − (50 + 30 + 285) = 1575
-    expect(calcRetribucion(t).neto).toBeCloseTo(1575, 2)
+  it('cotización SS del trabajador sobre la base (contingencias 4,70 %)', () => {
+    // base 1900 → contingencias 89,30
+    expect(calcRetribucion(t).cuotaContingencias).toBeCloseTo(89.3, 2)
+  })
+  it('total Seguridad Social = contingencias + desempleo + FP + MEI', () => {
+    // 89,30 + 29,45 + 1,90 + 2,85 = 123,50
+    expect(calcRetribucion(t).totalSeguridadSocial).toBeCloseTo(123.5, 2)
+  })
+  it('neto = devengado − deducciones − retención IRPF − Seguridad Social', () => {
+    // 1940 − 50 − 30 − 285 − 123,50 = 1451,50
+    expect(calcRetribucion(t).neto).toBeCloseTo(1451.5, 2)
+  })
+  it('el autónomo no cotiza como cuenta ajena', () => {
+    const auto = { ...t, tipo: 'autonomo' } as unknown as Trabajador
+    expect(calcRetribucion(auto).totalSeguridadSocial).toBe(0)
   })
 })
