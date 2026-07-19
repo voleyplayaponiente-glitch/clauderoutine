@@ -4,7 +4,7 @@ import { useApp } from '../App'
 import { Vacio, useUI } from '../components'
 import { horasDia, resumenMesTrabajador } from '@shared/calculos'
 import { avisosMes, type Aviso } from '@shared/avisos'
-import { DIAS_SEMANA_CORTO, MESES, diaSemanaIso, numEs } from '@shared/fechas'
+import { DIAS_SEMANA_CORTO, MESES, diaSemanaIso, numEs, horaAMinutos } from '@shared/fechas'
 import { colorTrabajador } from '../defaults'
 
 const SITUACIONES: Array<{ v: SituacionDia; label: string }> = [
@@ -471,6 +471,15 @@ function VistaCentro(props: {
     return m
   }, [turnos])
 
+  // Minuto de inicio del turno (el más temprano de sus dos tramos) para ordenar
+  // por hora dentro de cada día: primero el de la mañana, luego el de la tarde.
+  const inicioTurno = (t: Turno): number => {
+    const vals = [horaAMinutos(t.entrada1), horaAMinutos(t.entrada2)].filter(
+      (x): x is number => x !== null
+    )
+    return vals.length ? Math.min(...vals) : 9999
+  }
+
   if (!centros.length) return <Vacio>No hay centros en esta empresa.</Vacio>
 
   const mm = String(mes).padStart(2, '0')
@@ -499,7 +508,9 @@ function VistaCentro(props: {
                   <span className="dia-num">{d}</span> {DIAS_SEMANA_CORTO[dw]}
                 </td>
                 {centros.map((c) => {
-                  const lst = turnosPorDiaCentro.get(`${fecha}|${c.id}`) ?? []
+                  const lst = (turnosPorDiaCentro.get(`${fecha}|${c.id}`) ?? [])
+                    .slice()
+                    .sort((a, b) => inicioTurno(a) - inicioTurno(b))
                   return (
                     <td key={c.id} className={finde ? 'finde' : ''}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
