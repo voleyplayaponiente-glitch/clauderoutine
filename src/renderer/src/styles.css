@@ -389,6 +389,21 @@ input.mini {
   padding: 5px 8px;
   font-size: 13px;
 }
+.btn-x {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--err);
+  border-radius: 6px;
+  width: 24px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+.btn-x:hover {
+  background: var(--err-soft);
+}
 .legend {
   display: flex;
   gap: 12px;

@@ -300,14 +300,18 @@ function VistaTrabajador(props: {
       )}
 
       <div className="card">
+        <p className="muted" style={{ marginTop: 0, fontSize: 12 }}>
+          Rellena <b>solo Mañana</b> o <b>solo Tarde</b> para media jornada o turno de mañana/tarde; usa
+          <b> ambos</b> para turno partido. El botón <b>×</b> vacía un tramo.
+        </p>
         <table className="tbl">
           <thead>
             <tr>
               <th>Día</th>
               <th>Situación</th>
               <th>Centro</th>
-              <th>Mañana</th>
-              <th>Tarde</th>
+              <th>Mañana (opcional)</th>
+              <th>Tarde (opcional)</th>
               <th>Descanso</th>
               <th>Horas</th>
             </tr>
@@ -383,9 +387,14 @@ function FilaTurno(props: {
       </td>
       <td>
         {trabaja ? (
-          <span style={{ display: 'flex', gap: 4 }}>
+          <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input className="mini" type="time" value={turno.entrada1 ?? ''} onChange={(e) => set({ entrada1: e.target.value || null })} />
             <input className="mini" type="time" value={turno.salida1 ?? ''} onChange={(e) => set({ salida1: e.target.value || null })} />
+            {(turno.entrada1 || turno.salida1) && (
+              <button className="btn-x" title="Vaciar mañana" onClick={() => set({ entrada1: null, salida1: null })}>
+                ×
+              </button>
+            )}
           </span>
         ) : (
           <span className="muted">—</span>
@@ -393,9 +402,14 @@ function FilaTurno(props: {
       </td>
       <td>
         {trabaja ? (
-          <span style={{ display: 'flex', gap: 4 }}>
+          <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input className="mini" type="time" value={turno.entrada2 ?? ''} onChange={(e) => set({ entrada2: e.target.value || null })} />
             <input className="mini" type="time" value={turno.salida2 ?? ''} onChange={(e) => set({ salida2: e.target.value || null })} />
+            {(turno.entrada2 || turno.salida2) && (
+              <button className="btn-x" title="Vaciar tarde" onClick={() => set({ entrada2: null, salida2: null })}>
+                ×
+              </button>
+            )}
           </span>
         ) : (
           <span className="muted">—</span>

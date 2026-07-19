@@ -4,7 +4,7 @@
 import ExcelJS from 'exceljs'
 import { datosCuadrante, datosResumenCentros } from './export-data'
 import { empresas, trabajadores } from '../db/repos'
-import { totalRetribucion } from '../../shared/calculos'
+import { calcRetribucion } from '../../shared/calculos'
 import { DIAS_SEMANA, MESES, isoALocal } from '../../shared/fechas'
 import type { Turno } from '../../shared/types'
 
@@ -122,16 +122,20 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
   const ws = wb.addWorksheet('Retribuciones')
   ws.columns = [
     { key: 'trab', width: 26 },
-    { key: 'tipo', width: 12 },
-    { key: 'base', width: 16 },
-    { key: 'plus', width: 16 },
-    { key: 'prorr', width: 18 },
-    { key: 'especie', width: 16 },
-    { key: 'dedesp', width: 18 },
+    { key: 'tipo', width: 11 },
+    { key: 'base', width: 14 },
+    { key: 'plus', width: 15 },
+    { key: 'prorr', width: 16 },
+    { key: 'espsuj', width: 18 },
+    { key: 'espexe', width: 20 },
+    { key: 'devengado', width: 15 },
+    { key: 'irpf', width: 9 },
+    { key: 'retirpf', width: 15 },
+    { key: 'dedesp', width: 16 },
     { key: 'dedsalud', width: 18 },
-    { key: 'total', width: 14 }
+    { key: 'neto', width: 15 }
   ]
-  ws.mergeCells('A1:I1')
+  ws.mergeCells('A1:M1')
   ws.getCell('A1').value = `${empresa?.razon_social ?? ''} — Retribuciones mensuales (€)`
   ws.getCell('A1').font = { bold: true, size: 13 }
   const hr = ws.addRow([
@@ -140,14 +144,19 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
     'Salario base',
     'Plus productividad',
     'Prorrateo 3 pagas',
-    'Retrib. especie',
+    'Especie sujeta IRPF',
+    'Especie exenta (seguro)',
+    'Total devengado',
+    'IRPF %',
+    'Retención IRPF',
     'Deduc. especie',
     'Deduc. seguro salud',
-    'Total'
+    'Neto a percibir'
   ])
   hr.font = { bold: true }
   const n2 = (v: number): number => Number((v || 0).toFixed(2))
   for (const t of lista) {
+    const r = calcRetribucion(t)
     ws.addRow([
       `${t.apellidos}, ${t.nombre}`,
       t.tipo === 'ajena' ? 'Ajena' : 'Autónomo',
@@ -155,9 +164,13 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
       n2(t.plus_productividad),
       n2(t.prorrateo_pagas_extras),
       n2(t.retribucion_especie),
+      n2(t.retribucion_especie_exenta),
+      n2(r.totalDevengado),
+      n2(t.irpf),
+      n2(r.retencionIrpf),
       n2(t.deduccion_especie),
       n2(t.deduccion_seguro_salud),
-      n2(totalRetribucion(t))
+      n2(r.neto)
     ])
   }
   return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)

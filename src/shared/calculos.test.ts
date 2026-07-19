@@ -10,7 +10,7 @@ import {
   resumenMesTrabajador,
   horasCentroMes,
   horarioCentroDia,
-  totalRetribucion
+  calcRetribucion
 } from './calculos'
 import type { Turno, Trabajador } from './types'
 
@@ -153,17 +153,27 @@ describe('horarioCentroDia', () => {
   })
 })
 
-describe('totalRetribucion', () => {
-  it('suma percepciones y resta deducciones', () => {
-    const t = {
-      sueldo_convenio_completo: 1400,
-      coef_parcialidad: 1,
-      plus_productividad: 100,
-      prorrateo_pagas_extras: 233.33,
-      retribucion_especie: 50,
-      deduccion_especie: 50,
-      deduccion_seguro_salud: 30
-    }
-    expect(totalRetribucion(t)).toBeCloseTo(1703.33, 2)
+describe('calcRetribucion', () => {
+  const t = {
+    sueldo_convenio_completo: 1400,
+    plus_productividad: 100,
+    prorrateo_pagas_extras: 233.33,
+    retribucion_especie: 50, // sujeta a IRPF
+    retribucion_especie_exenta: 40, // seguro salud, exenta
+    deduccion_especie: 50,
+    deduccion_seguro_salud: 30,
+    irpf: 15
+  }
+  it('devengado suma todas las percepciones', () => {
+    expect(calcRetribucion(t).totalDevengado).toBeCloseTo(1823.33, 2)
+  })
+  it('la especie exenta no entra en la base de IRPF', () => {
+    expect(calcRetribucion(t).baseSujetaIrpf).toBeCloseTo(1783.33, 2)
+  })
+  it('retención IRPF = IRPF% × base sujeta', () => {
+    expect(calcRetribucion(t).retencionIrpf).toBeCloseTo(267.5, 2)
+  })
+  it('neto = devengado − deducciones − retención IRPF', () => {
+    expect(calcRetribucion(t).neto).toBeCloseTo(1475.83, 2)
   })
 })

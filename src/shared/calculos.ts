@@ -208,32 +208,55 @@ export function horarioCentroDia(
   return { abre: centro.abre_lunes_sabado === 1, apertura: centro.hora_apertura_ls, cierre: centro.hora_cierre_ls }
 }
 
+const r2 = (n: number): number => Math.round(n * 100) / 100
+
+export interface DetalleRetribucion {
+  totalDevengado: number // suma de todas las percepciones
+  baseSujetaIrpf: number // percepciones sujetas a IRPF (sin la especie exenta)
+  retencionIrpf: number // IRPF% × base sujeta
+  totalDeducciones: number // deducción especie + deducción seguro salud + retención IRPF
+  neto: number // total a percibir estimado
+}
+
+type TrabRetrib = Pick<
+  Trabajador,
+  | 'sueldo_convenio_completo'
+  | 'plus_productividad'
+  | 'prorrateo_pagas_extras'
+  | 'retribucion_especie'
+  | 'retribucion_especie_exenta'
+  | 'deduccion_especie'
+  | 'deduccion_seguro_salud'
+  | 'irpf'
+>
+
 /**
- * Total de retribución mensual = salario base + plus productividad + prorrateo de
- * pagas extra + retribución en especie − deducción especie − deducción seguro salud.
+ * Desglose de retribución mensual con retención de IRPF y neto estimado.
+ * - Base sujeta a IRPF = salario base + plus + prorrateo + retribución en especie SUJETA.
+ * - La retribución en especie exenta (seguro de salud) NO entra en la base de IRPF.
+ * - Retención IRPF = base sujeta × IRPF%.
+ * - Neto = total devengado − (deducciones + retención IRPF).
+ * Estimación orientativa, no sustituye a la nómina oficial.
  */
-export function totalRetribucion(
-  t: Pick<
-    Trabajador,
-    | 'sueldo_convenio_completo'
-    | 'coef_parcialidad'
-    | 'plus_productividad'
-    | 'prorrateo_pagas_extras'
-    | 'retribucion_especie'
-    | 'deduccion_especie'
-    | 'deduccion_seguro_salud'
-  >,
-  prorratearBasePorJornada = false
-): number {
-  const base = prorratearBasePorJornada
-    ? sueldoProrrateado(t.sueldo_convenio_completo, t.coef_parcialidad)
-    : t.sueldo_convenio_completo
-  const total =
-    base +
-    (t.plus_productividad || 0) +
-    (t.prorrateo_pagas_extras || 0) +
-    (t.retribucion_especie || 0) -
-    (t.deduccion_especie || 0) -
-    (t.deduccion_seguro_salud || 0)
-  return Math.round(total * 100) / 100
+export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
+  const base = t.sueldo_convenio_completo || 0
+  const plus = t.plus_productividad || 0
+  const prorr = t.prorrateo_pagas_extras || 0
+  const espSuj = t.retribucion_especie || 0
+  const espExe = t.retribucion_especie_exenta || 0
+  const dedEsp = t.deduccion_especie || 0
+  const dedSalud = t.deduccion_seguro_salud || 0
+
+  const totalDevengado = base + plus + prorr + espSuj + espExe
+  const baseSujetaIrpf = base + plus + prorr + espSuj
+  const retencionIrpf = r2(baseSujetaIrpf * ((t.irpf || 0) / 100))
+  const totalDeducciones = r2(dedEsp + dedSalud + retencionIrpf)
+  const neto = r2(totalDevengado - totalDeducciones)
+  return {
+    totalDevengado: r2(totalDevengado),
+    baseSujetaIrpf: r2(baseSujetaIrpf),
+    retencionIrpf,
+    totalDeducciones,
+    neto
+  }
 }

@@ -64,6 +64,11 @@ function migrar(d: Database.Database): void {
     addColumn(d, 'trabajador', 'deduccion_seguro_salud REAL NOT NULL DEFAULT 0')
   }
 
+  if (version < 3) {
+    // v3: retribución en especie exenta de IRPF (seguro de salud).
+    addColumn(d, 'trabajador', 'retribucion_especie_exenta REAL NOT NULL DEFAULT 0')
+  }
+
   if (version < SCHEMA_VERSION) d.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 

@@ -89,7 +89,8 @@ export interface Trabajador {
   // Retribución (importes mensuales en €). Iguales para ajena y autónomo.
   plus_productividad: number
   prorrateo_pagas_extras: number
-  retribucion_especie: number
+  retribucion_especie: number // en especie SUJETA a IRPF
+  retribucion_especie_exenta: number // en especie EXENTA de IRPF (seguro de salud)
   deduccion_especie: number
   deduccion_seguro_salud: number
   observaciones: string

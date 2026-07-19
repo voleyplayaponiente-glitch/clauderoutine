@@ -80,6 +80,7 @@ export function trabajadorVacio(empresaId: number): NuevoTrabajador {
     plus_productividad: 0,
     prorrateo_pagas_extras: 0,
     retribucion_especie: 0,
+    retribucion_especie_exenta: 0,
     deduccion_especie: 0,
     deduccion_seguro_salud: 0,
     observaciones: '',

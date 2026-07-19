@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS trabajador (
   plus_productividad REAL NOT NULL DEFAULT 0,
   prorrateo_pagas_extras REAL NOT NULL DEFAULT 0,
   retribucion_especie REAL NOT NULL DEFAULT 0,
+  retribucion_especie_exenta REAL NOT NULL DEFAULT 0,
   deduccion_especie REAL NOT NULL DEFAULT 0,
   deduccion_seguro_salud REAL NOT NULL DEFAULT 0,
   observaciones TEXT NOT NULL DEFAULT '',
@@ -121,4 +122,4 @@ CREATE INDEX IF NOT EXISTS idx_cuadrante_trab ON cuadrante(trabajador_id, anio, 
 CREATE INDEX IF NOT EXISTS idx_festivo_centro ON festivo(centro_id);
 `
 
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3

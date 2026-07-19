@@ -132,7 +132,8 @@ const CAMPOS_TRAB = `empresa_id,tipo,nombre,apellidos,dni_nie,nss,direccion,tele
   tipo_contrato,fecha_contrato_inicio,fecha_contrato_fin,fecha_alta,fecha_baja,fecha_fin_periodo_prueba,
   horas_contrato_semanales,horas_convenio_completa,coef_parcialidad,sueldo_convenio_completo,irpf,
   vacaciones_anuales,vacaciones_disfrutadas,precio_hora_complementaria,plus_productividad,
-  prorrateo_pagas_extras,retribucion_especie,deduccion_especie,deduccion_seguro_salud,observaciones,activo`
+  prorrateo_pagas_extras,retribucion_especie,retribucion_especie_exenta,deduccion_especie,
+  deduccion_seguro_salud,observaciones,activo`
 
 export const trabajadores = {
   listar(f: FiltroTrabajadores = {}): Trabajador[] {

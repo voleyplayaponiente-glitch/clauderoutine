@@ -3,7 +3,7 @@ import type { Centro, NuevoTrabajador, Trabajador } from '@shared/types'
 import { useApp } from '../App'
 import { Campo, Modal, Vacio, useUI } from '../components'
 import { trabajadorVacio } from '../defaults'
-import { mediaMensual, sueldoProrrateado, totalRetribucion, vacacionesPendientes } from '@shared/calculos'
+import { mediaMensual, sueldoProrrateado, calcRetribucion, vacacionesPendientes } from '@shared/calculos'
 import { euros, numEs } from '@shared/fechas'
 import { dniNieValido, ibanValido } from '../validacion'
 
@@ -208,7 +208,7 @@ function FichaTrabajador(props: {
   const esAuto = d.tipo === 'autonomo'
   const media = mediaMensual(d.horas_convenio_completa, d.coef_parcialidad)
   const sueldoPro = sueldoProrrateado(d.sueldo_convenio_completo, d.coef_parcialidad)
-  const totalRetrib = totalRetribucion(d)
+  const retrib = calcRetribucion(d)
   // Los campos de fecha usan el selector nativo (valor ISO aaaa-mm-dd).
   const fecha = (v: string | null): string => v ?? ''
   const setFecha = (k: keyof NuevoTrabajador, v: string): void => {
@@ -271,11 +271,14 @@ function FichaTrabajador(props: {
           <Campo label="Horas convenio (jornada completa)" type="number" value={d.horas_convenio_completa} onChange={(v) => upd({ horas_convenio_completa: Number(v) })} />
           <Campo label="Coeficiente parcialidad" type="number" step="0.001" value={d.coef_parcialidad} onChange={(v) => upd({ coef_parcialidad: Number(v) })} />
         </div>
-        <div style={{ height: 10 }} />
-        <div className="grid-3">
-          <Campo label="IRPF (%)" type="number" step="0.01" value={d.irpf} onChange={(v) => upd({ irpf: Number(v) })} />
-          {!esAuto && <Campo label="Precio hora complementaria (€)" type="number" step="0.01" value={d.precio_hora_complementaria} onChange={(v) => upd({ precio_hora_complementaria: Number(v) })} />}
-        </div>
+        {!esAuto && (
+          <>
+            <div style={{ height: 10 }} />
+            <div className="grid-3">
+              <Campo label="Precio hora complementaria (€)" type="number" step="0.01" value={d.precio_hora_complementaria} onChange={(v) => upd({ precio_hora_complementaria: Number(v) })} />
+            </div>
+          </>
+        )}
         <div className="row" style={{ marginTop: 12 }}>
           <div className="kpi">
             <div className="n">{numEs(media)} h</div>
@@ -303,18 +306,32 @@ function FichaTrabajador(props: {
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">
-          <Campo label="Retribución en especie" type="number" step="0.01" value={d.retribucion_especie} onChange={(v) => upd({ retribucion_especie: Number(v) })} />
+          <Campo label="Retrib. en especie SUJETA a IRPF" type="number" step="0.01" value={d.retribucion_especie} onChange={(v) => upd({ retribucion_especie: Number(v) })} />
+          <Campo label="Retrib. en especie EXENTA (seguro salud)" type="number" step="0.01" value={d.retribucion_especie_exenta} onChange={(v) => upd({ retribucion_especie_exenta: Number(v) })} />
+          <Campo label="IRPF (%)" type="number" step="0.01" value={d.irpf} onChange={(v) => upd({ irpf: Number(v) })} />
+        </div>
+        <div style={{ height: 10 }} />
+        <div className="grid-3">
           <Campo label="Deducción retribución en especie" type="number" step="0.01" value={d.deduccion_especie} onChange={(v) => upd({ deduccion_especie: Number(v) })} />
           <Campo label="Deducción seguro de salud" type="number" step="0.01" value={d.deduccion_seguro_salud} onChange={(v) => upd({ deduccion_seguro_salud: Number(v) })} />
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <div className="kpi">
-            <div className="n">{euros(totalRetrib)}</div>
-            <div className="l">Total retribución mensual (base + plus + prorrateo + especie − deducciones)</div>
+            <div className="n">{euros(retrib.totalDevengado)}</div>
+            <div className="l">Total devengado</div>
+          </div>
+          <div className="kpi">
+            <div className="n">{euros(retrib.retencionIrpf)}</div>
+            <div className="l">Retención IRPF ({numEs(d.irpf)} % sobre {euros(retrib.baseSujetaIrpf)})</div>
+          </div>
+          <div className="kpi">
+            <div className="n" style={{ color: 'var(--ok)' }}>{euros(retrib.neto)}</div>
+            <div className="l">Total a percibir (neto estimado)</div>
           </div>
         </div>
         <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-          Estos importes se pueden exportar a Excel desde la pantalla «Exportación».
+          La especie exenta (seguro de salud) no computa en la base de IRPF. Estimación orientativa;
+          no sustituye a la nómina oficial. Exportable a Excel desde «Exportación».
         </p>
       </div>
 
