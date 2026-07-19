@@ -71,6 +71,7 @@ export function trabajadorVacio(empresaId: number): NuevoTrabajador {
     fecha_baja: null,
     fecha_fin_periodo_prueba: null,
     horas_contrato_semanales: 40,
+    jornada_completa_semanal: 40,
     horas_convenio_completa: 1768,
     coef_parcialidad: 1,
     sueldo_convenio_completo: 0,

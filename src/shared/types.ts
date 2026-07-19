@@ -80,6 +80,7 @@ export interface Trabajador {
   fecha_baja: string | null
   fecha_fin_periodo_prueba: string | null
   horas_contrato_semanales: number
+  jornada_completa_semanal: number // horas/semana de la jornada completa (para el coeficiente)
   horas_convenio_completa: number
   coef_parcialidad: number
   sueldo_convenio_completo: number // salario base según convenio (jornada completa)

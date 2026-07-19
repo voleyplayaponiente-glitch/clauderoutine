@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS trabajador (
   fecha_baja TEXT,
   fecha_fin_periodo_prueba TEXT,
   horas_contrato_semanales REAL NOT NULL DEFAULT 40,
+  jornada_completa_semanal REAL NOT NULL DEFAULT 40,
   horas_convenio_completa REAL NOT NULL DEFAULT 1768,
   coef_parcialidad REAL NOT NULL DEFAULT 1,
   sueldo_convenio_completo REAL NOT NULL DEFAULT 0,
@@ -124,4 +125,4 @@ CREATE INDEX IF NOT EXISTS idx_cuadrante_trab ON cuadrante(trabajador_id, anio, 
 CREATE INDEX IF NOT EXISTS idx_festivo_centro ON festivo(centro_id);
 `
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5

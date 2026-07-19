@@ -75,6 +75,11 @@ function migrar(d: Database.Database): void {
     addColumn(d, 'trabajador', 'plus_transporte REAL NOT NULL DEFAULT 0')
   }
 
+  if (version < 5) {
+    // v5: jornada completa semanal (para calcular el coeficiente de parcialidad).
+    addColumn(d, 'trabajador', 'jornada_completa_semanal REAL NOT NULL DEFAULT 40')
+  }
+
   if (version < SCHEMA_VERSION) d.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 

@@ -275,9 +275,51 @@ function FichaTrabajador(props: {
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">
-          <Campo label="Horas de contrato (semanales)" type="number" value={d.horas_contrato_semanales} onChange={(v) => upd({ horas_contrato_semanales: Number(v) })} />
-          <Campo label="Horas convenio (jornada completa)" type="number" value={d.horas_convenio_completa} onChange={(v) => upd({ horas_convenio_completa: Number(v) })} />
-          <Campo label="Coeficiente parcialidad" type="number" step="0.001" value={d.coef_parcialidad} onChange={(v) => upd({ coef_parcialidad: Number(v) })} />
+          <Campo
+            label="Horas de contrato (semanales)"
+            type="number"
+            step="0.01"
+            value={d.horas_contrato_semanales}
+            onChange={(v) => {
+              const h = Number(v)
+              const jc = d.jornada_completa_semanal || 40
+              upd({ horas_contrato_semanales: h, coef_parcialidad: Math.round((h / jc) * 10000) / 10000 })
+            }}
+          />
+          <Campo
+            label="Jornada completa (h/semana)"
+            type="number"
+            step="0.01"
+            value={d.jornada_completa_semanal}
+            onChange={(v) => {
+              const jc = Number(v)
+              upd({
+                jornada_completa_semanal: jc,
+                coef_parcialidad: jc ? Math.round((d.horas_contrato_semanales / jc) * 10000) / 10000 : 0
+              })
+            }}
+          />
+          <Campo
+            label="Coeficiente parcialidad (auto)"
+            type="number"
+            step="0.0001"
+            value={d.coef_parcialidad}
+            onChange={(v) => upd({ coef_parcialidad: Number(v) })}
+          />
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+          El coeficiente se calcula solo (horas semanales ÷ jornada completa). Puedes ajustarlo a mano si el contrato indica otro.
+        </p>
+        <div style={{ height: 10 }} />
+        <div className="grid-3">
+          <Campo
+            label="Horas convenio anuales (jornada completa)"
+            type="number"
+            value={d.horas_convenio_completa}
+            onChange={(v) => upd({ horas_convenio_completa: Number(v) })}
+          />
+          <div />
+          <div />
         </div>
         {!esAuto && (
           <>
