@@ -3,85 +3,118 @@
 Memoria del proyecto para Claude Code. Léelo al empezar cualquier sesión en esta rama.
 
 ## Qué es
-Aplicación de **escritorio local-first** (Electron) en **español** para un despacho de graduado
-social que gestiona el personal de varias tiendas. Planifica cuadrantes mensuales por trabajador y
-por centro, calcula horas, controla horas complementarias/vacaciones, emite avisos laborales y
-exporta el **registro de jornada firmado** (PDF/Excel). **Sin nube**: todos los datos en un único
-fichero SQLite local (RGPD: DNI/NIE, NSS, IBAN, dirección no salen del equipo).
+Aplicación en **español** para un despacho de graduado social que gestiona el personal de varias
+tiendas. Planifica cuadrantes mensuales por trabajador y por centro, calcula horas, controla horas
+complementarias/vacaciones, calcula retribución (con IRPF y neto estimado), emite avisos laborales y
+exporta el **registro de jornada firmado** (PDF/Excel) y las retribuciones (Excel). **Local-first,
+sin nube** (RGPD: DNI/NIE, NSS, IBAN, dirección no salen del equipo/red del usuario).
 
-- **Rama de desarrollo:** `claude/labor-management-scheduling-app-jd2hcj`
-- **Rama base / default:** `main`
-- Nota: la app de **vóley playa** (anterior contenido del repo) vive en la rama
-  `claude/tournament-bracket-manager-gvrcdt`; no mezclar.
+- **Rama de desarrollo:** `claude/labor-management-scheduling-app-jd2hcj` · **base/default:** `main`
+- **PR abierto:** #2 (base ya cambiada a `main`).
+- La app de **vóley playa** (contenido anterior del repo) vive en `claude/tournament-bracket-manager-gvrcdt`; no mezclar.
 
-## Stack (decisión deliberada)
-Electron + React + TypeScript + Vite (`electron-vite`), SQLite (`better-sqlite3`),
-Excel (`exceljs`), PDF (impresión nativa de Electron vía `printToPDF`, sin fuentes externas),
-empaquetado con `electron-builder`. Salida **CommonJS** (sin `"type":"module"`) para que `__dirname`
-funcione en el proceso principal/preload.
+## Dos formatos (mismo código)
+1. **Escritorio (Electron):** `npm run dev`, empaquetado con `electron-builder`. Fichero SQLite en userData.
+2. **Web (servidor Node/Express):** para navegador/servidor. **Es el que el usuario usa en producción**,
+   desplegado en su **Umbrel** con Docker (ver `INSTALACION-UMBREL.md`). Acceso con contraseña
+   (`GESTOR_PASSWORD` en `docker-compose.yml`). Datos en volumen `/datos`.
 
-**No** se usa navegador/servidor: el requisito central es local-first con fichero SQLite y arranque
-por doble clic para un usuario no técnico.
+Stack: React + TypeScript + Vite (`electron-vite` para escritorio; `vite.web.config.ts` para web),
+SQLite (`better-sqlite3`), Excel (`exceljs`), PDF (impresión nativa de Electron `printToPDF` en
+escritorio; en web se sirve HTML imprimible). Salida **CommonJS**.
 
 ## Comandos
 ```bash
-npm install          # en la máquina del usuario descarga binario Electron + compila better-sqlite3
-npm run dev          # desarrollo escritorio (abre la ventana Electron)
-npm test             # 22 pruebas del motor puro (Vitest)
-npm run typecheck    # tsc de main (node) + renderer (web)
-npm run build        # bundles escritorio en out/ (electron-vite)
-npm run dist[:win|:mac|:linux]  # instalador nativo (electron-builder)
-npm run build:webapp # versión web: dist-web/ (Vite) + dist-server/ (tsc)
-npm run web          # arranca el servidor web (GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR)
+npm run dev          # escritorio (ventana Electron)
+npm test             # 29 pruebas del motor puro (Vitest)
+npm run typecheck    # tsc main(node) + renderer(web)
+npm run build        # bundles escritorio en out/
+npm run dist[:win|:mac|:linux]  # instalador nativo
+npm run build:webapp # web: dist-web/ (Vite) + dist-server/ (tsc)
+npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR)
 ```
-> Para validar la web en el entorno remoto: `npm install --ignore-scripts && npm rebuild
-> better-sqlite3`, luego `npm run build:webapp && npm run web`. Docker: ver INSTALACION-UMBREL.md.
-> En el entorno remoto de Claude, la descarga del binario de Electron y de prebuilds nativos puede
-> estar bloqueada por egress (403). Para validar aquí: `npm install --ignore-scripts` y luego
-> `npm test` + `npm run typecheck` + `npm run build` (no requieren el binario de Electron).
+> Validar en el entorno remoto de Claude (egress bloquea binario Electron/prebuilds, 403):
+> `npm install --ignore-scripts && npm rebuild better-sqlite3`, luego `npm test`, `npm run typecheck`,
+> `npm run build:webapp`. Para probar en vivo: arrancar `node dist-server/server/index.js` con
+> `GESTOR_DATA_DIR`/`GESTOR_PASSWORD`/`PORT`, sembrar por `/api/rpc` y pilotar con Chromium
+> (`/opt/pw-browsers/chromium-1194/...`, `playwright-core` instalado con `--no-save`). Ver los `.mjs`
+> del scratchpad de la sesión como referencia.
+
+## Despliegue en Umbrel (producción del usuario)
+- App propia por Docker en el terminal de umbrelOS (Settings→Terminal). Carpeta:
+  `/home/umbrel/umbrel/home/clauderoutine-claude-labor-management-scheduling-app-jd2hcj`.
+- **Actualizar** (conserva datos y contraseña): descargar el tar.gz del branch, extraer con
+  `tar --strip-components=1 --exclude='*/docker-compose.yml'` sobre la carpeta y
+  `sudo docker compose up -d --build`. Comando completo en la conversación / INSTALACION-UMBREL.md.
+- El pegar en ese terminal es **Ctrl+Shift+V**; el usuario NO puede copiar la salida → pide capturas.
+  Acceso a la app: `http://umbrel.local:3000`.
 
 ## Arquitectura
 - `src/shared/` — **motor puro** (sin Electron ni React), testeable:
-  - `types.ts` — modelo de dominio. `fechas.ts` — utilidades fecha/hora (dd/mm/aaaa, coma decimal).
-  - `calculos.ts` — horas/día, media mensual = h_anuales×coef÷12, complementarias, resúmenes.
-  - `avisos.ts` — validaciones: 12 h entre jornadas, descanso semanal 36 h, fuera de apertura/día
-    cerrado, supera contrato/media, complementarias, fin periodo prueba, solapamiento de tramos.
-- `src/main/` — proceso principal: `db/` (schema + `better-sqlite3` + repos), `ipc.ts`, `services/`
-  (backup por copia de fichero, export Excel/PDF).
-- `src/preload/index.ts` — puente seguro `window.api` (contextIsolation).
-- `src/renderer/` — UI React: `screens/` (Empresas, Centros, Trabajadores, Cuadrante, Informes,
-  Exportar, Ajustes), `components.tsx`, `styles.css` (claro/oscuro).
-- `src/shared/api.ts` — interfaz `ApiGestor` (window.api), implementada por dos backends.
-- `src/main/rpc.ts` — tabla de manejadores de datos electron-free, compartida por IPC y web.
-- `src/server/index.ts` — **versión web** (Express): sirve `dist-web`, expone `/api/rpc` con los
-  mismos canales, login por contraseña (`GESTOR_PASSWORD`), export (descarga xlsx / HTML imprimible)
-  y backup (descarga/subida del `.db`). Cliente web: `src/renderer/src/web-api.ts` (+ `main-web.tsx`,
-  `web.html`). Build: `vite.web.config.ts` → `dist-web`; `tsconfig.server.json` → `dist-server`.
-  Empaquetado: `Dockerfile` + `docker-compose.yml` (ver `INSTALACION-UMBREL.md`).
-  Datos: carpeta configurable por `GESTOR_DATA_DIR` (Electron la fija a userData; Docker a /datos).
+  - `types.ts` (modelo), `fechas.ts` (dd/mm/aaaa, coma decimal), `api.ts` (interfaz `ApiGestor`).
+  - `calculos.ts` — horas/día, media mensual, coeficiente, retribución (`calcRetribucion`), etc.
+  - `avisos.ts` — validaciones laborales.
+- `src/main/` — `db/` (schema + `better-sqlite3` + repos + migración), `rpc.ts` (handlers de datos
+  electron-free, compartidos), `ipc.ts` (IPC escritorio), `services/` (backup, generate-excel,
+  html-docs, export-*).
+- `src/preload/index.ts` — `window.api` (contextIsolation).
+- `src/renderer/` — UI React: `screens/`, `components.tsx`, `styles.css`, `defaults.ts`
+  (paletas y `colorTrabajador`). Web: `web-api.ts` + `main-web.tsx` + `web.html` (login por contraseña).
+- `src/server/index.ts` — servidor Express (web): sirve `dist-web`, `/api/rpc`, export, backup, login.
 
-## Modelo de datos (SQLite)
+## Modelo de datos (SQLite) — esquema v6
 `empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.
-Multiempresa; cada centro con horas anuales de convenio y **horario por tipo de día** (3 bloques:
-lunes-a-sábado, domingos, festivos; columnas `*_ls`/`*_dom`/`*_fes`). Trabajador `ajena|autonomo`
-(el autónomo no genera complementarias ni valida jornada de cuenta ajena) con campos de
-**retribución** mensual (salario base, plus productividad, prorrateo 3 pagas, retribución en especie
-y deducciones; total en `calculos.totalRetribucion`, exportable a Excel). Esquema versionado por
-`PRAGMA user_version` con migración incremental en `db/database.ts` (v2 = horario por día + retribución).
+Versionado por `PRAGMA user_version`, migración incremental en `db/database.ts`:
+- v2: horario del centro por tipo de día + campos de retribución básicos.
+- v3: `retribucion_especie_exenta`. v4: `codigo`, `plus_transporte`. v5: `jornada_completa_semanal`.
+- v6: `color` del trabajador.
 
-## Reglas de negocio clave
-- Media mensual constante (base anual). Complementarias = realizadas − contratadas del mes (solo
-  ajena, parcial). Vacaciones pendientes = anuales − disfrutadas. Sueldo prorrateado = completo×coef.
-- Turno partido = 2 tramos; horas/día = tramos − descanso.
+**centro:** horario **por tipo de día** en 3 bloques con su “¿abre?” + apertura/cierre:
+`abre_lunes_sabado`+`hora_apertura_ls/hora_cierre_ls`, `abre_domingos`+`*_dom`, `abre_festivos`+`*_fes`
+(campos antiguos `hora_apertura/cierre`, `abre_laborables/sabados` se mantienen por compatibilidad).
+`horas_anuales_convenio`, `color`. **Los festivos son por centro.**
 
-## Convenciones
-- Interfaz y mensajes **en español**; fechas dd/mm/aaaa; importes/decimales con coma.
-- Mantener el motor (`src/shared`) sin dependencias de Electron/React.
-- Confirmación antes de borrar. Copia de seguridad = copiar el fichero `.db`.
+**trabajador:** `codigo` (nº de orden, buscable), `color` (agenda), `tipo` ajena|autonomo,
+identificación, `horas_contrato_semanales`, `jornada_completa_semanal` (def. 40),
+`horas_convenio_completa` (anuales, def. 1768), `coef_parcialidad`, y **retribución mensual**:
+`sueldo_convenio_completo` (salario base), `plus_productividad`, `plus_transporte`,
+`prorrateo_pagas_extras` (ya NO se usa; el prorrateo se calcula), `retribucion_especie` (sujeta a IRPF),
+`retribucion_especie_exenta` (seguro salud, exenta), `deduccion_especie`, `deduccion_seguro_salud`,
+`irpf`, `precio_hora_complementaria`, vacaciones.
 
-## Estado / pendientes
-Hecho: Fases 1–7 (modelo + base + centros/trabajadores + agenda 2 vistas + cálculos + avisos +
-export PDF/Excel + copias + README + scripts de arranque). Typecheck y build en verde; 22 tests.
-Pendiente de validar en ejecución real de Electron (binario bloqueado en el entorno remoto).
-Ampliable: arrastrar-y-soltar en la agenda, calendario de festivos por provincia autocargado,
-export nativo `.xlsx` con más formato, firma digitalizada en el PDF.
+**turno:** situacion (`trabaja|libre|vacaciones|baja|festivo|permiso`), `centro_id`, 2 tramos
+(entrada1/salida1, entrada2/salida2) opcionales, `descanso_min`.
+
+## Reglas de cálculo (todas en `src/shared/calculos.ts`, con tests)
+- **Coeficiente parcialidad = horas_contrato_semanales ÷ jornada_completa_semanal** (auto en la ficha
+  al escribir las horas; editable). Jornada completa por defecto 40 h/semana.
+- **Media mensual = horas_convenio_completa DEL TRABAJADOR × coef ÷ 12** (NO las del centro). Constante
+  todo el año. (Se usa en ficha, cuadrante, informes, avisos, export → todo consistente.)
+- **Retribución (`calcRetribucion`)**, importes mensuales:
+  - prorrateo pagas = **salario base × 3 ÷ 12** (automático, 3 pagas; `NUM_PAGAS_EXTRA`).
+  - total devengado = base + productividad + transporte + prorrateo + especie sujeta + especie exenta.
+  - base sujeta a IRPF = igual **sin** la especie exenta.
+  - retención IRPF = irpf% × base sujeta. neto = devengado − (ded. especie + ded. salud + retención IRPF).
+  - Plus de transporte: tratado como **sujeto a IRPF** (revisar si el usuario lo quiere exento).
+- Complementarias = realizadas − contratadas del mes (solo ajena parcial). Vacaciones pend. = anuales − disfrutadas.
+- horas/día = tramos (mañana/tarde, opcionales) − descanso. Media jornada = rellenar solo un tramo.
+
+## Avisos (`avisos.ts`): 12 h entre jornadas, descanso semanal 36 h, fuera de apertura/día cerrado
+(según horario del tipo de día), supera contrato/media, complementarias, fin periodo prueba, solape de tramos.
+
+## UI / convenciones
+- Todo **en español**; fechas con **selector de calendario** (ISO interno); importes con coma.
+- **Cuadrante**: vista por trabajador (edición, patrón rápido L–V, copiar semana, botón × para vaciar
+  tramo) y **vista por centro** (solo lectura, **color por trabajador**, coincidentes **en fila**).
+- Cada **trabajador tiene color propio** (ficha “Color en la agenda”; por defecto de paleta
+  `COLORES_TRABAJADOR`; fallback por id con `colorTrabajador`).
+- Confirmación antes de borrar. Backup = descargar/subir el `.db` (Ajustes). Motor `src/shared` sin Electron/React.
+
+## Estado
+Desplegada y **en uso real por el usuario en su Umbrel** (versión web). Typecheck + build + 29 tests en
+verde. Cada cambio: implementar → `typecheck`/`test`/`build:webapp` → verificar en navegador con datos
+reales sembrados → commit + push al branch → pasar al usuario el comando de actualización de Umbrel.
+
+**Pendiente / ideas:** confirmar si el plus de transporte va exento; permitir nº de pagas extra distinto
+de 3; posible selector de color/tamaño de pastillas y mostrar código junto al nombre en la agenda;
+arrastrar-y-soltar; festivos por provincia autocargados; firma digitalizada en el PDF.
