@@ -49,6 +49,18 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
 - El pegar en ese terminal es **Ctrl+Shift+V**; el usuario NO puede copiar la salida → pide capturas.
   Acceso a la app: `http://umbrel.local:3000`.
 
+## Acceso del usuario
+- **App instalable (PWA):** la web tiene `manifest.webmanifest` + iconos en `src/renderer/public/`
+  (calendario azul de marca) y metas en `web.html`. Se sirve como estático público (sin auth). El
+  usuario la instaló como app en Windows (Brave → "Instalar página como aplicación").
+- **En LAN:** `http://umbrel.local:3000` (o IP LAN). **En remoto:** por **Tailscale** (VPN privada,
+  cifrada, sin abrir puertos → RGPD ok). El usuario ya tiene Tailscale en el Mac y en el Umbrel, misma
+  cuenta. IP Tailscale del Umbrel: **`100.125.128.120`** → `http://100.125.128.120:3000`.
+- ⚠️ Una PWA queda **fijada al origen** desde el que se instala. Para que funcione en casa y fuera con
+  un solo icono: instalarla desde la dirección de Tailscale y dejar Tailscale **siempre activo** (o usar
+  MagicDNS, p. ej. `http://umbrel:3000`). NO exponer el puerto 3000 a Internet público.
+- NO guardar en el repo la contraseña real del usuario (solo en su `docker-compose.yml`, `GESTOR_PASSWORD`).
+
 ## Arquitectura
 - `src/shared/` — **motor puro** (sin Electron ni React), testeable:
   - `types.ts` (modelo), `fechas.ts` (dd/mm/aaaa, coma decimal), `api.ts` (interfaz `ApiGestor`).
@@ -105,16 +117,23 @@ identificación, `horas_contrato_semanales`, `jornada_completa_semanal` (def. 40
 ## UI / convenciones
 - Todo **en español**; fechas con **selector de calendario** (ISO interno); importes con coma.
 - **Cuadrante**: vista por trabajador (edición, patrón rápido L–V, copiar semana, botón × para vaciar
-  tramo) y **vista por centro** (solo lectura, **color por trabajador**, coincidentes **en fila**).
+  tramo) y **vista por centro** (solo lectura, **color por trabajador**, coincidentes **en fila** y
+  **ordenados por hora de entrada** — mañana antes que tarde, helper `inicioTurno` en `Cuadrante.tsx`).
 - Cada **trabajador tiene color propio** (ficha “Color en la agenda”; por defecto de paleta
   `COLORES_TRABAJADOR`; fallback por id con `colorTrabajador`).
 - Confirmación antes de borrar. Backup = descargar/subir el `.db` (Ajustes). Motor `src/shared` sin Electron/React.
 
 ## Estado
-Desplegada y **en uso real por el usuario en su Umbrel** (versión web). Typecheck + build + 29 tests en
-verde. Cada cambio: implementar → `typecheck`/`test`/`build:webapp` → verificar en navegador con datos
-reales sembrados → commit + push al branch → pasar al usuario el comando de actualización de Umbrel.
+Desplegada y **en uso real por el usuario en su Umbrel** (versión web), con acceso local (PWA) y
+**remoto por Tailscale** funcionando (verificado por el usuario desde el Mac en otra red). Typecheck +
+build + 32 tests en verde. Cada cambio: implementar → `typecheck`/`test`/`build:webapp` → verificar en
+navegador con datos reales sembrados → commit + push al branch → pasar al usuario el comando de
+actualización de Umbrel.
+
+**Próxima sesión (mañana):** el usuario quiere seguir con "algunas mejoras" (sin concretar aún).
 
 **Pendiente / ideas:** confirmar si el plus de transporte va exento; permitir nº de pagas extra distinto
-de 3; posible selector de color/tamaño de pastillas y mostrar código junto al nombre en la agenda;
-arrastrar-y-soltar; festivos por provincia autocargados; firma digitalizada en el PDF.
+de 3; posible selector de color/tamaño de pastillas y **mostrar código junto al nombre en la agenda**;
+**arrastrar-y-soltar** turnos; **festivos por provincia** autocargados; firma digitalizada en el PDF;
+**Opción B de acceso** (tile propio dentro del panel de Umbrel; pendiente saber hardware del Umbrel
+Intel/x86 vs Raspberry Pi para compilar imagen GHCR).
