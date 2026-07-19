@@ -87,7 +87,7 @@ describe('resumenMesTrabajador', () => {
     coef_parcialidad: 0.5,
     horas_contrato_semanales: 20,
     precio_hora_complementaria: 9.7,
-    horas_anuales_convenio: 1768
+    horas_convenio_completa: 1768
   } as unknown as Trabajador
 
   it('agrega horas, cuenta días y calcula desviaciones', () => {
@@ -97,7 +97,7 @@ describe('resumenMesTrabajador', () => {
       turnoBase({ id: 3, fecha: '2026-03-04', situacion: 'vacaciones', centro_id: null }),
       turnoBase({ id: 4, fecha: '2026-03-05', situacion: 'libre', centro_id: null })
     ]
-    const r = resumenMesTrabajador(trab, 1768, turnos)
+    const r = resumenMesTrabajador(trab, turnos)
     expect(r.horasRealizadas).toBe(16)
     expect(r.horasPorCentro[1]).toBe(8)
     expect(r.horasPorCentro[2]).toBe(8)
@@ -112,8 +112,25 @@ describe('resumenMesTrabajador', () => {
     const turnos = Array.from({ length: 20 }, (_, i) =>
       turnoBase({ id: i, fecha: `2026-03-${String(i + 1).padStart(2, '0')}`, entrada1: '10:00', salida1: '20:00' })
     )
-    const r = resumenMesTrabajador(auto, 1768, turnos)
+    const r = resumenMesTrabajador(auto, turnos)
     expect(r.horasComplementarias).toBe(0)
+  })
+
+  it('media mensual de parciales coincide con el cuadro del despacho', () => {
+    const casos: Array<[number, number, number]> = [
+      // [horas_anuales, coef, media_esperada]
+      [1768, 0.75, 110.5],
+      [1768, 0.55, 81.03],
+      [1768, 0.5, 73.67],
+      [1768, 0.057, 8.4],
+      [1711, 0.48, 68.44],
+      [1711, 0.533, 76.0],
+      [1792, 0.5, 74.67]
+    ]
+    for (const [anuales, coef, esperada] of casos) {
+      const t = { ...trab, horas_convenio_completa: anuales, coef_parcialidad: coef } as unknown as Trabajador
+      expect(resumenMesTrabajador(t, []).mediaMensualTeorica).toBeCloseTo(esperada, 2)
+    }
   })
 })
 

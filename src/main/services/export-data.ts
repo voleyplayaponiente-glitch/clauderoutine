@@ -23,9 +23,7 @@ export function datosCuadrante(trabajadorId: number, anio: number, mes: number):
   const listaCentros = centros.listar(trabajador.empresa_id)
   const centrosPorId: Record<number, Centro> = {}
   for (const c of listaCentros) centrosPorId[c.id] = c
-  const centroRef = turnos.find((t) => t.centro_id != null)?.centro_id
-  const horasAnualesRef = centroRef ? centrosPorId[centroRef]?.horas_anuales_convenio ?? 0 : 0
-  const resumen = resumenMesTrabajador(trabajador, horasAnualesRef, turnos)
+  const resumen = resumenMesTrabajador(trabajador, turnos)
   return { empresa, trabajador, centrosPorId, turnos, resumen, anio, mes, horasDiaFn: horasDia }
 }
 

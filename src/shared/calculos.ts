@@ -91,9 +91,12 @@ export interface ResumenMesTrabajador {
 export function resumenMesTrabajador(
   trabajador: Pick<
     Trabajador,
-    'tipo' | 'coef_parcialidad' | 'horas_contrato_semanales' | 'precio_hora_complementaria'
+    | 'tipo'
+    | 'coef_parcialidad'
+    | 'horas_contrato_semanales'
+    | 'horas_convenio_completa'
+    | 'precio_hora_complementaria'
   >,
-  horasAnualesConvenioCentro: number,
   turnos: Turno[]
 ): ResumenMesTrabajador {
   const horasPorCentro: Record<number, number> = {}
@@ -139,7 +142,9 @@ export function resumenMesTrabajador(
     horasPorCentro[+k] = Math.round(horasPorCentro[+k] * 100) / 100
   }
 
-  const media = mediaMensual(horasAnualesConvenioCentro, trabajador.coef_parcialidad)
+  // La media mensual se calcula con las horas anuales de convenio DEL TRABAJADOR
+  // (× coeficiente ÷ 12), para que coincida con su contrato de tiempo parcial.
+  const media = mediaMensual(trabajador.horas_convenio_completa, trabajador.coef_parcialidad)
   const contratadas = horasContratadasMes(trabajador.horas_contrato_semanales)
   const esAutonomo = trabajador.tipo === 'autonomo'
   const comp = esAutonomo ? 0 : horasComplementarias(horasRealizadas, contratadas)

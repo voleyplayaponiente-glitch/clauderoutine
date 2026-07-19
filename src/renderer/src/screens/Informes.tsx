@@ -25,16 +25,12 @@ export function PantallaInformes(): React.JSX.Element {
     ;(async () => {
       const cs = await window.api.centros.listar(empresa.id)
       setCentros(cs)
-      const csPorId: Record<number, Centro> = {}
-      for (const c of cs) csPorId[c.id] = c
       const trabs = await window.api.trabajadores.listar({ empresaId: empresa.id })
       const res: FilaTrab[] = []
       for (const t of trabs) {
         const cuad = await window.api.cuadrante.obtenerOCrear(t.id, anio, mes)
         const turnos = await window.api.cuadrante.turnos(cuad.id)
-        const centroRef = turnos.find((x) => x.centro_id != null)?.centro_id
-        const horasAnuales = centroRef ? csPorId[centroRef]?.horas_anuales_convenio ?? 0 : t.horas_convenio_completa
-        res.push({ trabajador: t, resumen: resumenMesTrabajador(t, horasAnuales, turnos) })
+        res.push({ trabajador: t, resumen: resumenMesTrabajador(t, turnos) })
       }
       setFilas(res)
       setTurnosEmpresa(await window.api.cuadrante.turnosMesEmpresa(empresa.id, anio, mes))

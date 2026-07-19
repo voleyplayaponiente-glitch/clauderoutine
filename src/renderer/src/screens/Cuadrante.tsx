@@ -158,10 +158,8 @@ function VistaTrabajador(props: {
 
   const resumen = useMemo(() => {
     if (!trabajador) return null
-    const centroRef = turnos.find((t) => t.centro_id != null)?.centro_id
-    const horasAnuales = centroRef ? centrosPorId[centroRef]?.horas_anuales_convenio ?? 0 : trabajador.horas_convenio_completa
-    return resumenMesTrabajador(trabajador, horasAnuales, turnos)
-  }, [trabajador, turnos, centrosPorId])
+    return resumenMesTrabajador(trabajador, turnos)
+  }, [trabajador, turnos])
 
   const avisos: Aviso[] = useMemo(() => {
     if (!trabajador) return []

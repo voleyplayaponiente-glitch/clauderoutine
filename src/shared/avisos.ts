@@ -67,17 +67,14 @@ export function avisosMes(params: {
   const avisos: Aviso[] = []
   const esAutonomo = trabajador.tipo === 'autonomo'
 
-  // Resumen de horas para comparativas.
-  // Usamos las horas anuales del convenio del centro principal si existe; si no,
-  // las del primer centro con turnos.
-  const centroRef = turnos.find((t) => t.centro_id != null)?.centro_id
-  const horasAnualesRef = centroRef ? centrosPorId[centroRef]?.horas_anuales_convenio ?? 0 : 0
-  const resumen = resumenMesTrabajador(trabajador, horasAnualesRef, turnos)
+  // Resumen de horas para comparativas. La media mensual se basa en las horas
+  // anuales de convenio del propio trabajador (× coeficiente ÷ 12).
+  const resumen = resumenMesTrabajador(trabajador, turnos)
 
   // 1) Supera horas de contrato o media mensual (solo cuenta ajena).
   if (!esAutonomo) {
     const contratadas = horasContratadasMes(trabajador.horas_contrato_semanales)
-    const media = mediaMensual(horasAnualesRef, trabajador.coef_parcialidad)
+    const media = mediaMensual(trabajador.horas_convenio_completa, trabajador.coef_parcialidad)
     if (contratadas > 0 && resumen.horasRealizadas > contratadas + 0.01) {
       avisos.push({
         tipo: 'supera_contrato',
