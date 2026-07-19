@@ -63,6 +63,7 @@ export interface Trabajador {
   id: number
   empresa_id: number
   codigo: string // número o código de orden del trabajador
+  color: string // color propio para distinguirlo en la agenda (hex)
   tipo: TipoTrabajador
   nombre: string
   apellidos: string

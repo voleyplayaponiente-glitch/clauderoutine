@@ -80,6 +80,11 @@ function migrar(d: Database.Database): void {
     addColumn(d, 'trabajador', 'jornada_completa_semanal REAL NOT NULL DEFAULT 40')
   }
 
+  if (version < 6) {
+    // v6: color propio del trabajador para la agenda.
+    addColumn(d, 'trabajador', "color TEXT NOT NULL DEFAULT ''")
+  }
+
   if (version < SCHEMA_VERSION) d.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 

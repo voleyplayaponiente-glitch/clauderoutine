@@ -33,6 +33,7 @@ const trabajador: Trabajador = {
   id: 1,
   empresa_id: 1,
   codigo: '23',
+  color: '#e11d48',
   tipo: 'ajena',
   nombre: 'Ana',
   apellidos: 'García',

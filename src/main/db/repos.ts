@@ -128,7 +128,7 @@ export interface FiltroTrabajadores {
   texto?: string
 }
 
-const CAMPOS_TRAB = `empresa_id,codigo,tipo,nombre,apellidos,dni_nie,nss,direccion,telefono,email,iban,categoria,
+const CAMPOS_TRAB = `empresa_id,codigo,color,tipo,nombre,apellidos,dni_nie,nss,direccion,telefono,email,iban,categoria,
   tipo_contrato,fecha_contrato_inicio,fecha_contrato_fin,fecha_alta,fecha_baja,fecha_fin_periodo_prueba,
   horas_contrato_semanales,jornada_completa_semanal,horas_convenio_completa,coef_parcialidad,sueldo_convenio_completo,irpf,
   vacaciones_anuales,vacaciones_disfrutadas,precio_hora_complementaria,plus_productividad,plus_transporte,

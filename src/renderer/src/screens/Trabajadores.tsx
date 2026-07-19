@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import type { Centro, NuevoTrabajador, Trabajador } from '@shared/types'
 import { useApp } from '../App'
 import { Campo, Modal, Vacio, useUI } from '../components'
-import { trabajadorVacio } from '../defaults'
+import { trabajadorVacio, COLORES_TRABAJADOR, colorTrabajador } from '../defaults'
 import { mediaMensual, sueldoProrrateado, calcRetribucion, vacacionesPendientes } from '@shared/calculos'
 import { euros, numEs } from '@shared/fechas'
 import { dniNieValido, ibanValido } from '../validacion'
@@ -42,7 +42,8 @@ export function PantallaTrabajadores(): React.JSX.Element {
 
   const abrirNuevo = (): void => {
     if (!empresa) return
-    setEdit({ id: null, data: trabajadorVacio(empresa.id), asig: [] })
+    const color = COLORES_TRABAJADOR[lista.length % COLORES_TRABAJADOR.length]
+    setEdit({ id: null, data: trabajadorVacio(empresa.id, color), asig: [] })
   }
   const abrirEdicion = async (t: Trabajador): Promise<void> => {
     const { id, ...rest } = t
@@ -154,6 +155,7 @@ export function PantallaTrabajadores(): React.JSX.Element {
                 <tr key={t.id}>
                   <td>{t.codigo}</td>
                   <td>
+                    <span className="swatch" style={{ background: colorTrabajador(t.color, t.id) }} />{' '}
                     <b>
                       {t.apellidos}, {t.nombre}
                     </b>
@@ -236,7 +238,14 @@ function FichaTrabajador(props: {
       <div className="grid-3">
         <Campo label="Código / nº de orden" value={d.codigo} onChange={(v) => upd({ codigo: v })} />
         <Campo label="Tipo" list={[{ value: 'ajena', label: 'Cuenta ajena' }, { value: 'autonomo', label: 'Autónomo' }]} value={d.tipo} onChange={(v) => upd({ tipo: v as 'ajena' | 'autonomo' })} />
-        <div />
+        <label className="field">
+          <span>Color en la agenda</span>
+          <input
+            type="color"
+            value={colorTrabajador(d.color, edit.id ?? 0)}
+            onChange={(e) => upd({ color: e.target.value })}
+          />
+        </label>
       </div>
       <div style={{ height: 10 }} />
       <div className="grid-3">

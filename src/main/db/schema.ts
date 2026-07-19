@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS trabajador (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   empresa_id INTEGER NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
   codigo TEXT NOT NULL DEFAULT '',
+  color TEXT NOT NULL DEFAULT '',
   tipo TEXT NOT NULL DEFAULT 'ajena',
   nombre TEXT NOT NULL,
   apellidos TEXT NOT NULL DEFAULT '',
@@ -125,4 +126,4 @@ CREATE INDEX IF NOT EXISTS idx_cuadrante_trab ON cuadrante(trabajador_id, anio, 
 CREATE INDEX IF NOT EXISTS idx_festivo_centro ON festivo(centro_id);
 `
 
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6

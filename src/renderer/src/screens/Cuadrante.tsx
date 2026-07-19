@@ -5,6 +5,7 @@ import { Vacio, useUI } from '../components'
 import { horasDia, resumenMesTrabajador } from '@shared/calculos'
 import { avisosMes, type Aviso } from '@shared/avisos'
 import { DIAS_SEMANA_CORTO, MESES, diaSemanaIso, numEs } from '@shared/fechas'
+import { colorTrabajador } from '../defaults'
 
 const SITUACIONES: Array<{ v: SituacionDia; label: string }> = [
   { v: 'libre', label: 'Libre' },
@@ -448,6 +449,12 @@ function VistaCentro(props: {
     return m
   }, [trabajadores])
 
+  const colorPorTrab = useMemo(() => {
+    const m: Record<number, string> = {}
+    for (const t of trabajadores) m[t.id] = colorTrabajador(t.color, t.id)
+    return m
+  }, [trabajadores])
+
   const dias = useMemo(() => {
     const total = new Date(anio, mes, 0).getDate()
     return Array.from({ length: total }, (_, i) => i + 1)
@@ -495,17 +502,22 @@ function VistaCentro(props: {
                   const lst = turnosPorDiaCentro.get(`${fecha}|${c.id}`) ?? []
                   return (
                     <td key={c.id} className={finde ? 'finde' : ''}>
-                      {lst.map((t) => (
-                        <div key={t.id} style={{ marginBottom: 2 }}>
-                          <span className="pill" style={{ background: c.color }}>
-                            {nombrePorTrab[t.trabajador_id] ?? '?'}
-                          </span>{' '}
-                          <span className="muted" style={{ fontSize: 11 }}>
-                            {t.entrada1}–{t.salida1}
-                            {t.entrada2 ? ` / ${t.entrada2}–${t.salida2}` : ''}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {lst.map((t) => (
+                          <span
+                            key={t.id}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+                          >
+                            <span className="pill" style={{ background: colorPorTrab[t.trabajador_id] ?? '#888' }}>
+                              {nombrePorTrab[t.trabajador_id] ?? '?'}
+                            </span>
+                            <span className="muted" style={{ fontSize: 11 }}>
+                              {t.entrada1}–{t.salida1}
+                              {t.entrada2 ? ` / ${t.entrada2}–${t.salida2}` : ''}
+                            </span>
                           </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </td>
                   )
                 })}
