@@ -69,6 +69,12 @@ function migrar(d: Database.Database): void {
     addColumn(d, 'trabajador', 'retribucion_especie_exenta REAL NOT NULL DEFAULT 0')
   }
 
+  if (version < 4) {
+    // v4: código/nº de orden y plus de transporte.
+    addColumn(d, 'trabajador', "codigo TEXT NOT NULL DEFAULT ''")
+    addColumn(d, 'trabajador', 'plus_transporte REAL NOT NULL DEFAULT 0')
+  }
+
   if (version < SCHEMA_VERSION) d.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 

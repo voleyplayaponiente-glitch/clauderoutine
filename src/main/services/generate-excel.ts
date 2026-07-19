@@ -121,10 +121,12 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Retribuciones')
   ws.columns = [
+    { key: 'cod', width: 10 },
     { key: 'trab', width: 26 },
     { key: 'tipo', width: 11 },
     { key: 'base', width: 14 },
     { key: 'plus', width: 15 },
+    { key: 'transp', width: 14 },
     { key: 'prorr', width: 16 },
     { key: 'espsuj', width: 18 },
     { key: 'espexe', width: 20 },
@@ -135,14 +137,16 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
     { key: 'dedsalud', width: 18 },
     { key: 'neto', width: 15 }
   ]
-  ws.mergeCells('A1:M1')
+  ws.mergeCells('A1:O1')
   ws.getCell('A1').value = `${empresa?.razon_social ?? ''} — Retribuciones mensuales (€)`
   ws.getCell('A1').font = { bold: true, size: 13 }
   const hr = ws.addRow([
+    'Código',
     'Trabajador',
     'Tipo',
     'Salario base',
     'Plus productividad',
+    'Plus transporte',
     'Prorrateo 3 pagas',
     'Especie sujeta IRPF',
     'Especie exenta (seguro)',
@@ -158,10 +162,12 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
   for (const t of lista) {
     const r = calcRetribucion(t)
     ws.addRow([
+      t.codigo,
       `${t.apellidos}, ${t.nombre}`,
       t.tipo === 'ajena' ? 'Ajena' : 'Autónomo',
       n2(t.sueldo_convenio_completo),
       n2(t.plus_productividad),
+      n2(t.plus_transporte),
       n2(t.prorrateo_pagas_extras),
       n2(t.retribucion_especie),
       n2(t.retribucion_especie_exenta),

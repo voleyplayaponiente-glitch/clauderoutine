@@ -174,6 +174,7 @@ describe('calcRetribucion', () => {
   const t = {
     sueldo_convenio_completo: 1400,
     plus_productividad: 100,
+    plus_transporte: 0,
     prorrateo_pagas_extras: 233.33,
     retribucion_especie: 50, // sujeta a IRPF
     retribucion_especie_exenta: 40, // seguro salud, exenta

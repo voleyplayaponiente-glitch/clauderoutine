@@ -53,6 +53,7 @@ export function centroVacio(empresaId: number, color = COLORES_CENTRO[0]): Nuevo
 export function trabajadorVacio(empresaId: number): NuevoTrabajador {
   return {
     empresa_id: empresaId,
+    codigo: '',
     tipo: 'ajena',
     nombre: '',
     apellidos: '',
@@ -78,6 +79,7 @@ export function trabajadorVacio(empresaId: number): NuevoTrabajador {
     vacaciones_disfrutadas: 0,
     precio_hora_complementaria: 0,
     plus_productividad: 0,
+    plus_transporte: 0,
     prorrateo_pagas_extras: 0,
     retribucion_especie: 0,
     retribucion_especie_exenta: 0,

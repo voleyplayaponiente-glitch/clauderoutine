@@ -62,6 +62,7 @@ export interface Festivo {
 export interface Trabajador {
   id: number
   empresa_id: number
+  codigo: string // número o código de orden del trabajador
   tipo: TipoTrabajador
   nombre: string
   apellidos: string
@@ -88,6 +89,7 @@ export interface Trabajador {
   precio_hora_complementaria: number
   // Retribución (importes mensuales en €). Iguales para ajena y autónomo.
   plus_productividad: number
+  plus_transporte: number
   prorrateo_pagas_extras: number
   retribucion_especie: number // en especie SUJETA a IRPF
   retribucion_especie_exenta: number // en especie EXENTA de IRPF (seguro de salud)

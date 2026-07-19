@@ -138,6 +138,7 @@ export function PantallaTrabajadores(): React.JSX.Element {
           <table className="tbl">
             <thead>
               <tr>
+                <th>Código</th>
                 <th>Nombre</th>
                 <th>DNI/NIE</th>
                 <th>Tipo</th>
@@ -151,6 +152,7 @@ export function PantallaTrabajadores(): React.JSX.Element {
             <tbody>
               {lista.map((t) => (
                 <tr key={t.id}>
+                  <td>{t.codigo}</td>
                   <td>
                     <b>
                       {t.apellidos}, {t.nombre}
@@ -232,9 +234,15 @@ function FichaTrabajador(props: {
       }
     >
       <div className="grid-3">
+        <Campo label="Código / nº de orden" value={d.codigo} onChange={(v) => upd({ codigo: v })} />
         <Campo label="Tipo" list={[{ value: 'ajena', label: 'Cuenta ajena' }, { value: 'autonomo', label: 'Autónomo' }]} value={d.tipo} onChange={(v) => upd({ tipo: v as 'ajena' | 'autonomo' })} />
+        <div />
+      </div>
+      <div style={{ height: 10 }} />
+      <div className="grid-3">
         <Campo label="Nombre" required value={d.nombre} onChange={(v) => upd({ nombre: v })} />
         <Campo label="Apellidos" value={d.apellidos} onChange={(v) => upd({ apellidos: v })} />
+        <div />
       </div>
       <div style={{ height: 10 }} />
       <div className="grid-3">
@@ -302,7 +310,13 @@ function FichaTrabajador(props: {
         <div className="grid-3">
           <Campo label="Salario base según convenio" type="number" step="0.01" value={d.sueldo_convenio_completo} onChange={(v) => upd({ sueldo_convenio_completo: Number(v) })} />
           <Campo label="Plus de productividad" type="number" step="0.01" value={d.plus_productividad} onChange={(v) => upd({ plus_productividad: Number(v) })} />
+          <Campo label="Plus de transporte" type="number" step="0.01" value={d.plus_transporte} onChange={(v) => upd({ plus_transporte: Number(v) })} />
+        </div>
+        <div style={{ height: 10 }} />
+        <div className="grid-3">
           <Campo label="Prorrateo pagas extra (3 pagas)" type="number" step="0.01" value={d.prorrateo_pagas_extras} onChange={(v) => upd({ prorrateo_pagas_extras: Number(v) })} />
+          <div />
+          <div />
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">

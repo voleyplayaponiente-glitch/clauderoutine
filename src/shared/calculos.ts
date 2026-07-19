@@ -227,6 +227,7 @@ type TrabRetrib = Pick<
   Trabajador,
   | 'sueldo_convenio_completo'
   | 'plus_productividad'
+  | 'plus_transporte'
   | 'prorrateo_pagas_extras'
   | 'retribucion_especie'
   | 'retribucion_especie_exenta'
@@ -246,14 +247,15 @@ type TrabRetrib = Pick<
 export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
   const base = t.sueldo_convenio_completo || 0
   const plus = t.plus_productividad || 0
+  const transp = t.plus_transporte || 0
   const prorr = t.prorrateo_pagas_extras || 0
   const espSuj = t.retribucion_especie || 0
   const espExe = t.retribucion_especie_exenta || 0
   const dedEsp = t.deduccion_especie || 0
   const dedSalud = t.deduccion_seguro_salud || 0
 
-  const totalDevengado = base + plus + prorr + espSuj + espExe
-  const baseSujetaIrpf = base + plus + prorr + espSuj
+  const totalDevengado = base + plus + transp + prorr + espSuj + espExe
+  const baseSujetaIrpf = base + plus + transp + prorr + espSuj
   const retencionIrpf = r2(baseSujetaIrpf * ((t.irpf || 0) / 100))
   const totalDeducciones = r2(dedEsp + dedSalud + retencionIrpf)
   const neto = r2(totalDevengado - totalDeducciones)

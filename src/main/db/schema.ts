@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS festivo (
 CREATE TABLE IF NOT EXISTS trabajador (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   empresa_id INTEGER NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+  codigo TEXT NOT NULL DEFAULT '',
   tipo TEXT NOT NULL DEFAULT 'ajena',
   nombre TEXT NOT NULL,
   apellidos TEXT NOT NULL DEFAULT '',
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS trabajador (
   vacaciones_disfrutadas REAL NOT NULL DEFAULT 0,
   precio_hora_complementaria REAL NOT NULL DEFAULT 0,
   plus_productividad REAL NOT NULL DEFAULT 0,
+  plus_transporte REAL NOT NULL DEFAULT 0,
   prorrateo_pagas_extras REAL NOT NULL DEFAULT 0,
   retribucion_especie REAL NOT NULL DEFAULT 0,
   retribucion_especie_exenta REAL NOT NULL DEFAULT 0,
@@ -122,4 +124,4 @@ CREATE INDEX IF NOT EXISTS idx_cuadrante_trab ON cuadrante(trabajador_id, anio, 
 CREATE INDEX IF NOT EXISTS idx_festivo_centro ON festivo(centro_id);
 `
 
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4

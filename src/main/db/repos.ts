@@ -128,10 +128,10 @@ export interface FiltroTrabajadores {
   texto?: string
 }
 
-const CAMPOS_TRAB = `empresa_id,tipo,nombre,apellidos,dni_nie,nss,direccion,telefono,email,iban,categoria,
+const CAMPOS_TRAB = `empresa_id,codigo,tipo,nombre,apellidos,dni_nie,nss,direccion,telefono,email,iban,categoria,
   tipo_contrato,fecha_contrato_inicio,fecha_contrato_fin,fecha_alta,fecha_baja,fecha_fin_periodo_prueba,
   horas_contrato_semanales,horas_convenio_completa,coef_parcialidad,sueldo_convenio_completo,irpf,
-  vacaciones_anuales,vacaciones_disfrutadas,precio_hora_complementaria,plus_productividad,
+  vacaciones_anuales,vacaciones_disfrutadas,precio_hora_complementaria,plus_productividad,plus_transporte,
   prorrateo_pagas_extras,retribucion_especie,retribucion_especie_exenta,deduccion_especie,
   deduccion_seguro_salud,observaciones,activo`
 
@@ -148,7 +148,7 @@ export const trabajadores = {
       p.tipo = f.tipo
     }
     if (f.texto) {
-      cond.push('(t.nombre LIKE @texto OR t.apellidos LIKE @texto OR t.dni_nie LIKE @texto)')
+      cond.push('(t.nombre LIKE @texto OR t.apellidos LIKE @texto OR t.dni_nie LIKE @texto OR t.codigo LIKE @texto)')
       p.texto = `%${f.texto}%`
     }
     let sql = 'SELECT DISTINCT t.* FROM trabajador t'

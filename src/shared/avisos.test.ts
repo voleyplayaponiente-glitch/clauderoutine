@@ -32,6 +32,7 @@ const centro: Centro = {
 const trabajador: Trabajador = {
   id: 1,
   empresa_id: 1,
+  codigo: '23',
   tipo: 'ajena',
   nombre: 'Ana',
   apellidos: 'García',
@@ -57,6 +58,7 @@ const trabajador: Trabajador = {
   vacaciones_disfrutadas: 0,
   precio_hora_complementaria: 9.7,
   plus_productividad: 0,
+  plus_transporte: 0,
   prorrateo_pagas_extras: 0,
   retribucion_especie: 0,
   retribucion_especie_exenta: 0,
