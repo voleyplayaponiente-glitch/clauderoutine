@@ -168,7 +168,7 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
       n2(t.sueldo_convenio_completo),
       n2(t.plus_productividad),
       n2(t.plus_transporte),
-      n2(t.prorrateo_pagas_extras),
+      n2(r.prorrateoPagas),
       n2(t.retribucion_especie),
       n2(t.retribucion_especie_exenta),
       n2(r.totalDevengado),

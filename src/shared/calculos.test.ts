@@ -182,16 +182,23 @@ describe('calcRetribucion', () => {
     deduccion_seguro_salud: 30,
     irpf: 15
   }
-  it('devengado suma todas las percepciones', () => {
-    expect(calcRetribucion(t).totalDevengado).toBeCloseTo(1823.33, 2)
+  it('prorratea automáticamente las 3 pagas desde el salario base', () => {
+    // 1400 × 3 ÷ 12 = 350
+    expect(calcRetribucion(t).prorrateoPagas).toBeCloseTo(350, 2)
+  })
+  it('devengado suma todas las percepciones (con prorrateo automático)', () => {
+    // 1400 + 100 + 0(transporte) + 350 + 50 + 40 = 1940
+    expect(calcRetribucion(t).totalDevengado).toBeCloseTo(1940, 2)
   })
   it('la especie exenta no entra en la base de IRPF', () => {
-    expect(calcRetribucion(t).baseSujetaIrpf).toBeCloseTo(1783.33, 2)
+    // 1400 + 100 + 350 + 50 = 1900
+    expect(calcRetribucion(t).baseSujetaIrpf).toBeCloseTo(1900, 2)
   })
   it('retención IRPF = IRPF% × base sujeta', () => {
-    expect(calcRetribucion(t).retencionIrpf).toBeCloseTo(267.5, 2)
+    expect(calcRetribucion(t).retencionIrpf).toBeCloseTo(285, 2)
   })
   it('neto = devengado − deducciones − retención IRPF', () => {
-    expect(calcRetribucion(t).neto).toBeCloseTo(1475.83, 2)
+    // 1940 − (50 + 30 + 285) = 1575
+    expect(calcRetribucion(t).neto).toBeCloseTo(1575, 2)
   })
 })

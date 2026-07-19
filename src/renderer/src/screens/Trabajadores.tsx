@@ -314,7 +314,15 @@ function FichaTrabajador(props: {
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">
-          <Campo label="Prorrateo pagas extra (3 pagas)" type="number" step="0.01" value={d.prorrateo_pagas_extras} onChange={(v) => upd({ prorrateo_pagas_extras: Number(v) })} />
+          <label className="field">
+            <span>Prorrateo pagas extra (3 pagas · automático)</span>
+            <input
+              value={numEs(retrib.prorrateoPagas)}
+              readOnly
+              title="Se calcula solo: salario base × 3 ÷ 12"
+              style={{ background: 'var(--bg)', color: 'var(--text-soft)' }}
+            />
+          </label>
           <div />
           <div />
         </div>

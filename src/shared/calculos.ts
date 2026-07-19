@@ -215,7 +215,11 @@ export function horarioCentroDia(
 
 const r2 = (n: number): number => Math.round(n * 100) / 100
 
+/** Nº de pagas extra al año que se prorratean en la mensualidad. */
+export const NUM_PAGAS_EXTRA = 3
+
 export interface DetalleRetribucion {
+  prorrateoPagas: number // prorrateo mensual de las pagas extra (base × 3 ÷ 12)
   totalDevengado: number // suma de todas las percepciones
   baseSujetaIrpf: number // percepciones sujetas a IRPF (sin la especie exenta)
   retencionIrpf: number // IRPF% × base sujeta
@@ -228,7 +232,6 @@ type TrabRetrib = Pick<
   | 'sueldo_convenio_completo'
   | 'plus_productividad'
   | 'plus_transporte'
-  | 'prorrateo_pagas_extras'
   | 'retribucion_especie'
   | 'retribucion_especie_exenta'
   | 'deduccion_especie'
@@ -248,7 +251,8 @@ export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
   const base = t.sueldo_convenio_completo || 0
   const plus = t.plus_productividad || 0
   const transp = t.plus_transporte || 0
-  const prorr = t.prorrateo_pagas_extras || 0
+  // Prorrateo mensual de las pagas extra, automático desde el salario base.
+  const prorr = r2((base * NUM_PAGAS_EXTRA) / 12)
   const espSuj = t.retribucion_especie || 0
   const espExe = t.retribucion_especie_exenta || 0
   const dedEsp = t.deduccion_especie || 0
@@ -260,6 +264,7 @@ export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
   const totalDeducciones = r2(dedEsp + dedSalud + retencionIrpf)
   const neto = r2(totalDevengado - totalDeducciones)
   return {
+    prorrateoPagas: prorr,
     totalDevengado: r2(totalDevengado),
     baseSujetaIrpf: r2(baseSujetaIrpf),
     retencionIrpf,
