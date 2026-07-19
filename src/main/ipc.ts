@@ -1,7 +1,11 @@
 import { ipcMain } from 'electron'
 import { handlers } from './rpc'
 import { exportarCopia, importarCopia } from './services/backup'
-import { exportarCuadranteExcel, exportarResumenCentrosExcel } from './services/export-excel'
+import {
+  exportarCuadranteExcel,
+  exportarResumenCentrosExcel,
+  exportarRetribucionExcel
+} from './services/export-excel'
 import { exportarCuadrantePdf, exportarResumenCentrosPdf } from './services/export-pdf'
 
 /** Registra todos los manejadores IPC (datos compartidos + específicos de escritorio). */
@@ -26,6 +30,7 @@ export function registrarIpc(): void {
   h('export:resumenExcel', (_e, empresaId: number, anio: number, mes: number) =>
     exportarResumenCentrosExcel(empresaId, anio, mes)
   )
+  h('export:retribucionExcel', (_e, empresaId: number) => exportarRetribucionExcel(empresaId))
 
   // Copias de seguridad (diálogos nativos: solo escritorio).
   h('backup:exportar', () => exportarCopia())

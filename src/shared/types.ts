@@ -33,12 +33,21 @@ export interface Centro {
   direccion: string
   convenio: string
   horas_anuales_convenio: number
-  hora_apertura: string // "10:00"
-  hora_cierre: string // "22:00"
-  abre_laborables: number // 0/1 (SQLite no tiene boolean)
-  abre_sabados: number
+  // Horario por tipo de día. Tres bloques: lunes-a-sábado, domingos y festivos.
+  abre_lunes_sabado: number // 0/1 (SQLite no tiene boolean)
+  hora_apertura_ls: string // "10:00"
+  hora_cierre_ls: string // "22:00"
   abre_domingos: number
+  hora_apertura_dom: string
+  hora_cierre_dom: string
   abre_festivos: number
+  hora_apertura_fes: string
+  hora_cierre_fes: string
+  // Campos heredados (compatibilidad con datos antiguos; ya no se editan).
+  hora_apertura: string
+  hora_cierre: string
+  abre_laborables: number
+  abre_sabados: number
   color: string // hex, para el código de colores del cuadrante
   activo: number
 }
@@ -72,11 +81,17 @@ export interface Trabajador {
   horas_contrato_semanales: number
   horas_convenio_completa: number
   coef_parcialidad: number
-  sueldo_convenio_completo: number
+  sueldo_convenio_completo: number // salario base según convenio (jornada completa)
   irpf: number
   vacaciones_anuales: number
   vacaciones_disfrutadas: number
   precio_hora_complementaria: number
+  // Retribución (importes mensuales en €). Iguales para ajena y autónomo.
+  plus_productividad: number
+  prorrateo_pagas_extras: number
+  retribucion_especie: number
+  deduccion_especie: number
+  deduccion_seguro_salud: number
   observaciones: string
   activo: number
 }

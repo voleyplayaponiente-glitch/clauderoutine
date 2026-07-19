@@ -62,8 +62,12 @@ npm run web          # arranca el servidor web (GESTOR_PASSWORD, PORT, GESTOR_DA
 
 ## Modelo de datos (SQLite)
 `empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.
-Multiempresa; cada centro con horas anuales de convenio, horario y días de apertura. Trabajador
-`ajena|autonomo` (el autónomo no genera complementarias ni valida jornada de cuenta ajena).
+Multiempresa; cada centro con horas anuales de convenio y **horario por tipo de día** (3 bloques:
+lunes-a-sábado, domingos, festivos; columnas `*_ls`/`*_dom`/`*_fes`). Trabajador `ajena|autonomo`
+(el autónomo no genera complementarias ni valida jornada de cuenta ajena) con campos de
+**retribución** mensual (salario base, plus productividad, prorrateo 3 pagas, retribución en especie
+y deducciones; total en `calculos.totalRetribucion`, exportable a Excel). Esquema versionado por
+`PRAGMA user_version` con migración incremental en `db/database.ts` (v2 = horario por día + retribución).
 
 ## Reglas de negocio clave
 - Media mensual constante (base anual). Complementarias = realizadas − contratadas del mes (solo

@@ -3,8 +3,8 @@ import type { Centro, NuevoTrabajador, Trabajador } from '@shared/types'
 import { useApp } from '../App'
 import { Campo, Modal, Vacio, useUI } from '../components'
 import { trabajadorVacio } from '../defaults'
-import { mediaMensual, sueldoProrrateado, vacacionesPendientes } from '@shared/calculos'
-import { euros, isoALocal, localAIso, numEs } from '@shared/fechas'
+import { mediaMensual, sueldoProrrateado, totalRetribucion, vacacionesPendientes } from '@shared/calculos'
+import { euros, numEs } from '@shared/fechas'
 import { dniNieValido, ibanValido } from '../validacion'
 
 type Asig = { centro_id: number; es_principal: boolean }
@@ -208,10 +208,11 @@ function FichaTrabajador(props: {
   const esAuto = d.tipo === 'autonomo'
   const media = mediaMensual(d.horas_convenio_completa, d.coef_parcialidad)
   const sueldoPro = sueldoProrrateado(d.sueldo_convenio_completo, d.coef_parcialidad)
-  const fecha = (v: string | null): string => (v ? isoALocal(v) : '')
+  const totalRetrib = totalRetribucion(d)
+  // Los campos de fecha usan el selector nativo (valor ISO aaaa-mm-dd).
+  const fecha = (v: string | null): string => v ?? ''
   const setFecha = (k: keyof NuevoTrabajador, v: string): void => {
-    const iso = v ? localAIso(v) : null
-    upd({ [k]: iso } as Partial<NuevoTrabajador>)
+    upd({ [k]: v || null } as Partial<NuevoTrabajador>)
   }
 
   return (
@@ -255,14 +256,14 @@ function FichaTrabajador(props: {
         <h3>Contrato y jornada</h3>
         <div className="grid-3">
           <Campo label="Tipo de contrato" list={[{ value: 'indefinido', label: 'Indefinido' }, { value: 'temporal', label: 'Temporal' }]} value={d.tipo_contrato} onChange={(v) => upd({ tipo_contrato: v as 'indefinido' | 'temporal' })} />
-          <Campo label="Inicio contrato (dd/mm/aaaa)" value={fecha(d.fecha_contrato_inicio)} onChange={(v) => setFecha('fecha_contrato_inicio', v)} />
-          <Campo label="Fin contrato (dd/mm/aaaa)" value={fecha(d.fecha_contrato_fin)} onChange={(v) => setFecha('fecha_contrato_fin', v)} />
+          <Campo label="Inicio contrato" type="date" value={fecha(d.fecha_contrato_inicio)} onChange={(v) => setFecha('fecha_contrato_inicio', v)} />
+          <Campo label="Fin contrato" type="date" value={fecha(d.fecha_contrato_fin)} onChange={(v) => setFecha('fecha_contrato_fin', v)} />
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">
-          <Campo label="Fecha de alta" value={fecha(d.fecha_alta)} onChange={(v) => setFecha('fecha_alta', v)} />
-          <Campo label="Fin periodo de prueba" value={fecha(d.fecha_fin_periodo_prueba)} onChange={(v) => setFecha('fecha_fin_periodo_prueba', v)} />
-          <Campo label="Fecha de baja" value={fecha(d.fecha_baja)} onChange={(v) => setFecha('fecha_baja', v)} />
+          <Campo label="Fecha de alta" type="date" value={fecha(d.fecha_alta)} onChange={(v) => setFecha('fecha_alta', v)} />
+          <Campo label="Fin periodo de prueba" type="date" value={fecha(d.fecha_fin_periodo_prueba)} onChange={(v) => setFecha('fecha_fin_periodo_prueba', v)} />
+          <Campo label="Fecha de baja" type="date" value={fecha(d.fecha_baja)} onChange={(v) => setFecha('fecha_baja', v)} />
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">
@@ -272,7 +273,6 @@ function FichaTrabajador(props: {
         </div>
         <div style={{ height: 10 }} />
         <div className="grid-3">
-          <Campo label="Sueldo convenio (jornada completa)" type="number" value={d.sueldo_convenio_completo} onChange={(v) => upd({ sueldo_convenio_completo: Number(v) })} />
           <Campo label="IRPF (%)" type="number" step="0.01" value={d.irpf} onChange={(v) => upd({ irpf: Number(v) })} />
           {!esAuto && <Campo label="Precio hora complementaria (€)" type="number" step="0.01" value={d.precio_hora_complementaria} onChange={(v) => upd({ precio_hora_complementaria: Number(v) })} />}
         </div>
@@ -292,6 +292,30 @@ function FichaTrabajador(props: {
             asignan turnos para cubrir apertura, pero sin validaciones de jornada de cuenta ajena.
           </p>
         )}
+      </div>
+
+      <div className="card" style={{ background: 'var(--panel-2)', marginBottom: 12 }}>
+        <h3>Retribución (importes mensuales, €)</h3>
+        <div className="grid-3">
+          <Campo label="Salario base según convenio" type="number" step="0.01" value={d.sueldo_convenio_completo} onChange={(v) => upd({ sueldo_convenio_completo: Number(v) })} />
+          <Campo label="Plus de productividad" type="number" step="0.01" value={d.plus_productividad} onChange={(v) => upd({ plus_productividad: Number(v) })} />
+          <Campo label="Prorrateo pagas extra (3 pagas)" type="number" step="0.01" value={d.prorrateo_pagas_extras} onChange={(v) => upd({ prorrateo_pagas_extras: Number(v) })} />
+        </div>
+        <div style={{ height: 10 }} />
+        <div className="grid-3">
+          <Campo label="Retribución en especie" type="number" step="0.01" value={d.retribucion_especie} onChange={(v) => upd({ retribucion_especie: Number(v) })} />
+          <Campo label="Deducción retribución en especie" type="number" step="0.01" value={d.deduccion_especie} onChange={(v) => upd({ deduccion_especie: Number(v) })} />
+          <Campo label="Deducción seguro de salud" type="number" step="0.01" value={d.deduccion_seguro_salud} onChange={(v) => upd({ deduccion_seguro_salud: Number(v) })} />
+        </div>
+        <div className="row" style={{ marginTop: 12 }}>
+          <div className="kpi">
+            <div className="n">{euros(totalRetrib)}</div>
+            <div className="l">Total retribución mensual (base + plus + prorrateo + especie − deducciones)</div>
+          </div>
+        </div>
+        <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
+          Estos importes se pueden exportar a Excel desde la pantalla «Exportación».
+        </p>
       </div>
 
       <div className="card" style={{ background: 'var(--panel-2)', marginBottom: 12 }}>

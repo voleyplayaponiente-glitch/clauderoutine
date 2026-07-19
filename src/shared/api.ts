@@ -72,6 +72,7 @@ export interface ApiGestor {
     cuadranteExcel(trabId: number, anio: number, mes: number): Promise<ResultadoOperacion>
     resumenPdf(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
     resumenExcel(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
+    retribucionExcel(empresaId: number): Promise<ResultadoOperacion>
   }
   backup: {
     exportar(): Promise<ResultadoOperacion>

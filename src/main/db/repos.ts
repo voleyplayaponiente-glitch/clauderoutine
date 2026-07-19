@@ -62,10 +62,12 @@ export const centros = {
       .prepare(
         `INSERT INTO centro (empresa_id, codigo, nombre, provincia, localidad, direccion, convenio,
           horas_anuales_convenio, hora_apertura, hora_cierre, abre_laborables, abre_sabados,
-          abre_domingos, abre_festivos, color, activo)
+          abre_lunes_sabado, hora_apertura_ls, hora_cierre_ls, abre_domingos, hora_apertura_dom,
+          hora_cierre_dom, abre_festivos, hora_apertura_fes, hora_cierre_fes, color, activo)
          VALUES (@empresa_id,@codigo,@nombre,@provincia,@localidad,@direccion,@convenio,
           @horas_anuales_convenio,@hora_apertura,@hora_cierre,@abre_laborables,@abre_sabados,
-          @abre_domingos,@abre_festivos,@color,@activo)`
+          @abre_lunes_sabado,@hora_apertura_ls,@hora_cierre_ls,@abre_domingos,@hora_apertura_dom,
+          @hora_cierre_dom,@abre_festivos,@hora_apertura_fes,@hora_cierre_fes,@color,@activo)`
       )
       .run(c)
     return centros.obtener(Number(info.lastInsertRowid))!
@@ -77,7 +79,11 @@ export const centros = {
           localidad=@localidad, direccion=@direccion, convenio=@convenio,
           horas_anuales_convenio=@horas_anuales_convenio, hora_apertura=@hora_apertura,
           hora_cierre=@hora_cierre, abre_laborables=@abre_laborables, abre_sabados=@abre_sabados,
-          abre_domingos=@abre_domingos, abre_festivos=@abre_festivos, color=@color, activo=@activo
+          abre_lunes_sabado=@abre_lunes_sabado, hora_apertura_ls=@hora_apertura_ls,
+          hora_cierre_ls=@hora_cierre_ls, abre_domingos=@abre_domingos,
+          hora_apertura_dom=@hora_apertura_dom, hora_cierre_dom=@hora_cierre_dom,
+          abre_festivos=@abre_festivos, hora_apertura_fes=@hora_apertura_fes,
+          hora_cierre_fes=@hora_cierre_fes, color=@color, activo=@activo
          WHERE id=@id`
       )
       .run({ ...c, id })
@@ -125,7 +131,8 @@ export interface FiltroTrabajadores {
 const CAMPOS_TRAB = `empresa_id,tipo,nombre,apellidos,dni_nie,nss,direccion,telefono,email,iban,categoria,
   tipo_contrato,fecha_contrato_inicio,fecha_contrato_fin,fecha_alta,fecha_baja,fecha_fin_periodo_prueba,
   horas_contrato_semanales,horas_convenio_completa,coef_parcialidad,sueldo_convenio_completo,irpf,
-  vacaciones_anuales,vacaciones_disfrutadas,precio_hora_complementaria,observaciones,activo`
+  vacaciones_anuales,vacaciones_disfrutadas,precio_hora_complementaria,plus_productividad,
+  prorrateo_pagas_extras,retribucion_especie,deduccion_especie,deduccion_seguro_salud,observaciones,activo`
 
 export const trabajadores = {
   listar(f: FiltroTrabajadores = {}): Trabajador[] {

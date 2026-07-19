@@ -7,7 +7,11 @@ import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { getDb, rutaBaseDatos, cerrarDb, reabrirDb } from '../main/db/database'
 import { handlers } from '../main/rpc'
-import { bufferCuadranteExcel, bufferResumenCentrosExcel } from '../main/services/generate-excel'
+import {
+  bufferCuadranteExcel,
+  bufferResumenCentrosExcel,
+  bufferRetribucionExcel
+} from '../main/services/generate-excel'
 import { htmlCuadrante, htmlResumenCentros } from '../main/services/html-docs'
 
 const PORT = Number(process.env.PORT || 3000)
@@ -100,6 +104,17 @@ app.get('/api/export/resumen-excel', async (req, res) => {
     const buf = await bufferResumenCentrosExcel(nInt(req.query.empresa), nInt(req.query.anio), nInt(req.query.mes))
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader('Content-Disposition', `attachment; filename="resumen-centros-${req.query.anio}-${req.query.mes}.xlsx"`)
+    res.end(buf)
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
+})
+
+app.get('/api/export/retribucion-excel', async (req, res) => {
+  try {
+    const buf = await bufferRetribucionExcel(nInt(req.query.empresa))
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', 'attachment; filename="retribuciones.xlsx"')
     res.end(buf)
   } catch (e) {
     res.status(500).send((e as Error).message)

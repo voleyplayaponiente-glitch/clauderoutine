@@ -171,15 +171,69 @@ export function horasCentroMes(centroId: number, turnos: Turno[]): number {
   return Math.round(h * 100) / 100
 }
 
-/** ¿El centro abre ese día de la semana? (dia: 0=domingo … 6=sábado) */
-export function centroAbreDia(
-  centro: Pick<Centro, 'abre_laborables' | 'abre_sabados' | 'abre_domingos'>,
+export interface HorarioDia {
+  abre: boolean
+  apertura: string
+  cierre: string
+}
+
+type CentroHorario = Pick<
+  Centro,
+  | 'abre_lunes_sabado'
+  | 'hora_apertura_ls'
+  | 'hora_cierre_ls'
+  | 'abre_domingos'
+  | 'hora_apertura_dom'
+  | 'hora_cierre_dom'
+  | 'abre_festivos'
+  | 'hora_apertura_fes'
+  | 'hora_cierre_fes'
+>
+
+/**
+ * Horario aplicable a un día concreto según su tipo. Prioridad: festivo > domingo >
+ * lunes-a-sábado. (diaSemana: 0=domingo … 6=sábado)
+ */
+export function horarioCentroDia(
+  centro: CentroHorario,
   diaSemana: number,
-  esFestivo: boolean,
-  abreFestivos: boolean
-): boolean {
-  if (esFestivo) return abreFestivos
-  if (diaSemana === 0) return centro.abre_domingos === 1
-  if (diaSemana === 6) return centro.abre_sabados === 1
-  return centro.abre_laborables === 1
+  esFestivo: boolean
+): HorarioDia {
+  if (esFestivo) {
+    return { abre: centro.abre_festivos === 1, apertura: centro.hora_apertura_fes, cierre: centro.hora_cierre_fes }
+  }
+  if (diaSemana === 0) {
+    return { abre: centro.abre_domingos === 1, apertura: centro.hora_apertura_dom, cierre: centro.hora_cierre_dom }
+  }
+  return { abre: centro.abre_lunes_sabado === 1, apertura: centro.hora_apertura_ls, cierre: centro.hora_cierre_ls }
+}
+
+/**
+ * Total de retribución mensual = salario base + plus productividad + prorrateo de
+ * pagas extra + retribución en especie − deducción especie − deducción seguro salud.
+ */
+export function totalRetribucion(
+  t: Pick<
+    Trabajador,
+    | 'sueldo_convenio_completo'
+    | 'coef_parcialidad'
+    | 'plus_productividad'
+    | 'prorrateo_pagas_extras'
+    | 'retribucion_especie'
+    | 'deduccion_especie'
+    | 'deduccion_seguro_salud'
+  >,
+  prorratearBasePorJornada = false
+): number {
+  const base = prorratearBasePorJornada
+    ? sueldoProrrateado(t.sueldo_convenio_completo, t.coef_parcialidad)
+    : t.sueldo_convenio_completo
+  const total =
+    base +
+    (t.plus_productividad || 0) +
+    (t.prorrateo_pagas_extras || 0) +
+    (t.retribucion_especie || 0) -
+    (t.deduccion_especie || 0) -
+    (t.deduccion_seguro_salud || 0)
+  return Math.round(total * 100) / 100
 }

@@ -3,6 +3,8 @@
 // web (lo envía como descarga).
 import ExcelJS from 'exceljs'
 import { datosCuadrante, datosResumenCentros } from './export-data'
+import { empresas, trabajadores } from '../db/repos'
+import { totalRetribucion } from '../../shared/calculos'
 import { DIAS_SEMANA, MESES, isoALocal } from '../../shared/fechas'
 import type { Turno } from '../../shared/types'
 
@@ -110,5 +112,53 @@ export async function bufferResumenCentrosExcel(
   const tot = ws.addRow(['', 'TOTAL', '', Number(d.totalHoras.toFixed(2))])
   tot.font = { bold: true }
 
+  return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)
+}
+
+export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer> {
+  const empresa = empresas.obtener(empresaId)
+  const lista = trabajadores.listar({ empresaId })
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Retribuciones')
+  ws.columns = [
+    { key: 'trab', width: 26 },
+    { key: 'tipo', width: 12 },
+    { key: 'base', width: 16 },
+    { key: 'plus', width: 16 },
+    { key: 'prorr', width: 18 },
+    { key: 'especie', width: 16 },
+    { key: 'dedesp', width: 18 },
+    { key: 'dedsalud', width: 18 },
+    { key: 'total', width: 14 }
+  ]
+  ws.mergeCells('A1:I1')
+  ws.getCell('A1').value = `${empresa?.razon_social ?? ''} — Retribuciones mensuales (€)`
+  ws.getCell('A1').font = { bold: true, size: 13 }
+  const hr = ws.addRow([
+    'Trabajador',
+    'Tipo',
+    'Salario base',
+    'Plus productividad',
+    'Prorrateo 3 pagas',
+    'Retrib. especie',
+    'Deduc. especie',
+    'Deduc. seguro salud',
+    'Total'
+  ])
+  hr.font = { bold: true }
+  const n2 = (v: number): number => Number((v || 0).toFixed(2))
+  for (const t of lista) {
+    ws.addRow([
+      `${t.apellidos}, ${t.nombre}`,
+      t.tipo === 'ajena' ? 'Ajena' : 'Autónomo',
+      n2(t.sueldo_convenio_completo),
+      n2(t.plus_productividad),
+      n2(t.prorrateo_pagas_extras),
+      n2(t.retribucion_especie),
+      n2(t.deduccion_especie),
+      n2(t.deduccion_seguro_salud),
+      n2(totalRetribucion(t))
+    ])
+  }
   return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)
 }

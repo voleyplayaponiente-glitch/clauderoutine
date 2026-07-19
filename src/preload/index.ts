@@ -74,7 +74,9 @@ export const api: ApiGestor = {
     resumenPdf: (empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion> =>
       inv('export:resumenPdf', empresaId, anio, mes),
     resumenExcel: (empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion> =>
-      inv('export:resumenExcel', empresaId, anio, mes)
+      inv('export:resumenExcel', empresaId, anio, mes),
+    retribucionExcel: (empresaId: number): Promise<ResultadoOperacion> =>
+      inv('export:retribucionExcel', empresaId)
   },
   backup: {
     exportar: (): Promise<ResultadoOperacion> => inv('backup:exportar'),

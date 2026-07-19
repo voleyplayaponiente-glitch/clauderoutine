@@ -3,19 +3,58 @@ import type { Centro, Festivo, NuevoCentro } from '@shared/types'
 import { useApp } from '../App'
 import { Campo, Modal, Vacio, useUI } from '../components'
 import { centroVacio, COLORES_CENTRO } from '../defaults'
-import { isoALocal, localAIso } from '@shared/fechas'
+import { isoALocal } from '@shared/fechas'
 
-function Check(props: { label: string; checked: boolean; onChange: (v: boolean) => void }): React.JSX.Element {
+function BloqueHorario(props: {
+  label: string
+  abre: boolean
+  apertura: string
+  cierre: string
+  onAbre: (v: boolean) => void
+  onApertura: (v: string) => void
+  onCierre: (v: string) => void
+}): React.JSX.Element {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-      <input
-        type="checkbox"
-        style={{ width: 'auto' }}
-        checked={props.checked}
-        onChange={(e) => props.onChange(e.target.checked)}
-      />
-      {props.label}
-    </label>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '8px 0',
+        borderBottom: '1px solid var(--border)'
+      }}
+    >
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, width: 170 }}>
+        <input
+          type="checkbox"
+          style={{ width: 'auto' }}
+          checked={props.abre}
+          onChange={(e) => props.onAbre(e.target.checked)}
+        />
+        <b>{props.label}</b>
+      </label>
+      {props.abre ? (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input
+            type="time"
+            className="mini"
+            value={props.apertura}
+            onChange={(e) => props.onApertura(e.target.value)}
+          />
+          <span className="muted">a</span>
+          <input
+            type="time"
+            className="mini"
+            value={props.cierre}
+            onChange={(e) => props.onCierre(e.target.value)}
+          />
+        </span>
+      ) : (
+        <span className="muted" style={{ fontSize: 13 }}>
+          Cerrado
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -55,6 +94,11 @@ export function PantallaCentros(): React.JSX.Element {
       toast('Código y nombre del centro son obligatorios')
       return
     }
+    // Mantiene coherentes los campos heredados con el bloque «lunes a sábado».
+    d.hora_apertura = d.hora_apertura_ls
+    d.hora_cierre = d.hora_cierre_ls
+    d.abre_laborables = d.abre_lunes_sabado
+    d.abre_sabados = d.abre_lunes_sabado
     if (editando.id) await window.api.centros.actualizar(editando.id, d)
     else await window.api.centros.crear(d)
     setEditando(null)
@@ -77,9 +121,9 @@ export function PantallaCentros(): React.JSX.Element {
       toast('Guarda el centro antes de añadir festivos')
       return
     }
-    const iso = localAIso(nuevoFest.fecha)
+    const iso = nuevoFest.fecha
     if (!iso) {
-      toast('Fecha no válida (dd/mm/aaaa)')
+      toast('Elige una fecha para el festivo')
       return
     }
     await window.api.festivos.crear(editando.id, iso, nuevoFest.desc)
@@ -136,7 +180,7 @@ export function PantallaCentros(): React.JSX.Element {
                   <td>{c.convenio}</td>
                   <td>{c.horas_anuales_convenio}</td>
                   <td>
-                    {c.hora_apertura}–{c.hora_cierre}
+                    {c.abre_lunes_sabado === 1 ? `${c.hora_apertura_ls}–${c.hora_cierre_ls}` : 'L-S cerrado'}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button className="btn small" onClick={() => abrirEdicion(c)}>
@@ -193,34 +237,40 @@ export function PantallaCentros(): React.JSX.Element {
               value={editando.data.horas_anuales_convenio}
               onChange={(v) => upd({ horas_anuales_convenio: Number(v) })}
             />
-            <Campo label="Hora de apertura" value={editando.data.hora_apertura} onChange={(v) => upd({ hora_apertura: v })} />
-            <Campo label="Hora de cierre" value={editando.data.hora_cierre} onChange={(v) => upd({ hora_cierre: v })} />
           </div>
           <div style={{ height: 12 }} />
           <div className="card" style={{ background: 'var(--panel-2)', marginBottom: 0 }}>
-            <h3>Días de apertura</h3>
-            <div className="row">
-              <Check
-                label="Laborables (L–V)"
-                checked={editando.data.abre_laborables === 1}
-                onChange={(v) => upd({ abre_laborables: v ? 1 : 0 })}
-              />
-              <Check
-                label="Sábados"
-                checked={editando.data.abre_sabados === 1}
-                onChange={(v) => upd({ abre_sabados: v ? 1 : 0 })}
-              />
-              <Check
-                label="Domingos"
-                checked={editando.data.abre_domingos === 1}
-                onChange={(v) => upd({ abre_domingos: v ? 1 : 0 })}
-              />
-              <Check
-                label="Festivos"
-                checked={editando.data.abre_festivos === 1}
-                onChange={(v) => upd({ abre_festivos: v ? 1 : 0 })}
-              />
-            </div>
+            <h3>Horario de apertura por tipo de día</h3>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Marca si abre y ajusta el horario de cada bloque (domingos y festivos pueden ser distintos).
+            </p>
+            <BloqueHorario
+              label="Lunes a sábado"
+              abre={editando.data.abre_lunes_sabado === 1}
+              apertura={editando.data.hora_apertura_ls}
+              cierre={editando.data.hora_cierre_ls}
+              onAbre={(v) => upd({ abre_lunes_sabado: v ? 1 : 0 })}
+              onApertura={(v) => upd({ hora_apertura_ls: v })}
+              onCierre={(v) => upd({ hora_cierre_ls: v })}
+            />
+            <BloqueHorario
+              label="Domingos"
+              abre={editando.data.abre_domingos === 1}
+              apertura={editando.data.hora_apertura_dom}
+              cierre={editando.data.hora_cierre_dom}
+              onAbre={(v) => upd({ abre_domingos: v ? 1 : 0 })}
+              onApertura={(v) => upd({ hora_apertura_dom: v })}
+              onCierre={(v) => upd({ hora_cierre_dom: v })}
+            />
+            <BloqueHorario
+              label="Festivos"
+              abre={editando.data.abre_festivos === 1}
+              apertura={editando.data.hora_apertura_fes}
+              cierre={editando.data.hora_cierre_fes}
+              onAbre={(v) => upd({ abre_festivos: v ? 1 : 0 })}
+              onApertura={(v) => upd({ hora_apertura_fes: v })}
+              onCierre={(v) => upd({ hora_cierre_fes: v })}
+            />
           </div>
 
           <div style={{ height: 12 }} />
@@ -231,10 +281,10 @@ export function PantallaCentros(): React.JSX.Element {
               <>
                 <div className="row" style={{ alignItems: 'flex-end' }}>
                   <Campo
-                    label="Fecha (dd/mm/aaaa)"
+                    label="Fecha"
+                    type="date"
                     value={nuevoFest.fecha}
                     onChange={(v) => setNuevoFest({ ...nuevoFest, fecha: v })}
-                    placeholder="25/12/2026"
                   />
                   <Campo
                     label="Descripción"

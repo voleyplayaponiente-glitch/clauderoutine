@@ -105,6 +105,10 @@ export const webApi: ApiGestor = {
     resumenExcel: async (empresaId, anio, mes) => {
       descargar(`/api/export/resumen-excel?empresa=${empresaId}&anio=${anio}&mes=${mes}`)
       return { ok: true }
+    },
+    retribucionExcel: async (empresaId) => {
+      descargar(`/api/export/retribucion-excel?empresa=${empresaId}`)
+      return { ok: true }
     }
   },
   backup: {

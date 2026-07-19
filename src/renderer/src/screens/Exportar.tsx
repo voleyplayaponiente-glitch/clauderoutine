@@ -98,6 +98,19 @@ export function PantallaExportar(): React.JSX.Element {
           </button>
         </div>
       </div>
+
+      <div className="card">
+        <h3>Retribuciones de los trabajadores</h3>
+        <p className="muted">
+          Excel con el desglose de retribución (salario base, plus, prorrateo de pagas, retribución
+          en especie y deducciones) de todos los trabajadores de {empresa.razon_social}.
+        </p>
+        <div className="row" style={{ marginTop: 8 }}>
+          <button className="btn" onClick={async () => feedback(await window.api.exportar.retribucionExcel(empresa.id))}>
+            📊 Retribuciones (Excel)
+          </button>
+        </div>
+      </div>
     </>
   )
 }

@@ -25,8 +25,15 @@ CREATE TABLE IF NOT EXISTS centro (
   hora_cierre TEXT NOT NULL DEFAULT '22:00',
   abre_laborables INTEGER NOT NULL DEFAULT 1,
   abre_sabados INTEGER NOT NULL DEFAULT 1,
+  abre_lunes_sabado INTEGER NOT NULL DEFAULT 1,
+  hora_apertura_ls TEXT NOT NULL DEFAULT '10:00',
+  hora_cierre_ls TEXT NOT NULL DEFAULT '22:00',
   abre_domingos INTEGER NOT NULL DEFAULT 0,
+  hora_apertura_dom TEXT NOT NULL DEFAULT '10:00',
+  hora_cierre_dom TEXT NOT NULL DEFAULT '14:00',
   abre_festivos INTEGER NOT NULL DEFAULT 0,
+  hora_apertura_fes TEXT NOT NULL DEFAULT '10:00',
+  hora_cierre_fes TEXT NOT NULL DEFAULT '14:00',
   color TEXT NOT NULL DEFAULT '#3b82f6',
   activo INTEGER NOT NULL DEFAULT 1
 );
@@ -65,6 +72,11 @@ CREATE TABLE IF NOT EXISTS trabajador (
   vacaciones_anuales REAL NOT NULL DEFAULT 30,
   vacaciones_disfrutadas REAL NOT NULL DEFAULT 0,
   precio_hora_complementaria REAL NOT NULL DEFAULT 0,
+  plus_productividad REAL NOT NULL DEFAULT 0,
+  prorrateo_pagas_extras REAL NOT NULL DEFAULT 0,
+  retribucion_especie REAL NOT NULL DEFAULT 0,
+  deduccion_especie REAL NOT NULL DEFAULT 0,
+  deduccion_seguro_salud REAL NOT NULL DEFAULT 0,
   observaciones TEXT NOT NULL DEFAULT '',
   activo INTEGER NOT NULL DEFAULT 1
 );
@@ -109,4 +121,4 @@ CREATE INDEX IF NOT EXISTS idx_cuadrante_trab ON cuadrante(trabajador_id, anio, 
 CREATE INDEX IF NOT EXISTS idx_festivo_centro ON festivo(centro_id);
 `
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2

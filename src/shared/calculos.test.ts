@@ -9,7 +9,8 @@ import {
   vacacionesPendientes,
   resumenMesTrabajador,
   horasCentroMes,
-  centroAbreDia
+  horarioCentroDia,
+  totalRetribucion
 } from './calculos'
 import type { Turno, Trabajador } from './types'
 
@@ -128,15 +129,41 @@ describe('horasCentroMes', () => {
   })
 })
 
-describe('centroAbreDia', () => {
-  const centro = { abre_laborables: 1, abre_sabados: 1, abre_domingos: 0 }
-  it('respeta laborables/sábado/domingo', () => {
-    expect(centroAbreDia(centro, 1, false, false)).toBe(true) // lunes
-    expect(centroAbreDia(centro, 6, false, false)).toBe(true) // sábado
-    expect(centroAbreDia(centro, 0, false, false)).toBe(false) // domingo
+describe('horarioCentroDia', () => {
+  const centro = {
+    abre_lunes_sabado: 1,
+    hora_apertura_ls: '10:00',
+    hora_cierre_ls: '22:00',
+    abre_domingos: 0,
+    hora_apertura_dom: '11:00',
+    hora_cierre_dom: '15:00',
+    abre_festivos: 1,
+    hora_apertura_fes: '12:00',
+    hora_cierre_fes: '20:00'
+  }
+  it('lunes a sábado usa su horario', () => {
+    expect(horarioCentroDia(centro, 1, false)).toEqual({ abre: true, apertura: '10:00', cierre: '22:00' })
+    expect(horarioCentroDia(centro, 6, false)).toEqual({ abre: true, apertura: '10:00', cierre: '22:00' })
   })
-  it('un festivo depende de abre_festivos', () => {
-    expect(centroAbreDia(centro, 1, true, false)).toBe(false)
-    expect(centroAbreDia(centro, 1, true, true)).toBe(true)
+  it('domingo puede tener horario distinto y estar cerrado', () => {
+    expect(horarioCentroDia(centro, 0, false)).toEqual({ abre: false, apertura: '11:00', cierre: '15:00' })
+  })
+  it('festivo tiene prioridad sobre el día de la semana', () => {
+    expect(horarioCentroDia(centro, 1, true)).toEqual({ abre: true, apertura: '12:00', cierre: '20:00' })
+  })
+})
+
+describe('totalRetribucion', () => {
+  it('suma percepciones y resta deducciones', () => {
+    const t = {
+      sueldo_convenio_completo: 1400,
+      coef_parcialidad: 1,
+      plus_productividad: 100,
+      prorrateo_pagas_extras: 233.33,
+      retribucion_especie: 50,
+      deduccion_especie: 50,
+      deduccion_seguro_salud: 30
+    }
+    expect(totalRetribucion(t)).toBeCloseTo(1703.33, 2)
   })
 })

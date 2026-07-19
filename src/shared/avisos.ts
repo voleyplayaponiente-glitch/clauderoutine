@@ -3,7 +3,7 @@
 import type { Centro, Trabajador, Turno } from './types'
 import { horaAMinutos } from './fechas'
 import {
-  centroAbreDia,
+  horarioCentroDia,
   horasContratadasMes,
   mediaMensual,
   resumenMesTrabajador
@@ -109,7 +109,8 @@ export function avisosMes(params: {
     if (!centro) continue
     const dia = diaSemanaIso(t.fecha)
     const esFestivo = festivosPorFecha.has(t.fecha)
-    if (!centroAbreDia(centro, dia, esFestivo, centro.abre_festivos === 1)) {
+    const horario = horarioCentroDia(centro, dia, esFestivo)
+    if (!horario.abre) {
       avisos.push({
         tipo: 'centro_cerrado',
         nivel: 'aviso',
@@ -118,8 +119,8 @@ export function avisosMes(params: {
       })
       continue
     }
-    const ap = horaAMinutos(centro.hora_apertura)
-    const ci = horaAMinutos(centro.hora_cierre)
+    const ap = horaAMinutos(horario.apertura)
+    const ci = horaAMinutos(horario.cierre)
     for (const [e, s] of [
       [t.entrada1, t.salida1],
       [t.entrada2, t.salida2]
@@ -132,7 +133,7 @@ export function avisosMes(params: {
           tipo: 'fuera_apertura',
           nivel: 'aviso',
           fecha: t.fecha,
-          mensaje: `${isoALocal(t.fecha)}: turno ${e}–${s} fuera del horario de apertura (${centro.hora_apertura}–${centro.hora_cierre}) de «${centro.nombre}».`
+          mensaje: `${isoALocal(t.fecha)}: turno ${e}–${s} fuera del horario de apertura (${horario.apertura}–${horario.cierre}) de «${centro.nombre}».`
         })
       }
     }

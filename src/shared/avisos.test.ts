@@ -16,8 +16,15 @@ const centro: Centro = {
   hora_cierre: '22:00',
   abre_laborables: 1,
   abre_sabados: 1,
+  abre_lunes_sabado: 1,
+  hora_apertura_ls: '10:00',
+  hora_cierre_ls: '22:00',
   abre_domingos: 0,
+  hora_apertura_dom: '11:00',
+  hora_cierre_dom: '15:00',
   abre_festivos: 0,
+  hora_apertura_fes: '11:00',
+  hora_cierre_fes: '15:00',
   color: '#3b82f6',
   activo: 1
 }
@@ -49,6 +56,11 @@ const trabajador: Trabajador = {
   vacaciones_anuales: 30,
   vacaciones_disfrutadas: 0,
   precio_hora_complementaria: 9.7,
+  plus_productividad: 0,
+  prorrateo_pagas_extras: 0,
+  retribucion_especie: 0,
+  deduccion_especie: 0,
+  deduccion_seguro_salud: 0,
   observaciones: '',
   activo: 1
 }
