@@ -122,6 +122,9 @@ identificación, `horas_contrato_semanales`, `jornada_completa_semanal` (def. 40
 - Cada **trabajador tiene color propio** (ficha “Color en la agenda”; por defecto de paleta
   `COLORES_TRABAJADOR`; fallback por id con `colorTrabajador`).
 - Confirmación antes de borrar. Backup = descargar/subir el `.db` (Ajustes). Motor `src/shared` sin Electron/React.
+- **Exportación cuadrante (PDF `html-docs.ts` + Excel `generate-excel.ts`):** las columnas **Centro** y
+  **Horario** solo se rellenan cuando la situación es `trabaja`; en Libre/Vacaciones/Baja/Festivo/Permiso
+  van en blanco (el turno puede conservar `centro_id`/tramos heredados, pero no se muestran → no confunde).
 
 ## Estado
 Desplegada y **en uso real por el usuario en su Umbrel** (versión web), con acceso local (PWA) y
