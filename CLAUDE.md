@@ -40,14 +40,23 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
 > (`/opt/pw-browsers/chromium-1194/...`, `playwright-core` instalado con `--no-save`). Ver los `.mjs`
 > del scratchpad de la sesión como referencia.
 
-## Despliegue en Umbrel (producción del usuario)
-- App propia por Docker en el terminal de umbrelOS (Settings→Terminal). Carpeta:
-  `/home/umbrel/umbrel/home/clauderoutine-claude-labor-management-scheduling-app-jd2hcj`.
-- **Actualizar** (conserva datos y contraseña): descargar el tar.gz del branch, extraer con
-  `tar --strip-components=1 --exclude='*/docker-compose.yml'` sobre la carpeta y
-  `sudo docker compose up -d --build`. Comando completo en la conversación / INSTALACION-UMBREL.md.
-- El pegar en ese terminal es **Ctrl+Shift+V**; el usuario NO puede copiar la salida → pide capturas.
-  Acceso a la app: `http://umbrel.local:3000`.
+## Despliegue en Umbrel (producción del usuario) — app de la tienda (Opción B, ACTIVA)
+- **Desde 20/07/2026 la app corre como app de Umbrel instalada** desde la community app store
+  `https://github.com/voleyplayaponiente-glitch/bespain-umbrel-store` (store id `bespain`, app
+  `bespain-gestor-laboral`, tile con icono propio en el panel). Umbrel Home 2025 (Intel x86_64),
+  umbrelOS 1.7.4. **Contraseña de acceso = la que genera Umbrel** (⋯ del tile → credenciales);
+  la contraseña antigua ya no aplica. Datos en `${APP_DATA_DIR}/data` de la app (migrados por
+  restauración del .db); puerto 3000 publicado directo (sin app_proxy) → PWA y Tailscale intactos.
+- **Publicar una actualización:** (1) push a la rama → GitHub Actions construye y sube
+  `ghcr.io/voleyplayaponiente-glitch/gestor-laboral:latest` (workflow `publicar-imagen.yml`, amd64);
+  (2) subir `version` en `bespain-gestor-laboral/umbrel-app.yml` del repo de la store (clon en
+  `/workspace/bespain-umbrel-store`, add_repo si hace falta) y push a su `main` → al usuario le
+  aparece **Update** en Umbrel. Ya NO se usa el comando tar/docker del terminal.
+- El despliegue manual antiguo quedó parado (`docker compose down`) en
+  `/home/umbrel/umbrel/home/clauderoutine-claude-labor-management-scheduling-app-jd2hcj`; su carpeta
+  `datos/` sigue en disco como copia extra de seguridad.
+- El pegar en el terminal de umbrelOS es **Ctrl+Shift+V**; el usuario NO puede copiar la salida →
+  pide capturas. Acceso a la app: `http://umbrel.local:3000`.
 
 ## Acceso del usuario
 - **App instalable (PWA):** la web tiene `manifest.webmanifest` + iconos en `src/renderer/public/`
@@ -59,7 +68,9 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
 - ⚠️ Una PWA queda **fijada al origen** desde el que se instala. Para que funcione en casa y fuera con
   un solo icono: instalarla desde la dirección de Tailscale y dejar Tailscale **siempre activo** (o usar
   MagicDNS, p. ej. `http://umbrel:3000`). NO exponer el puerto 3000 a Internet público.
-- NO guardar en el repo la contraseña real del usuario (solo en su `docker-compose.yml`, `GESTOR_PASSWORD`).
+- NO guardar en el repo ninguna contraseña real. Con la app de la tienda, `GESTOR_PASSWORD` viene de
+  `APP_PASSWORD` (generada por Umbrel, visible en el ⋯ del tile). Las copias cifradas creadas con la
+  contraseña antigua NO se pueden restaurar ya (clave distinta); las nuevas van con la actual.
 
 ## Arquitectura
 - `src/shared/` — **motor puro** (sin Electron ni React), testeable:
@@ -160,18 +171,9 @@ actualización de Umbrel.
 de 3; posible selector de color/tamaño de pastillas y **mostrar código junto al nombre en la agenda**;
 **arrastrar-y-soltar** turnos; **festivos por provincia** autocargados; firma digitalizada en el PDF.
 
-**Opción B (tile en el panel de Umbrel) — EN CURSO:** el Umbrel del usuario es **Umbrel Home 2025
-(Intel x86_64)**, umbrelOS 1.7.4. Hecho: workflow `.github/workflows/publicar-imagen.yml` publica
-`ghcr.io/voleyplayaponiente-glitch/gestor-laboral:latest` (amd64) en cada push de la rama — primera
-build OK (51 s); contenido de la community app store en `umbrel-store/` (store id `bespain`, app
-`bespain-gestor-laboral`, puerto 3000 publicado directo SIN app_proxy para no romper PWA/Tailscale;
-contraseña = `APP_PASSWORD` de Umbrel, manifest `deterministicPassword: true`).
-Hecho también: paquete GHCR ya **público** (pull anónimo verificado) y store **publicada** en
-https://github.com/voleyplayaponiente-glitch/bespain-umbrel-store (main; verificados 200 el yml,
-el manifest y el icono). Falta solo el lado Umbrel del usuario: exportar copia .db SIN cifrar de la
-app antigua (la cifrada NO sirve: la contraseña nueva es distinta) → `sudo docker compose down` del
-despliegue manual (libera el 3000) → App Store → ⋯ → Community App Stores → añadir la URL de la
-store → instalar Gestor Laboral (contraseña generada por Umbrel, se ve en el ⋯ del tile) →
-Ajustes → Restaurar copia. Futuras actualizaciones de la app instalada: subir imagen (push a la
-rama lo hace solo) + subir `version` en umbrel-app.yml de la store → botón Actualizar en Umbrel.
-El PR #2 sigue abierto (base main); rama default del repo es la de vóley.
+**Opción B (tile en el panel de Umbrel) — ✅ COMPLETADA (20/07/2026):** app instalada desde la
+community app store y **confirmada funcionando por el usuario** (datos migrados por restauración del
+.db). Detalles operativos en la sección "Despliegue en Umbrel". Fuente de la store versionada en
+`umbrel-store/` de este repo (copia espejo de lo publicado en `bespain-umbrel-store`): si se cambia,
+copiar también al repo de la store. El paquete GHCR es público. El PR #2 sigue abierto (base main);
+rama default del repo es la de vóley.
