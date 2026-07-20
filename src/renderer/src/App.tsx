@@ -76,9 +76,10 @@ export function App(): React.JSX.Element {
               <button
                 key={n.v}
                 className={'nav-item' + (vista === n.v ? ' active' : '')}
+                aria-current={vista === n.v ? 'page' : undefined}
                 onClick={() => setVista(n.v)}
               >
-                <span>{n.icon}</span>
+                <span aria-hidden="true">{n.icon}</span>
                 {n.label}
               </button>
             ))}
@@ -87,6 +88,7 @@ export function App(): React.JSX.Element {
             <select
               className="mini"
               style={{ width: '100%' }}
+              aria-label="Empresa activa"
               value={empresaId ?? ''}
               onChange={(e) => setEmpresaIdState(Number(e.target.value))}
             >

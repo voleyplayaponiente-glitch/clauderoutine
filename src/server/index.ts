@@ -8,7 +8,7 @@ import { join } from 'path'
 import { getDb, rutaBaseDatos, carpetaDatos, cerrarDb, reabrirDb } from '../main/db/database'
 import { cargarSesiones, crearSesion, sesionValida, borrarSesion } from './sesiones'
 import { iniciarBackupAutomatico } from './backup-auto'
-import { handlers } from '../main/rpc'
+import { handlers, validarArgs } from '../main/rpc'
 import {
   bufferCuadranteExcel,
   bufferResumenCentrosExcel,
@@ -116,8 +116,11 @@ app.post('/api/rpc', (req, res) => {
   const { channel, args } = req.body || {}
   const fn = handlers[channel]
   if (!fn) return res.status(400).json({ error: `Canal desconocido: ${channel}` })
+  const lista = Array.isArray(args) ? args : []
+  const errorArgs = validarArgs(channel, lista)
+  if (errorArgs) return res.status(400).json({ error: errorArgs })
   try {
-    const result = fn(...(Array.isArray(args) ? args : []))
+    const result = fn(...lista)
     res.json({ result })
   } catch (e) {
     res.status(500).json({ error: (e as Error).message })

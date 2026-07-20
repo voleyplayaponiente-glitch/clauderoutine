@@ -390,7 +390,7 @@ function FilaTurno(props: {
             <input className="mini" type="time" value={turno.entrada1 ?? ''} onChange={(e) => set({ entrada1: e.target.value || null })} />
             <input className="mini" type="time" value={turno.salida1 ?? ''} onChange={(e) => set({ salida1: e.target.value || null })} />
             {(turno.entrada1 || turno.salida1) && (
-              <button className="btn-x" title="Vaciar mañana" onClick={() => set({ entrada1: null, salida1: null })}>
+              <button className="btn-x" title="Vaciar mañana" aria-label="Vaciar tramo de mañana" onClick={() => set({ entrada1: null, salida1: null })}>
                 ×
               </button>
             )}
@@ -405,7 +405,7 @@ function FilaTurno(props: {
             <input className="mini" type="time" value={turno.entrada2 ?? ''} onChange={(e) => set({ entrada2: e.target.value || null })} />
             <input className="mini" type="time" value={turno.salida2 ?? ''} onChange={(e) => set({ salida2: e.target.value || null })} />
             {(turno.entrada2 || turno.salida2) && (
-              <button className="btn-x" title="Vaciar tarde" onClick={() => set({ entrada2: null, salida2: null })}>
+              <button className="btn-x" title="Vaciar tarde" aria-label="Vaciar tramo de tarde" onClick={() => set({ entrada2: null, salida2: null })}>
                 ×
               </button>
             )}

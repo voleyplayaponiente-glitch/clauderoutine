@@ -86,7 +86,14 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
   coincide); la descarga sin cifrar hace antes `wal_checkpoint(TRUNCATE)`; Dockerfile **multi-stage**
   (imagen final sin devDependencies ni toolchain). `exportarCifrado` es método **opcional** de ApiGestor
   (solo web; el botón en Ajustes se muestra si existe).
-  Pendiente (Bloque 3): vista móvil, labels/ARIA, TLS en LAN, validación de esquemas RPC, robots.txt.
+  **Bloque 3 (hecho):** vista **móvil** (media query ≤840px en `styles.css`: la barra lateral pasa a barra
+  superior deslizable, formularios `grid-2/3` a una columna, tarjetas con scroll horizontal para tablas,
+  inputs a 16px para evitar el zoom de iOS); accesibilidad (aria-current en nav, aria-label en selector de
+  empresa y botones ×, role=dialog en Modal; los campos ya iban envueltos en `<label class="field">`);
+  `validarArgs` en `rpc.ts` (tabla FIRMAS canal→tipos, aplicada solo en `/api/rpc` del servidor web →
+  400 si no encaja); `robots.txt` (Disallow todo) en `src/renderer/public/`.
+  TLS en LAN: decidido NO ponerlo (autofirmado rompería la PWA y Tailscale ya cifra el acceso remoto;
+  la LAN es propia). Revisar solo si la app se usara desde una red compartida.
 
 ## Modelo de datos (SQLite) — esquema v6
 `empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.

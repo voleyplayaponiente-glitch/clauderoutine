@@ -422,3 +422,84 @@ input.mini {
   border-radius: 3px;
   display: inline-block;
 }
+
+/* ---------- Móvil / pantallas estrechas ---------- */
+@media (max-width: 840px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: 100dvh;
+  }
+  /* La barra lateral pasa a ser una barra superior deslizable. */
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .brand {
+    padding: 0 8px 0 0;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .nav-item {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 10px;
+  }
+  .nav-sep {
+    margin: 0 4px 0 10px;
+    white-space: nowrap;
+  }
+  .sidebar select.mini {
+    width: auto;
+    max-width: 170px;
+    flex: 0 0 auto;
+  }
+  .main {
+    padding: 14px 12px 48px;
+  }
+  .page-title {
+    font-size: 19px;
+  }
+  .topbar {
+    flex-wrap: wrap;
+  }
+  /* Formularios a una columna. */
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  /* Las tablas anchas (cuadrante, listados) se deslizan dentro de su tarjeta. */
+  .card {
+    padding: 14px;
+    overflow-x: auto;
+  }
+  .modal-bg {
+    padding: 10px;
+    align-items: flex-start;
+  }
+  .modal {
+    padding: 16px;
+    max-height: calc(100dvh - 20px);
+  }
+  /* 16px evita que iOS haga zoom automático al enfocar un campo. */
+  input,
+  select,
+  textarea,
+  input.mini,
+  select.mini {
+    font-size: 16px;
+  }
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    text-align: center;
+  }
+}

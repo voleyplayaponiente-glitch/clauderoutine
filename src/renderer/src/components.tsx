@@ -119,6 +119,9 @@ export function Modal(props: {
     <div className="modal-bg" onMouseDown={props.onClose}>
       <div
         className={'modal' + (props.wide ? ' wide' : '')}
+        role="dialog"
+        aria-modal="true"
+        aria-label={props.title}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="modal-title">{props.title}</div>

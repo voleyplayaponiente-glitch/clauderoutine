@@ -1,0 +1,3 @@
+# Aplicación privada de gestión laboral: no indexar nada.
+User-agent: *
+Disallow: /
