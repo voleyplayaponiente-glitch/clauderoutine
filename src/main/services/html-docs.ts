@@ -57,14 +57,17 @@ export function htmlCuadrante(trabajadorId: number, anio: number, mes: number, c
   const filas = d.turnos
     .map((t) => {
       const h = d.horasDiaFn(t)
-      const centro = t.centro_id ? d.centrosPorId[t.centro_id]?.nombre ?? '' : ''
+      // Centro y horario solo tienen sentido cuando el trabajador trabaja ese día;
+      // en Libre/Vacaciones/Baja/Festivo/Permiso se dejan en blanco para no confundir.
+      const trabaja = t.situacion === 'trabaja'
+      const centro = trabaja && t.centro_id ? d.centrosPorId[t.centro_id]?.nombre ?? '' : ''
       return `<tr>
         <td>${Number(t.fecha.slice(-2))}</td>
         <td>${isoALocal(t.fecha)}</td>
         <td>${DIAS_SEMANA[t.dia_semana]}</td>
         <td>${esc(SITUACIONES[t.situacion] ?? t.situacion)}</td>
         <td>${esc(centro)}</td>
-        <td>${esc(horario(t))}</td>
+        <td>${esc(trabaja ? horario(t) : '')}</td>
         <td class="num">${h > 0 ? numEs(h) : ''}</td>
       </tr>`
     })

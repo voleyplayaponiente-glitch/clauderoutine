@@ -61,13 +61,15 @@ export async function bufferCuadranteExcel(
 
   for (const t of d.turnos) {
     const h = d.horasDiaFn(t)
+    // Centro y horario solo cuando trabaja; en Libre/Vacaciones/etc. se dejan vacíos.
+    const trabaja = t.situacion === 'trabaja'
     ws.addRow([
       Number(t.fecha.slice(-2)),
       isoALocal(t.fecha),
       DIAS_SEMANA[t.dia_semana],
       SITUACIONES[t.situacion] ?? t.situacion,
-      t.centro_id ? d.centrosPorId[t.centro_id]?.nombre ?? '' : '',
-      horario(t),
+      trabaja && t.centro_id ? d.centrosPorId[t.centro_id]?.nombre ?? '' : '',
+      trabaja ? horario(t) : '',
       h > 0 ? Number(h.toFixed(2)) : ''
     ])
   }
