@@ -158,6 +158,19 @@ actualización de Umbrel.
 
 **Pendiente / ideas:** confirmar si el plus de transporte va exento; permitir nº de pagas extra distinto
 de 3; posible selector de color/tamaño de pastillas y **mostrar código junto al nombre en la agenda**;
-**arrastrar-y-soltar** turnos; **festivos por provincia** autocargados; firma digitalizada en el PDF;
-**Opción B de acceso** (tile propio dentro del panel de Umbrel; pendiente saber hardware del Umbrel
-Intel/x86 vs Raspberry Pi para compilar imagen GHCR).
+**arrastrar-y-soltar** turnos; **festivos por provincia** autocargados; firma digitalizada en el PDF.
+
+**Opción B (tile en el panel de Umbrel) — EN CURSO:** el Umbrel del usuario es **Umbrel Home 2025
+(Intel x86_64)**, umbrelOS 1.7.4. Hecho: workflow `.github/workflows/publicar-imagen.yml` publica
+`ghcr.io/voleyplayaponiente-glitch/gestor-laboral:latest` (amd64) en cada push de la rama — primera
+build OK (51 s); contenido de la community app store en `umbrel-store/` (store id `bespain`, app
+`bespain-gestor-laboral`, puerto 3000 publicado directo SIN app_proxy para no romper PWA/Tailscale;
+contraseña = `APP_PASSWORD` de Umbrel, manifest `deterministicPassword: true`).
+Faltan 2 pasos manuales del usuario (mi token no puede): (1) hacer PÚBLICO el paquete GHCR en
+https://github.com/users/voleyplayaponiente-glitch/packages/container/gestor-laboral/settings ;
+(2) crear repo público `bespain-umbrel-store` con README → entonces yo publico ahí el contenido de
+`umbrel-store/` (add_repo + push_files), el usuario añade la store en Umbrel (App Store → ⋯ →
+Community App Stores) e instala. Migración: exportar copia .db SIN cifrar de la app antigua (la
+cifrada NO sirve: la contraseña nueva es distinta) → `docker compose down` del despliegue manual
+(libera el 3000) → instalar app → restaurar copia. El PR #2 sigue abierto (base main); rama default
+del repo es la de vóley.
