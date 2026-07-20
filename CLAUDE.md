@@ -166,11 +166,12 @@ de 3; posible selector de color/tamaño de pastillas y **mostrar código junto a
 build OK (51 s); contenido de la community app store en `umbrel-store/` (store id `bespain`, app
 `bespain-gestor-laboral`, puerto 3000 publicado directo SIN app_proxy para no romper PWA/Tailscale;
 contraseña = `APP_PASSWORD` de Umbrel, manifest `deterministicPassword: true`).
-Faltan 2 pasos manuales del usuario (mi token no puede): (1) hacer PÚBLICO el paquete GHCR en
-https://github.com/users/voleyplayaponiente-glitch/packages/container/gestor-laboral/settings ;
-(2) crear repo público `bespain-umbrel-store` con README → entonces yo publico ahí el contenido de
-`umbrel-store/` (add_repo + push_files), el usuario añade la store en Umbrel (App Store → ⋯ →
-Community App Stores) e instala. Migración: exportar copia .db SIN cifrar de la app antigua (la
-cifrada NO sirve: la contraseña nueva es distinta) → `docker compose down` del despliegue manual
-(libera el 3000) → instalar app → restaurar copia. El PR #2 sigue abierto (base main); rama default
-del repo es la de vóley.
+Hecho también: paquete GHCR ya **público** (pull anónimo verificado) y store **publicada** en
+https://github.com/voleyplayaponiente-glitch/bespain-umbrel-store (main; verificados 200 el yml,
+el manifest y el icono). Falta solo el lado Umbrel del usuario: exportar copia .db SIN cifrar de la
+app antigua (la cifrada NO sirve: la contraseña nueva es distinta) → `sudo docker compose down` del
+despliegue manual (libera el 3000) → App Store → ⋯ → Community App Stores → añadir la URL de la
+store → instalar Gestor Laboral (contraseña generada por Umbrel, se ve en el ⋯ del tile) →
+Ajustes → Restaurar copia. Futuras actualizaciones de la app instalada: subir imagen (push a la
+rama lo hace solo) + subir `version` en umbrel-app.yml de la store → botón Actualizar en Umbrel.
+El PR #2 sigue abierto (base main); rama default del repo es la de vóley.
