@@ -1,0 +1,24 @@
+manifestVersion: 1
+id: bespain-gestor-laboral
+name: Gestor Laboral
+tagline: Cuadrantes y control de horas del personal
+icon: https://raw.githubusercontent.com/voleyplayaponiente-glitch/clauderoutine/refs/heads/claude/labor-management-scheduling-app-jd2hcj/src/renderer/public/icon-512.png
+category: files
+version: "1.0.0"
+port: 3000
+description: >-
+  Planifica cuadrantes mensuales por trabajador y por centro, calcula horas y
+  retribuciones (IRPF y Seguridad Social), controla vacaciones y horas
+  complementarias, emite avisos laborales y exporta el registro de jornada
+  firmado en PDF y Excel. Todo local y privado: los datos no salen del Umbrel.
+developer: BESPAIN
+website: https://github.com/voleyplayaponiente-glitch/clauderoutine
+submitter: BESPAIN
+submission: https://github.com/voleyplayaponiente-glitch/clauderoutine
+repo: https://github.com/voleyplayaponiente-glitch/clauderoutine
+support: https://github.com/voleyplayaponiente-glitch/clauderoutine/issues
+gallery: []
+releaseNotes: ""
+dependencies: []
+path: ""
+deterministicPassword: true
