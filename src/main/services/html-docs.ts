@@ -74,7 +74,7 @@ export function htmlCuadrante(trabajadorId: number, anio: number, mes: number, c
     .join('')
 
   const sello = d.empresa.sello_imagen
-    ? `<img class="sello" src="${d.empresa.sello_imagen}" alt="Sello"/>`
+    ? `<img class="sello" src="${esc(d.empresa.sello_imagen)}" alt="Sello"/>`
     : ''
 
   const complementarias =

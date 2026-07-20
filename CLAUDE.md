@@ -73,6 +73,12 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
 - `src/renderer/` — UI React: `screens/`, `components.tsx`, `styles.css`, `defaults.ts`
   (paletas y `colorTrabajador`). Web: `web-api.ts` + `main-web.tsx` + `web.html` (login por contraseña).
 - `src/server/index.ts` — servidor Express (web): sirve `dist-web`, `/api/rpc`, export, backup, login.
+  **Endurecido (auditoría Bloque 1):** exige `GESTOR_PASSWORD` (si falta → `exit 1`); rate-limit de
+  login (5 fallos → 60 s de bloqueo, HTTP 429 con mensaje que muestra la UI); cabeceras de seguridad
+  (CSP solo-origen con inline permitido, nosniff, X-Frame-Options DENY, Referrer-Policy); la subida de
+  backup valida la firma `SQLite format 3\0` antes de escribir; `sello_imagen` va escapado en el HTML
+  imprimible. Pendiente (Bloques 2-3 de la auditoría): backup automático nocturno, caducidad/persistencia
+  de sesiones, Docker multi-stage, backup cifrado, vista móvil, labels/ARIA.
 
 ## Modelo de datos (SQLite) — esquema v6
 `empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.

@@ -15,15 +15,18 @@ import {
 import { htmlCuadrante, htmlResumenCentros } from '../main/services/html-docs'
 
 const PORT = Number(process.env.PORT || 3000)
-const PASSWORD = process.env.GESTOR_PASSWORD || 'gestor'
 const WEB_DIR = process.env.GESTOR_WEB_DIR || join(process.cwd(), 'dist-web')
 
+// Sin contraseña no se arranca: la app guarda datos personales (DNI, NSS, IBAN)
+// y no debe quedar accesible por descuido con una contraseña conocida por defecto.
 if (!process.env.GESTOR_PASSWORD) {
-  console.warn(
-    '\n⚠️  No se ha definido GESTOR_PASSWORD. Se usa la contraseña por defecto «gestor».\n' +
-      '   Define GESTOR_PASSWORD en tu configuración para proteger los datos.\n'
+  console.error(
+    '\n❌ Falta GESTOR_PASSWORD. Define una contraseña en tu configuración\n' +
+      '   (docker-compose.yml o variable de entorno) y vuelve a arrancar.\n'
   )
+  process.exit(1)
 }
+const PASSWORD = process.env.GESTOR_PASSWORD
 
 getDb() // inicializa/migra la base de datos al arrancar
 
@@ -39,6 +42,23 @@ function leerCookie(cookie: string | undefined, nombre: string): string | null {
 }
 
 const app = express()
+
+// Cabeceras de seguridad. La CSP restringe todo al propio origen (nada externo);
+// se permiten estilos/scripts inline porque la UI usa atributos style de React y
+// los documentos imprimibles llevan <style> y el botón de imprimir inline.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; " +
+      "frame-ancestors 'none'"
+  )
+  next()
+})
+
 app.use(express.json({ limit: '15mb' }))
 
 // ---- Autenticación ----
@@ -47,13 +67,32 @@ app.get('/api/session', (req, res) => {
   res.json({ authed: !!tok && sesiones.has(tok) })
 })
 
+// Freno anti fuerza bruta: tras 5 fallos seguidos se bloquea el login 60 s.
+const MAX_INTENTOS = 5
+const BLOQUEO_MS = 60_000
+let intentosFallidos = 0
+let bloqueadoHasta = 0
+
 app.post('/api/login', (req, res) => {
+  if (Date.now() < bloqueadoHasta) {
+    const seg = Math.ceil((bloqueadoHasta - Date.now()) / 1000)
+    return res
+      .status(429)
+      .json({ ok: false, error: `Demasiados intentos. Espera ${seg} segundos.` })
+  }
   if (req.body?.password === PASSWORD) {
+    intentosFallidos = 0
     const tok = randomBytes(24).toString('hex')
     sesiones.add(tok)
     res.setHeader('Set-Cookie', `sesion=${tok}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000`)
     res.json({ ok: true })
   } else {
+    intentosFallidos++
+    if (intentosFallidos >= MAX_INTENTOS) {
+      bloqueadoHasta = Date.now() + BLOQUEO_MS
+      intentosFallidos = 0
+      console.warn(`⚠️  Login bloqueado ${BLOQUEO_MS / 1000}s tras ${MAX_INTENTOS} intentos fallidos.`)
+    }
     res.status(401).json({ ok: false })
   }
 })
@@ -145,9 +184,19 @@ app.get('/api/backup/download', (_req, res) => {
   res.download(rutaBaseDatos(), `copia-gestor-laboral-${stamp}.db`)
 })
 
+// Firma con la que empieza todo fichero SQLite; evita machacar la base de
+// datos si por error se sube cualquier otro fichero.
+const FIRMA_SQLITE = Buffer.from('SQLite format 3\0')
+
 app.post('/api/backup/upload', express.raw({ type: '*/*', limit: '100mb' }), (req, res) => {
   try {
     if (!req.body || !(req.body as Buffer).length) return res.status(400).json({ error: 'Fichero vacío' })
+    const cuerpo = req.body as Buffer
+    if (cuerpo.length < 16 || !cuerpo.subarray(0, 16).equals(FIRMA_SQLITE)) {
+      return res
+        .status(400)
+        .json({ error: 'El fichero no es una copia de seguridad válida (no es una base de datos SQLite).' })
+    }
     cerrarDb()
     writeFileSync(rutaBaseDatos(), req.body as Buffer)
     reabrirDb()

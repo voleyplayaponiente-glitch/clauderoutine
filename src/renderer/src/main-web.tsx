@@ -42,7 +42,8 @@ function Acceso(): React.JSX.Element {
       setPassword('')
       setEstado('dentro')
     } else {
-      setError('Contraseña incorrecta.')
+      const d = await r.json().catch(() => null)
+      setError(d?.error || 'Contraseña incorrecta.')
     }
   }
 
