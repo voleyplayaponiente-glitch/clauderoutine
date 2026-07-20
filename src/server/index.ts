@@ -260,8 +260,23 @@ app.post('/api/backup/upload', express.raw({ type: '*/*', limit: '100mb' }), (re
 })
 
 // ---- Estáticos (interfaz) + SPA fallback ----
-app.use(express.static(WEB_DIR))
+// Caché correcta: los ficheros de /assets llevan huella en el nombre (cambian
+// de nombre en cada build) → caché larga e inmutable. El resto (web.html,
+// manifest, iconos) debe revalidarse siempre, para que el navegador y la PWA
+// vean cada actualización sin quedarse con la versión antigua.
+app.use(
+  express.static(WEB_DIR, {
+    setHeaders: (res, ruta) => {
+      if (ruta.includes('assets') && /-[A-Za-z0-9_-]{8,}\./.test(ruta)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      } else {
+        res.setHeader('Cache-Control', 'no-cache')
+      }
+    }
+  })
+)
 app.get('*', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-cache')
   res.sendFile(join(WEB_DIR, 'web.html'))
 })
 
