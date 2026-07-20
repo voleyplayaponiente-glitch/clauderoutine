@@ -2,10 +2,12 @@
 // Reutiliza el mismo motor, base de datos SQLite y generadores que la app de
 // escritorio. Protege el acceso con una contraseña. Todo local, sin nube.
 import express from 'express'
-import { randomBytes } from 'crypto'
-import { writeFileSync } from 'fs'
+import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'crypto'
+import { writeFileSync, readFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
-import { getDb, rutaBaseDatos, cerrarDb, reabrirDb } from '../main/db/database'
+import { getDb, rutaBaseDatos, carpetaDatos, cerrarDb, reabrirDb } from '../main/db/database'
+import { cargarSesiones, crearSesion, sesionValida, borrarSesion } from './sesiones'
+import { iniciarBackupAutomatico } from './backup-auto'
 import { handlers } from '../main/rpc'
 import {
   bufferCuadranteExcel,
@@ -29,8 +31,7 @@ if (!process.env.GESTOR_PASSWORD) {
 const PASSWORD = process.env.GESTOR_PASSWORD
 
 getDb() // inicializa/migra la base de datos al arrancar
-
-const sesiones = new Set<string>()
+cargarSesiones() // recupera las sesiones guardadas (sobreviven a reinicios)
 
 function leerCookie(cookie: string | undefined, nombre: string): string | null {
   if (!cookie) return null
@@ -64,7 +65,7 @@ app.use(express.json({ limit: '15mb' }))
 // ---- Autenticación ----
 app.get('/api/session', (req, res) => {
   const tok = leerCookie(req.headers.cookie, 'sesion')
-  res.json({ authed: !!tok && sesiones.has(tok) })
+  res.json({ authed: sesionValida(tok) })
 })
 
 // Freno anti fuerza bruta: tras 5 fallos seguidos se bloquea el login 60 s.
@@ -83,7 +84,7 @@ app.post('/api/login', (req, res) => {
   if (req.body?.password === PASSWORD) {
     intentosFallidos = 0
     const tok = randomBytes(24).toString('hex')
-    sesiones.add(tok)
+    crearSesion(tok)
     res.setHeader('Set-Cookie', `sesion=${tok}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000`)
     res.json({ ok: true })
   } else {
@@ -99,15 +100,14 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/logout', (req, res) => {
   const tok = leerCookie(req.headers.cookie, 'sesion')
-  if (tok) sesiones.delete(tok)
+  if (tok) borrarSesion(tok)
   res.setHeader('Set-Cookie', 'sesion=; HttpOnly; Path=/; Max-Age=0')
   res.json({ ok: true })
 })
 
 // A partir de aquí, todo /api requiere sesión válida.
 app.use('/api', (req, res, next) => {
-  const tok = leerCookie(req.headers.cookie, 'sesion')
-  if (tok && sesiones.has(tok)) return next()
+  if (sesionValida(leerCookie(req.headers.cookie, 'sesion'))) return next()
   res.status(401).json({ error: 'No autenticado' })
 })
 
@@ -180,8 +180,39 @@ app.get('/api/export/resumen-pdf', (req, res) => {
 
 // ---- Copias de seguridad ----
 app.get('/api/backup/download', (_req, res) => {
+  // Vuelca el WAL al fichero principal para que la copia incluya lo último escrito.
+  getDb().pragma('wal_checkpoint(TRUNCATE)')
   const stamp = new Date().toISOString().slice(0, 10)
   res.download(rutaBaseDatos(), `copia-gestor-laboral-${stamp}.db`)
+})
+
+// Copia cifrada con la contraseña de acceso (AES-256-GCM, clave derivada con
+// scrypt). Formato: [16 magia][16 sal][12 iv][16 etiqueta GCM][datos cifrados].
+const MAGIA_CIFRADO = Buffer.from('GESTOR-CIFRADO-1')
+
+app.get('/api/backup/download-cifrado', async (_req, res) => {
+  try {
+    // Copia consistente en caliente a un temporal, que es lo que se cifra.
+    const tmp = join(carpetaDatos(), '.copia-cifrar-tmp.db')
+    await getDb().backup(tmp)
+    const datos = readFileSync(tmp)
+    unlinkSync(tmp)
+    const sal = randomBytes(16)
+    const iv = randomBytes(12)
+    const clave = scryptSync(PASSWORD, sal, 32)
+    const cifrador = createCipheriv('aes-256-gcm', clave, iv)
+    const cifrado = Buffer.concat([cifrador.update(datos), cifrador.final()])
+    const fichero = Buffer.concat([MAGIA_CIFRADO, sal, iv, cifrador.getAuthTag(), cifrado])
+    const stamp = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'application/octet-stream')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="copia-gestor-laboral-${stamp}.db.cifrada"`
+    )
+    res.end(fichero)
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
 })
 
 // Firma con la que empieza todo fichero SQLite; evita machacar la base de
@@ -191,14 +222,32 @@ const FIRMA_SQLITE = Buffer.from('SQLite format 3\0')
 app.post('/api/backup/upload', express.raw({ type: '*/*', limit: '100mb' }), (req, res) => {
   try {
     if (!req.body || !(req.body as Buffer).length) return res.status(400).json({ error: 'Fichero vacío' })
-    const cuerpo = req.body as Buffer
+    let cuerpo = req.body as Buffer
+    // Si es una copia cifrada nuestra, se descifra con la contraseña de acceso actual.
+    if (cuerpo.length > 60 && cuerpo.subarray(0, 16).equals(MAGIA_CIFRADO)) {
+      try {
+        const sal = cuerpo.subarray(16, 32)
+        const iv = cuerpo.subarray(32, 44)
+        const etiqueta = cuerpo.subarray(44, 60)
+        const clave = scryptSync(PASSWORD, sal, 32)
+        const descifrador = createDecipheriv('aes-256-gcm', clave, iv)
+        descifrador.setAuthTag(etiqueta)
+        cuerpo = Buffer.concat([descifrador.update(cuerpo.subarray(60)), descifrador.final()])
+      } catch {
+        return res.status(400).json({
+          error:
+            'No se puede descifrar la copia. ¿Se creó con otra contraseña de acceso? ' +
+            'Las copias cifradas solo se pueden restaurar con la misma contraseña con la que se crearon.'
+        })
+      }
+    }
     if (cuerpo.length < 16 || !cuerpo.subarray(0, 16).equals(FIRMA_SQLITE)) {
       return res
         .status(400)
         .json({ error: 'El fichero no es una copia de seguridad válida (no es una base de datos SQLite).' })
     }
     cerrarDb()
-    writeFileSync(rutaBaseDatos(), req.body as Buffer)
+    writeFileSync(rutaBaseDatos(), cuerpo)
     reabrirDb()
     res.json({ ok: true })
   } catch (e) {
@@ -212,6 +261,8 @@ app.use(express.static(WEB_DIR))
 app.get('*', (_req, res) => {
   res.sendFile(join(WEB_DIR, 'web.html'))
 })
+
+iniciarBackupAutomatico() // copia diaria a <datos>/backups/ con rotación de 30
 
 app.listen(PORT, () => {
   console.log(`\n✅ Gestor Laboral (web) escuchando en http://localhost:${PORT}`)

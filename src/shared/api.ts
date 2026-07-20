@@ -81,6 +81,8 @@ export interface ApiGestor {
   backup: {
     exportar(): Promise<ResultadoOperacion>
     importar(): Promise<ResultadoOperacion>
+    /** Solo en la versión web: descarga cifrada con la contraseña de acceso. */
+    exportarCifrado?(): Promise<ResultadoOperacion>
   }
   app: {
     rutaBaseDatos(): Promise<string>

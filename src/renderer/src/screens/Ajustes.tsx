@@ -15,6 +15,13 @@ export function PantallaAjustes(): React.JSX.Element {
     else if (r.error) toast('Error: ' + r.error)
   }
 
+  // Solo disponible en la versión web (el servidor cifra con la contraseña de acceso).
+  const exportarCifrado = async (): Promise<void> => {
+    const r = await window.api.backup.exportarCifrado?.()
+    if (r?.ok) toast('Copia cifrada guardada')
+    else if (r?.error) toast('Error: ' + r.error)
+  }
+
   const importar = async (): Promise<void> => {
     const ok = await confirmar(
       'Restaurar una copia SOBRESCRIBIRÁ todos los datos actuales. ¿Seguro que quieres continuar?'
@@ -40,10 +47,23 @@ export function PantallaAjustes(): React.JSX.Element {
           Todos los datos se guardan en un único fichero SQLite en tu ordenador. Haz copias con
           frecuencia y guárdalas en un lugar seguro. La restauración sobrescribe los datos actuales.
         </p>
+        {window.api.backup.exportarCifrado && (
+          <p className="muted">
+            La <b>copia cifrada</b> protege los datos con tu contraseña de acceso: es la opción
+            recomendada si vas a guardarla fuera de este equipo (otro disco, la nube…). Solo podrá
+            restaurarse con la misma contraseña. Además, el servidor guarda automáticamente una
+            copia diaria (se conservan las últimas 30) en la carpeta <code>datos/backups</code>.
+          </p>
+        )}
         <div className="row">
           <button className="btn primary" onClick={exportar}>
             ⬇️ Exportar copia (.db)
           </button>
+          {window.api.backup.exportarCifrado && (
+            <button className="btn primary" onClick={exportarCifrado}>
+              🔒 Exportar copia cifrada
+            </button>
+          )}
           <button className="btn danger" onClick={importar}>
             ⬆️ Restaurar copia…
           </button>

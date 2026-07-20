@@ -31,7 +31,7 @@ function subirBackup(): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.db'
+    input.accept = '.db,.cifrada'
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file) return resolve({ ok: false })
@@ -118,6 +118,10 @@ export const webApi: ApiGestor = {
   backup: {
     exportar: async () => {
       descargar('/api/backup/download')
+      return { ok: true }
+    },
+    exportarCifrado: async () => {
+      descargar('/api/backup/download-cifrado')
       return { ok: true }
     },
     importar: () => subirBackup()

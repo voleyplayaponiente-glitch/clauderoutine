@@ -77,8 +77,16 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
   login (5 fallos → 60 s de bloqueo, HTTP 429 con mensaje que muestra la UI); cabeceras de seguridad
   (CSP solo-origen con inline permitido, nosniff, X-Frame-Options DENY, Referrer-Policy); la subida de
   backup valida la firma `SQLite format 3\0` antes de escribir; `sello_imagen` va escapado en el HTML
-  imprimible. Pendiente (Bloques 2-3 de la auditoría): backup automático nocturno, caducidad/persistencia
-  de sesiones, Docker multi-stage, backup cifrado, vista móvil, labels/ARIA.
+  imprimible.
+  **Bloque 2 (hecho):** `backup-auto.ts` — copia diaria automática a `<datos>/backups/` (rotación 30,
+  `db.backup()` en caliente, chequeo horario); `sesiones.ts` — sesiones token→caducidad (30 d) persistidas
+  en `<datos>/sesiones.json` (sobreviven reinicios); descarga de backup **cifrado** AES-256-GCM con clave
+  scrypt de `GESTOR_PASSWORD` (formato `[16 magia GESTOR-CIFRADO-1][16 sal][12 iv][16 tag][datos]`,
+  extensión `.db.cifrada`), la restauración acepta .db y .cifrada (con mensaje claro si la contraseña no
+  coincide); la descarga sin cifrar hace antes `wal_checkpoint(TRUNCATE)`; Dockerfile **multi-stage**
+  (imagen final sin devDependencies ni toolchain). `exportarCifrado` es método **opcional** de ApiGestor
+  (solo web; el botón en Ajustes se muestra si existe).
+  Pendiente (Bloque 3): vista móvil, labels/ARIA, TLS en LAN, validación de esquemas RPC, robots.txt.
 
 ## Modelo de datos (SQLite) — esquema v6
 `empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.

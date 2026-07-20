@@ -98,9 +98,11 @@ docker compose up -d --build # volver a arrancar / actualizar tras cambios
 
 ## Copias de seguridad
 Los datos viven en la subcarpeta `datos/` de esta carpeta (fichero `gestor-laboral.db`).
-Puedes:
-- Copiar ese fichero a lugar seguro con la app **Files** de Umbrel, o
-- Desde la propia app: **Ajustes → Exportar copia** (descarga el fichero al dispositivo).
+- **Automática:** el servidor guarda cada día una copia en `datos/backups/` y conserva las
+  últimas 30. No hay que hacer nada.
+- **Manual:** desde la app, **Ajustes → Exportar copia** (sin cifrar) o **Exportar copia
+  cifrada** (protegida con tu contraseña de acceso; recomendada si la vas a guardar fuera
+  del Umbrel). La restauración acepta ambas.
 
 ## Alternativa con Portainer (interfaz gráfica)
 Si prefieres no usar la terminal y tienes **Portainer** instalado en Umbrel:
