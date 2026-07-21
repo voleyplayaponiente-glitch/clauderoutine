@@ -15,6 +15,8 @@ export function defaultConfig(numEquipos: 8 | 16 | 32): CompetitionConfig {
     numEquipos,
     numGrupos,
     equiposPorGrupo: 4,
+    jugadoresPorEquipo: 5,
+    subcategorias: [],
     clasificadosPorGrupo: 2,
     mejoresTerceros: false,
     numMejoresTerceros: 0,

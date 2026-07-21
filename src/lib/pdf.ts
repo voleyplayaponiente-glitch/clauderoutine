@@ -29,13 +29,15 @@ function teamName(cat: Category, id?: string): string {
 export function teamsPDF(t: Tournament, cat: Category): jsPDF {
   const doc = new jsPDF()
   header(doc, `Equipos · ${cat.nombre}`, t.nombre)
+  const conSub = cat.teams.some((tm) => tm.subcategoria)
   autoTable(doc, {
     startY: 32,
-    head: [['#', 'Equipo', 'Jugadores', 'Teléfono', 'Estado', 'Pago']],
+    head: [['#', 'Equipo', 'Jugadores', ...(conSub ? ['Subcat.'] : []), 'Teléfono', 'Estado', 'Pago']],
     body: cat.teams.map((tm) => [
       tm.numero,
       tm.nombre,
       tm.jugadores.map((j) => j.nombre).filter(Boolean).join(' / '),
+      ...(conSub ? [tm.subcategoria ?? ''] : []),
       tm.telefono ?? '',
       tm.estadoInscripcion,
       `${(tm.importePagado ?? 0).toFixed(0)} €`,

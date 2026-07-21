@@ -15,13 +15,14 @@ export function Teams() {
   const confirm = useConfirm()
   const fileRef = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState<Team | null>(null)
+  const [subFilter, setSubFilter] = useState<string>('all')
 
   return (
     <RequireCategory>
       {(t, cat) => {
         const update = (teams: Team[]) => setTeams(t.id, cat.id, teams)
         const addOne = () => {
-          const nt = newTeam(cat.teams.length + 1)
+          const nt = newTeam(cat.teams.length + 1, '', cat.config.jugadoresPorEquipo)
           update([...cat.teams, nt])
           setEditing(nt)
         }
@@ -33,6 +34,14 @@ export function Teams() {
 
         const capacity = cat.config.numEquipos
         const full = cat.teams.length >= capacity
+
+        // subcategorías: las configuradas + las que ya usen los equipos
+        const subOptions = Array.from(
+          new Set([...cat.config.subcategorias, ...cat.teams.map((x) => x.subcategoria).filter(Boolean) as string[]]),
+        )
+        const showSub = subOptions.length > 0
+        const visibleTeams =
+          subFilter === 'all' ? cat.teams : cat.teams.filter((x) => (x.subcategoria || '') === subFilter)
 
         return (
           <>
@@ -63,11 +72,33 @@ export function Teams() {
 
             {full && <p className="chip mb-3" style={{ background: '#ff9f0a22', color: '#c77700' }}>El grupo está completo para {capacity} equipos.</p>}
 
+            {showSub && cat.teams.length > 0 && (
+              <div className="flex gap-2 mb-3 flex-wrap items-center">
+                <span className="text-sm text-muted">Subcategoría:</span>
+                {['all', ...subOptions].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSubFilter(s)}
+                    className="chip"
+                    style={{
+                      cursor: 'pointer',
+                      padding: '0.3rem 0.8rem',
+                      background: subFilter === s ? 'var(--color-brand-500)' : 'var(--surface)',
+                      color: subFilter === s ? '#fff' : 'var(--text)',
+                      border: `1.5px solid ${subFilter === s ? 'var(--color-brand-500)' : 'var(--border)'}`,
+                    }}
+                  >
+                    {s === 'all' ? `Todas (${cat.teams.length})` : `${s} (${cat.teams.filter((x) => (x.subcategoria || '') === s).length})`}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {cat.teams.length === 0 ? (
               <Card className="text-center text-muted py-10">
                 <IconUsers size={40} className="mx-auto mb-3 opacity-50" />
                 <p>No hay equipos. Añade equipos manualmente o importa un CSV.</p>
-                <p className="text-xs mt-2">Formato CSV: Numero;Equipo;Jugador1;Jugador2;Jugador3;Jugador4;Jugador5;Telefono;CabezaSerie;Estado;Importe;Observaciones</p>
+                <p className="text-xs mt-2">Formato CSV: Numero;Equipo;Jugador1…N;Subcategoria;Telefono;CabezaSerie;Estado;Importe;Observaciones</p>
               </Card>
             ) : (
               <div className="card p-0 overflow-hidden">
@@ -75,11 +106,11 @@ export function Teams() {
                   <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 720 }}>
                     <thead>
                       <tr className="surface-2 text-left text-sm text-muted">
-                        <Th>#</Th><Th>Equipo</Th><Th>Jugadores</Th><Th>Teléfono</Th><Th>Serie</Th><Th>Estado</Th><Th>Pago</Th><Th></Th>
+                        <Th>#</Th><Th>Equipo</Th><Th>Jugadores</Th>{showSub && <Th>Subcat.</Th>}<Th>Teléfono</Th><Th>Serie</Th><Th>Estado</Th><Th>Pago</Th><Th></Th>
                       </tr>
                     </thead>
                     <tbody>
-                      {cat.teams.map((team) => (
+                      {visibleTeams.map((team) => (
                         <tr key={team.id} style={{ borderTop: '1px solid var(--border)' }} className="border-app">
                           <Td>{team.numero}</Td>
                           <Td>
@@ -88,6 +119,20 @@ export function Teams() {
                             </button>
                           </Td>
                           <Td className="text-sm text-muted">{team.jugadores.map((j) => j.nombre).filter(Boolean).join(' / ') || '—'}</Td>
+                          {showSub && (
+                            <Td>
+                              {cat.config.subcategorias.length > 0 ? (
+                                <Select
+                                  className="text-sm"
+                                  value={team.subcategoria || ''}
+                                  onChange={(v) => patch(team.id, { subcategoria: v || undefined })}
+                                  options={[{ value: '', label: '—' }, ...cat.config.subcategorias.map((s) => ({ value: s, label: s }))]}
+                                />
+                              ) : (
+                                <span className="chip surface-2" style={{ background: 'var(--surface-2)' }}>{team.subcategoria || '—'}</span>
+                              )}
+                            </Td>
+                          )}
                           <Td className="text-sm">{team.telefono || '—'}</Td>
                           <Td>
                             <input type="checkbox" checked={team.cabezaSerie} onChange={(e) => patch(team.id, { cabezaSerie: e.target.checked, seedRank: e.target.checked ? cat.teams.filter((x) => x.cabezaSerie).length + 1 : undefined })} />
@@ -110,6 +155,8 @@ export function Teams() {
             {editing && (
               <TeamModal
                 team={cat.teams.find((x) => x.id === editing.id) ?? editing}
+                numJugadores={cat.config.jugadoresPorEquipo}
+                subcategorias={cat.config.subcategorias}
                 onClose={() => setEditing(null)}
                 onChange={(p) => patch(editing.id, p)}
               />
@@ -126,23 +173,29 @@ function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
 function Th({ children }: { children?: React.ReactNode }) { return <th className="px-3 py-2.5 font-semibold">{children}</th> }
 function Td({ children, className = '' }: { children?: React.ReactNode; className?: string }) { return <td className={`px-3 py-2.5 ${className}`}>{children}</td> }
 
-function TeamModal({ team, onClose, onChange }: { team: Team; onClose: () => void; onChange: (p: Partial<Team>) => void }) {
+function TeamModal({ team, numJugadores, subcategorias, onClose, onChange }: { team: Team; numJugadores: number; subcategorias: string[]; onClose: () => void; onChange: (p: Partial<Team>) => void }) {
   const setPlayer = (idx: number, nombre: string) => {
     const jugadores = [...team.jugadores]
     while (jugadores.length <= idx) jugadores.push({ id: Math.random().toString(36), nombre: '' })
     jugadores[idx] = { ...jugadores[idx], nombre }
     onChange({ jugadores })
   }
+  const count = Math.max(1, numJugadores || team.jugadores.length || 1)
   return (
     <Modal open onClose={onClose} title={`Equipo ${team.numero}`} wide>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre del equipo"><input className="input" value={team.nombre} onChange={(e) => onChange({ nombre: e.target.value })} /></Field>
         <Field label="Teléfono de contacto"><input className="input" value={team.telefono ?? ''} onChange={(e) => onChange({ telefono: e.target.value })} /></Field>
-        <Field label="Jugador 1"><input className="input" value={team.jugadores[0]?.nombre ?? ''} onChange={(e) => setPlayer(0, e.target.value)} /></Field>
-        <Field label="Jugador 2"><input className="input" value={team.jugadores[1]?.nombre ?? ''} onChange={(e) => setPlayer(1, e.target.value)} /></Field>
-        <Field label="Jugador 3"><input className="input" value={team.jugadores[2]?.nombre ?? ''} onChange={(e) => setPlayer(2, e.target.value)} /></Field>
-        <Field label="Jugador 4"><input className="input" value={team.jugadores[3]?.nombre ?? ''} onChange={(e) => setPlayer(3, e.target.value)} /></Field>
-        <Field label="Jugador 5"><input className="input" value={team.jugadores[4]?.nombre ?? ''} onChange={(e) => setPlayer(4, e.target.value)} /></Field>
+        {Array.from({ length: count }, (_, i) => (
+          <Field key={i} label={`Jugador ${i + 1}`}>
+            <input className="input" value={team.jugadores[i]?.nombre ?? ''} onChange={(e) => setPlayer(i, e.target.value)} />
+          </Field>
+        ))}
+        {subcategorias.length > 0 && (
+          <Field label="Subcategoría">
+            <Select value={team.subcategoria || ''} onChange={(v) => onChange({ subcategoria: v || undefined })} options={[{ value: '', label: '—' }, ...subcategorias.map((s) => ({ value: s, label: s }))]} />
+          </Field>
+        )}
         <Field label="Estado de inscripción">
           <Select value={team.estadoInscripcion} onChange={(v) => onChange({ estadoInscripcion: v as RegistrationStatus })} options={ESTADOS.map((s) => ({ value: s, label: cap(s) }))} />
         </Field>

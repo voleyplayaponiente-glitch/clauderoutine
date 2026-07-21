@@ -45,13 +45,18 @@ function playGroups(cat: Category, seed: number): Category {
   return refreshCategory({ ...cat, matches })
 }
 
-function buildCategory(nombre: string, colorIdx: number, numEquipos: 8 | 16 | 32, seed: number): Category {
+function buildCategory(nombre: string, colorIdx: number, numEquipos: 8 | 16 | 32, seed: number, subcategorias: string[] = []): Category {
+  const config = defaultConfig(numEquipos)
+  config.subcategorias = subcategorias
+  const teams = makeTeams(numEquipos).map((tm, i) =>
+    subcategorias.length > 0 ? { ...tm, subcategoria: subcategorias[i % subcategorias.length] } : tm,
+  )
   let cat: Category = {
     id: uid('cat'),
     nombre,
     color: CATEGORY_COLORS[colorIdx % CATEGORY_COLORS.length],
-    config: defaultConfig(numEquipos),
-    teams: makeTeams(numEquipos),
+    config,
+    teams,
     groups: [],
     matches: [],
     manualTiebreaks: {},
@@ -63,7 +68,7 @@ function buildCategory(nombre: string, colorIdx: number, numEquipos: 8 | 16 | 32
 
 export function demoTournament(): Tournament {
   const now = safeNow()
-  const cat17 = buildCategory('SUB-17', 0, 16, 3)
+  const cat17 = buildCategory('SUB-17', 0, 16, 3, ['SUB-17', 'SUB-15'])
   const catSenior = buildCategory('SÉNIOR', 1, 32, 7)
   const t: Tournament = {
     id: uid('trn'),

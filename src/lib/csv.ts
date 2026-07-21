@@ -2,15 +2,14 @@ import type { Team } from '@/types'
 import { uid } from '@/engine/id'
 
 export function teamsToCSV(teams: Team[]): string {
-  const header = ['Numero', 'Equipo', 'Jugador1', 'Jugador2', 'Jugador3', 'Jugador4', 'Jugador5', 'Telefono', 'CabezaSerie', 'Estado', 'ImportePagado', 'Observaciones']
+  const maxJ = Math.max(2, ...teams.map((t) => t.jugadores.length))
+  const jugadorHeaders = Array.from({ length: maxJ }, (_, i) => `Jugador${i + 1}`)
+  const header = ['Numero', 'Equipo', ...jugadorHeaders, 'Subcategoria', 'Telefono', 'CabezaSerie', 'Estado', 'ImportePagado', 'Observaciones']
   const rows = teams.map((t) => [
     t.numero,
     t.nombre,
-    t.jugadores[0]?.nombre ?? '',
-    t.jugadores[1]?.nombre ?? '',
-    t.jugadores[2]?.nombre ?? '',
-    t.jugadores[3]?.nombre ?? '',
-    t.jugadores[4]?.nombre ?? '',
+    ...Array.from({ length: maxJ }, (_, i) => t.jugadores[i]?.nombre ?? ''),
+    t.subcategoria ?? '',
     t.telefono ?? '',
     t.cabezaSerie ? 'Si' : 'No',
     t.estadoInscripcion,
@@ -73,16 +72,20 @@ export function csvToTeams(text: string, startNumero = 1): Team[] {
         const numeroRaw = at(numCol)
         const numero = /^\d+$/.test(numeroRaw) ? Number(numeroRaw) : startNumero + i
         const nombre = at(colIndex((h) => /equipo|nombre/.test(h) && !/jugador/.test(h))) || `Equipo ${numero}`
-        const jugadores = Array.from({ length: 5 }, (_, p) => ({
-          id: uid('p'),
-          nombre: at(colIndex((h) => h === `jugador${p + 1}` || h === `jugador ${p + 1}`)),
-        }))
+        // gather every "JugadorN" column, ordered by N
+        const jugadorCols = headerCells
+          .map((h, k) => ({ n: Number((h.match(/^jugador\s?(\d+)$/) || [])[1]), k }))
+          .filter((x) => Number.isFinite(x.n) && x.n > 0)
+          .sort((a, b) => a.n - b.n)
+        let jugadores = jugadorCols.map((x) => ({ id: uid('p'), nombre: cols[x.k]?.trim() ?? '' }))
+        if (jugadores.length === 0) jugadores = [{ id: uid('p'), nombre: '' }, { id: uid('p'), nombre: '' }]
         const estadoRaw = at(colIndex((h) => /estado/.test(h))) as Team['estadoInscripcion']
         return {
           id: uid('t'),
           numero,
           nombre,
           jugadores,
+          subcategoria: at(colIndex((h) => /subcat/.test(h))) || undefined,
           telefono: at(colIndex((h) => /tel|fono|phone/.test(h))),
           cabezaSerie: /^(si|sí|1|true|x)$/i.test(at(colIndex((h) => /serie|seed|cabeza/.test(h)))),
           estadoInscripcion: valid.includes(estadoRaw) ? estadoRaw : 'inscrito',

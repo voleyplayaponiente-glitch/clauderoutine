@@ -2,12 +2,13 @@ import type { Category, CompetitionConfig, Team, Tournament } from '@/types'
 import { uid } from '@/engine/id'
 import { defaultConfig, defaultSchedule, CATEGORY_COLORS } from '@/engine/defaults'
 
-export function newTeam(numero: number, nombre = ''): Team {
+export function newTeam(numero: number, nombre = '', jugadores = 5): Team {
+  const count = Math.max(1, jugadores)
   return {
     id: uid('t'),
     numero,
     nombre: nombre || `Equipo ${numero}`,
-    jugadores: Array.from({ length: 5 }, () => ({ id: uid('p'), nombre: '' })),
+    jugadores: Array.from({ length: count }, () => ({ id: uid('p'), nombre: '' })),
     cabezaSerie: false,
     estadoInscripcion: 'inscrito',
     importePagado: 0,

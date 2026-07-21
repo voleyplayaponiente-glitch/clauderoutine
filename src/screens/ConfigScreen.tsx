@@ -41,6 +41,17 @@ export function ConfigScreen() {
                     <Toggle checked={cfg.mejoresTerceros} onChange={(v) => set({ mejoresTerceros: v })} />
                   </div>
                   {cfg.mejoresTerceros && <Field label="Nº de mejores terceros"><input className="input" type="number" min={0} value={cfg.numMejoresTerceros} onChange={(e) => set({ numMejoresTerceros: Number(e.target.value) })} /></Field>}
+                  <Field label="Jugadores por equipo" hint="P. ej. 2 en 2x2, 5/6 en otras modalidades. Se aplica a los equipos nuevos.">
+                    <Select value={String(cfg.jugadoresPorEquipo)} onChange={(v) => set({ jugadoresPorEquipo: Number(v) })} options={[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ value: String(n), label: `${n} jugadores` }))} />
+                  </Field>
+                  <Field label="Subcategorías" hint="Separadas por comas (p. ej. SUB-17, SUB-15). Etiqueta cada equipo dentro de esta misma competición.">
+                    <input
+                      className="input"
+                      value={cfg.subcategorias.join(', ')}
+                      onChange={(e) => set({ subcategorias: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                      placeholder="SUB-17, SUB-15"
+                    />
+                  </Field>
                 </div>
               </Card>
 

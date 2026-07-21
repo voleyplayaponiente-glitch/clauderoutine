@@ -36,6 +36,7 @@ export interface Team {
   telefono?: string
   cabezaSerie: boolean // seed
   seedRank?: number // 1 = mejor cabeza de serie
+  subcategoria?: string // p. ej. "SUB-17" / "SUB-15" dentro de la misma competición
   estadoInscripcion: RegistrationStatus
   importePagado?: number
   observaciones?: string
@@ -83,6 +84,8 @@ export interface CompetitionConfig {
   numEquipos: 8 | 16 | 32
   numGrupos: number
   equiposPorGrupo: number
+  jugadoresPorEquipo: number // p. ej. 2 en 2x2, 5/6 en otras modalidades
+  subcategorias: string[] // etiquetas opcionales de subcategoría (SUB-17, SUB-15…)
   clasificadosPorGrupo: number
   mejoresTerceros: boolean
   numMejoresTerceros: number

@@ -13,6 +13,21 @@ import { generateCategoryDraw, refreshCategory } from '@/lib/category'
 import { generateSchedule } from '@/engine/schedule'
 import type { DrawOptions } from '@/engine/groups'
 
+/** Backfill config fields added in later versions so older saved data keeps working. */
+function migrateTournament(t: Tournament): Tournament {
+  return {
+    ...t,
+    categories: t.categories.map((c) => ({
+      ...c,
+      config: {
+        ...c.config,
+        jugadoresPorEquipo: c.config.jugadoresPorEquipo ?? 5,
+        subcategorias: c.config.subcategorias ?? [],
+      },
+    })),
+  }
+}
+
 export type Role = 'admin' | 'public'
 export type Theme = 'light' | 'dark'
 
@@ -92,10 +107,11 @@ export const useStore = create<State>((set, get) => {
 
     init: async () => {
       const data = await loadState()
+      const tournaments = (data?.tournaments ?? []).map(migrateTournament)
       set({
-        tournaments: data?.tournaments ?? [],
-        activeTournamentId: data?.activeTournamentId ?? data?.tournaments?.[0]?.id ?? null,
-        activeCategoryId: data?.tournaments?.[0]?.categories?.[0]?.id ?? null,
+        tournaments,
+        activeTournamentId: data?.activeTournamentId ?? tournaments[0]?.id ?? null,
+        activeCategoryId: tournaments[0]?.categories?.[0]?.id ?? null,
         loaded: true,
       })
     },
@@ -128,7 +144,8 @@ export const useStore = create<State>((set, get) => {
       return t.id
     },
 
-    importTournament: (t) => {
+    importTournament: (raw) => {
+      const t = migrateTournament(raw)
       set((s) => ({
         tournaments: [...s.tournaments, t],
         activeTournamentId: t.id,
@@ -237,10 +254,11 @@ export const useStore = create<State>((set, get) => {
     },
 
     replaceAll: (state) => {
+      const tournaments = state.tournaments.map(migrateTournament)
       set({
-        tournaments: state.tournaments,
-        activeTournamentId: state.activeTournamentId ?? state.tournaments[0]?.id ?? null,
-        activeCategoryId: state.tournaments[0]?.categories[0]?.id ?? null,
+        tournaments,
+        activeTournamentId: state.activeTournamentId ?? tournaments[0]?.id ?? null,
+        activeCategoryId: tournaments[0]?.categories[0]?.id ?? null,
       })
       persist(get)
     },
