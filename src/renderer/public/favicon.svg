@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect x="8.32" y="11.1616" width="47.36" height="38.8352" rx="4.736" fill="#ffffff"/>
+  <rect x="8.32" y="11.1616" width="47.36" height="9.320447999999999" rx="4.736" fill="#1e40af"/>
+  <rect x="8.32" y="15.821824" width="47.36" height="4.6602239999999995" fill="#1e40af"/>
+  <rect x="20.396800000000002" y="10.2144" width="2.368" height="5.2096" rx="1.184" fill="#1e3a8a"/><rect x="41.2352" y="10.2144" width="2.368" height="5.2096" rx="1.184" fill="#1e3a8a"/>
+  <circle cx="14.950400000000002" cy="25.918976" r="2.1311999999999998" fill="#93c5fd"/><circle cx="26.3168" cy="25.918976" r="2.1311999999999998" fill="#93c5fd"/><circle cx="37.6832" cy="25.918976" r="2.1311999999999998" fill="#93c5fd"/><circle cx="49.0496" cy="25.918976" r="2.1311999999999998" fill="#93c5fd"/><circle cx="14.950400000000002" cy="37.957888" r="2.1311999999999998" fill="#93c5fd"/><circle cx="26.3168" cy="37.957888" r="2.1311999999999998" fill="#93c5fd"/><circle cx="37.6832" cy="37.957888" r="3.1967999999999996" fill="#22c55e"/><circle cx="49.0496" cy="37.957888" r="2.1311999999999998" fill="#93c5fd"/><circle cx="14.950400000000002" cy="49.9968" r="2.1311999999999998" fill="#93c5fd"/><circle cx="26.3168" cy="49.9968" r="2.1311999999999998" fill="#93c5fd"/><circle cx="37.6832" cy="49.9968" r="2.1311999999999998" fill="#93c5fd"/><circle cx="49.0496" cy="49.9968" r="2.1311999999999998" fill="#93c5fd"/>
+</svg>

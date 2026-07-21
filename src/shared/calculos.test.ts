@@ -1,0 +1,218 @@
+import { describe, it, expect } from 'vitest'
+import {
+  horasDia,
+  mediaMensual,
+  sueldoProrrateado,
+  horasContratadasMes,
+  horasComplementarias,
+  valorComplementarias,
+  vacacionesPendientes,
+  resumenMesTrabajador,
+  horasCentroMes,
+  horarioCentroDia,
+  calcRetribucion
+} from './calculos'
+import type { Turno, Trabajador } from './types'
+
+const turnoBase = (p: Partial<Turno>): Turno => ({
+  id: 1,
+  cuadrante_id: 1,
+  fecha: '2026-03-02',
+  dia_semana: 1,
+  situacion: 'trabaja',
+  centro_id: 1,
+  entrada1: '10:00',
+  salida1: '14:00',
+  entrada2: null,
+  salida2: null,
+  descanso_min: 0,
+  ...p
+})
+
+describe('horasDia', () => {
+  it('calcula un tramo simple', () => {
+    expect(horasDia(turnoBase({ entrada1: '10:00', salida1: '18:00' }))).toBe(8)
+  })
+  it('descuenta el descanso', () => {
+    expect(horasDia(turnoBase({ entrada1: '10:00', salida1: '18:00', descanso_min: 30 }))).toBe(7.5)
+  })
+  it('suma los dos tramos de un turno partido', () => {
+    expect(
+      horasDia(
+        turnoBase({ entrada1: '10:00', salida1: '14:00', entrada2: '17:00', salida2: '21:00' })
+      )
+    ).toBe(8)
+  })
+  it('devuelve 0 si el día no es de trabajo', () => {
+    expect(horasDia(turnoBase({ situacion: 'vacaciones' }))).toBe(0)
+  })
+  it('gestiona turno que cruza medianoche', () => {
+    expect(horasDia(turnoBase({ entrada1: '22:00', salida1: '02:00' }))).toBe(4)
+  })
+})
+
+describe('media mensual y sueldo', () => {
+  it('media mensual = horas anuales × coef ÷ 12', () => {
+    expect(mediaMensual(1768, 1)).toBeCloseTo(147.33, 2)
+    expect(mediaMensual(1768, 0.5)).toBeCloseTo(73.67, 2)
+  })
+  it('sueldo prorrateado', () => {
+    expect(sueldoProrrateado(1400, 0.75)).toBe(1050)
+  })
+})
+
+describe('horas complementarias', () => {
+  it('contratadas al mes aproximadas', () => {
+    expect(horasContratadasMes(20)).toBeCloseTo(86.67, 2)
+  })
+  it('solo cuenta el exceso sobre lo contratado', () => {
+    expect(horasComplementarias(100, 86.67)).toBeCloseTo(13.33, 2)
+    expect(horasComplementarias(80, 86.67)).toBe(0)
+  })
+  it('valora las complementarias', () => {
+    expect(valorComplementarias(10, 9.7)).toBe(97)
+  })
+})
+
+describe('vacaciones', () => {
+  it('pendientes = anuales - disfrutadas, nunca negativo', () => {
+    expect(vacacionesPendientes(30, 12)).toBe(18)
+    expect(vacacionesPendientes(30, 40)).toBe(0)
+  })
+})
+
+describe('resumenMesTrabajador', () => {
+  const trab = {
+    tipo: 'ajena',
+    coef_parcialidad: 0.5,
+    horas_contrato_semanales: 20,
+    precio_hora_complementaria: 9.7,
+    horas_convenio_completa: 1768
+  } as unknown as Trabajador
+
+  it('agrega horas, cuenta días y calcula desviaciones', () => {
+    const turnos: Turno[] = [
+      turnoBase({ id: 1, fecha: '2026-03-02', entrada1: '10:00', salida1: '18:00', centro_id: 1 }),
+      turnoBase({ id: 2, fecha: '2026-03-03', entrada1: '10:00', salida1: '18:00', centro_id: 2 }),
+      turnoBase({ id: 3, fecha: '2026-03-04', situacion: 'vacaciones', centro_id: null }),
+      turnoBase({ id: 4, fecha: '2026-03-05', situacion: 'libre', centro_id: null })
+    ]
+    const r = resumenMesTrabajador(trab, turnos)
+    expect(r.horasRealizadas).toBe(16)
+    expect(r.horasPorCentro[1]).toBe(8)
+    expect(r.horasPorCentro[2]).toBe(8)
+    expect(r.diasTrabajados).toBe(2)
+    expect(r.diasVacaciones).toBe(1)
+    expect(r.diasLibre).toBe(1)
+    expect(r.mediaMensualTeorica).toBeCloseTo(73.67, 2)
+  })
+
+  it('el autónomo no genera horas complementarias', () => {
+    const auto = { ...trab, tipo: 'autonomo' } as unknown as Trabajador
+    const turnos = Array.from({ length: 20 }, (_, i) =>
+      turnoBase({ id: i, fecha: `2026-03-${String(i + 1).padStart(2, '0')}`, entrada1: '10:00', salida1: '20:00' })
+    )
+    const r = resumenMesTrabajador(auto, turnos)
+    expect(r.horasComplementarias).toBe(0)
+  })
+
+  it('media mensual de parciales coincide con el cuadro del despacho', () => {
+    const casos: Array<[number, number, number]> = [
+      // [horas_anuales, coef, media_esperada]
+      [1768, 0.75, 110.5],
+      [1768, 0.55, 81.03],
+      [1768, 0.5, 73.67],
+      [1768, 0.057, 8.4],
+      [1711, 0.48, 68.44],
+      [1711, 0.533, 76.0],
+      [1792, 0.5, 74.67]
+    ]
+    for (const [anuales, coef, esperada] of casos) {
+      const t = { ...trab, horas_convenio_completa: anuales, coef_parcialidad: coef } as unknown as Trabajador
+      expect(resumenMesTrabajador(t, []).mediaMensualTeorica).toBeCloseTo(esperada, 2)
+    }
+  })
+})
+
+describe('horasCentroMes', () => {
+  it('suma solo los turnos del centro indicado', () => {
+    const turnos: Turno[] = [
+      turnoBase({ id: 1, entrada1: '10:00', salida1: '18:00', centro_id: 1 }),
+      turnoBase({ id: 2, entrada1: '10:00', salida1: '14:00', centro_id: 2 }),
+      turnoBase({ id: 3, entrada1: '10:00', salida1: '16:00', centro_id: 1 })
+    ]
+    expect(horasCentroMes(1, turnos)).toBe(14)
+    expect(horasCentroMes(2, turnos)).toBe(4)
+  })
+})
+
+describe('horarioCentroDia', () => {
+  const centro = {
+    abre_lunes_sabado: 1,
+    hora_apertura_ls: '10:00',
+    hora_cierre_ls: '22:00',
+    abre_domingos: 0,
+    hora_apertura_dom: '11:00',
+    hora_cierre_dom: '15:00',
+    abre_festivos: 1,
+    hora_apertura_fes: '12:00',
+    hora_cierre_fes: '20:00'
+  }
+  it('lunes a sábado usa su horario', () => {
+    expect(horarioCentroDia(centro, 1, false)).toEqual({ abre: true, apertura: '10:00', cierre: '22:00' })
+    expect(horarioCentroDia(centro, 6, false)).toEqual({ abre: true, apertura: '10:00', cierre: '22:00' })
+  })
+  it('domingo puede tener horario distinto y estar cerrado', () => {
+    expect(horarioCentroDia(centro, 0, false)).toEqual({ abre: false, apertura: '11:00', cierre: '15:00' })
+  })
+  it('festivo tiene prioridad sobre el día de la semana', () => {
+    expect(horarioCentroDia(centro, 1, true)).toEqual({ abre: true, apertura: '12:00', cierre: '20:00' })
+  })
+})
+
+describe('calcRetribucion', () => {
+  const t = {
+    tipo: 'ajena',
+    tipo_contrato: 'indefinido',
+    sueldo_convenio_completo: 1400,
+    plus_productividad: 100,
+    plus_transporte: 0,
+    prorrateo_pagas_extras: 233.33,
+    retribucion_especie: 50, // sujeta a IRPF
+    retribucion_especie_exenta: 40, // seguro salud, exenta
+    deduccion_especie: 50,
+    deduccion_seguro_salud: 30,
+    irpf: 15
+  } as unknown as Trabajador
+  it('prorratea automáticamente las 3 pagas desde el salario base', () => {
+    // 1400 × 3 ÷ 12 = 350
+    expect(calcRetribucion(t).prorrateoPagas).toBeCloseTo(350, 2)
+  })
+  it('devengado suma todas las percepciones (con prorrateo automático)', () => {
+    // 1400 + 100 + 0(transporte) + 350 + 50 + 40 = 1940
+    expect(calcRetribucion(t).totalDevengado).toBeCloseTo(1940, 2)
+  })
+  it('la especie exenta no entra en la base de IRPF', () => {
+    // 1400 + 100 + 350 + 50 = 1900
+    expect(calcRetribucion(t).baseSujetaIrpf).toBeCloseTo(1900, 2)
+  })
+  it('retención IRPF = IRPF% × base sujeta', () => {
+    expect(calcRetribucion(t).retencionIrpf).toBeCloseTo(285, 2)
+  })
+  it('cotización SS del trabajador sobre la base (contingencias 4,70 %)', () => {
+    // base 1900 → contingencias 89,30
+    expect(calcRetribucion(t).cuotaContingencias).toBeCloseTo(89.3, 2)
+  })
+  it('total Seguridad Social = contingencias + desempleo + FP + MEI', () => {
+    // 89,30 + 29,45 + 1,90 + 2,85 = 123,50
+    expect(calcRetribucion(t).totalSeguridadSocial).toBeCloseTo(123.5, 2)
+  })
+  it('neto = devengado − deducciones − retención IRPF − Seguridad Social', () => {
+    // 1940 − 50 − 30 − 285 − 123,50 = 1451,50
+    expect(calcRetribucion(t).neto).toBeCloseTo(1451.5, 2)
+  })
+  it('el autónomo no cotiza como cuenta ajena', () => {
+    const auto = { ...t, tipo: 'autonomo' } as unknown as Trabajador
+    expect(calcRetribucion(auto).totalSeguridadSocial).toBe(0)
+  })
+})

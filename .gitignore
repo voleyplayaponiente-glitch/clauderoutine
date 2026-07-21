@@ -1,0 +1,18 @@
+node_modules
+out
+dist
+dist-web
+dist-server
+dist-ssr
+*.local
+.DS_Store
+.vite
+coverage
+*.log
+# Datos locales de la aplicación (nunca subir a git)
+*.db
+*.db-shm
+*.db-wal
+datos/
+
+*.tsbuildinfo

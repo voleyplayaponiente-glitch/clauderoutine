@@ -1,0 +1,31 @@
+appId: es.despacho.gestorlaboral
+productName: Gestor Laboral
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**'
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: GestorLaboral-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Gestor Laboral
+mac:
+  target:
+    - dmg
+  category: public.app-category.business
+  artifactName: GestorLaboral-${version}.${ext}
+linux:
+  target:
+    - AppImage
+  category: Office
+  artifactName: GestorLaboral-${version}.${ext}

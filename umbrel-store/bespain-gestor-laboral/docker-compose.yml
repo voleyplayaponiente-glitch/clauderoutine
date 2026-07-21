@@ -1,0 +1,16 @@
+# App de Umbrel: Gestor Laboral (versión web).
+# Publica el puerto 3000 directamente (igual que el despliegue manual anterior),
+# así la PWA instalada y el acceso por Tailscale siguen funcionando sin cambios.
+services:
+  web:
+    image: ghcr.io/voleyplayaponiente-glitch/gestor-laboral:latest
+    restart: on-failure
+    stop_grace_period: 30s
+    ports:
+      - "3000:3000"
+    environment:
+      GESTOR_PASSWORD: ${APP_PASSWORD}
+      PORT: 3000
+      GESTOR_DATA_DIR: /datos
+    volumes:
+      - ${APP_DATA_DIR}/data:/datos

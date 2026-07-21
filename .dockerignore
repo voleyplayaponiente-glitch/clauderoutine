@@ -1,0 +1,11 @@
+node_modules
+out
+dist
+dist-web
+dist-server
+datos
+.git
+*.log
+*.db
+*.db-shm
+*.db-wal

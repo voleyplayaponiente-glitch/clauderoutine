@@ -1,0 +1,98 @@
+import type { NuevaEmpresa, NuevoCentro, NuevoTrabajador } from '@shared/types'
+
+// La paleta y el color efectivo por trabajador viven en el motor compartido
+// (los usan también los documentos exportados); aquí solo se re-exportan.
+import { COLORES_TRABAJADOR, colorTrabajador } from '@shared/colores'
+export { COLORES_TRABAJADOR, colorTrabajador }
+
+export const COLORES_CENTRO = [
+  '#0071e3',
+  '#34c759',
+  '#ff9500',
+  '#af52de',
+  '#ff2d55',
+  '#5ac8fa',
+  '#ffcc00',
+  '#8e8e93'
+]
+
+export function empresaVacia(): NuevaEmpresa {
+  return {
+    razon_social: '',
+    cif: '',
+    domicilio: '',
+    admin_nombre: '',
+    admin_nif: '',
+    sello_imagen: null
+  }
+}
+
+export function centroVacio(empresaId: number, color = COLORES_CENTRO[0]): NuevoCentro {
+  return {
+    empresa_id: empresaId,
+    codigo: '',
+    nombre: '',
+    provincia: '',
+    localidad: '',
+    direccion: '',
+    convenio: '',
+    horas_anuales_convenio: 1768,
+    hora_apertura: '10:00',
+    hora_cierre: '22:00',
+    abre_laborables: 1,
+    abre_sabados: 1,
+    abre_lunes_sabado: 1,
+    hora_apertura_ls: '10:00',
+    hora_cierre_ls: '22:00',
+    abre_domingos: 0,
+    hora_apertura_dom: '11:00',
+    hora_cierre_dom: '15:00',
+    abre_festivos: 0,
+    hora_apertura_fes: '11:00',
+    hora_cierre_fes: '15:00',
+    color,
+    activo: 1
+  }
+}
+
+export function trabajadorVacio(empresaId: number, color = COLORES_TRABAJADOR[0]): NuevoTrabajador {
+  return {
+    empresa_id: empresaId,
+    codigo: '',
+    color,
+    tipo: 'ajena',
+    nombre: '',
+    apellidos: '',
+    dni_nie: '',
+    nss: '',
+    direccion: '',
+    telefono: '',
+    email: '',
+    iban: '',
+    categoria: '',
+    tipo_contrato: 'indefinido',
+    fecha_contrato_inicio: null,
+    fecha_contrato_fin: null,
+    fecha_alta: null,
+    fecha_baja: null,
+    fecha_fin_periodo_prueba: null,
+    horas_contrato_semanales: 40,
+    jornada_completa_semanal: 40,
+    horas_convenio_completa: 1768,
+    coef_parcialidad: 1,
+    sueldo_convenio_completo: 0,
+    irpf: 0,
+    vacaciones_anuales: 30,
+    vacaciones_disfrutadas: 0,
+    precio_hora_complementaria: 0,
+    plus_productividad: 0,
+    plus_transporte: 0,
+    prorrateo_pagas_extras: 0,
+    retribucion_especie: 0,
+    retribucion_especie_exenta: 0,
+    deduccion_especie: 0,
+    deduccion_seguro_salud: 0,
+    observaciones: '',
+    activo: 1
+  }
+}

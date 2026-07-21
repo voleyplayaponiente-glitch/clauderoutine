@@ -1,0 +1,46 @@
+# Construye la imagen Docker de la versión web y la publica en GitHub
+# Container Registry (ghcr.io) en cada push de la rama de la app. Es la
+# imagen que instala el Umbrel del usuario a través de su tienda personal
+# de apps (repo bespain-umbrel-store).
+name: Publicar imagen Docker (GHCR)
+
+on:
+  push:
+    branches:
+      - claude/labor-management-scheduling-app-jd2hcj
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  imagen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Iniciar sesión en ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y publicar
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # El Umbrel del usuario es un Umbrel Home (Intel x86_64).
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/gestor-laboral:latest
+            ghcr.io/${{ github.repository_owner }}/gestor-laboral:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Gestor Laboral (web) para Umbrel
