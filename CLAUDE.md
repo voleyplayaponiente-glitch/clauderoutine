@@ -183,7 +183,17 @@ build + 32 tests en verde. Cada cambio: implementar → `typecheck`/`test`/`buil
 navegador con datos reales sembrados → commit + push al branch → pasar al usuario el comando de
 actualización de Umbrel.
 
-**Próxima sesión (mañana):** el usuario quiere seguir con "algunas mejoras" (sin concretar aún).
+**Estado del despliegue (21/07/2026):** publicada la **versión 1.2.0** en la store (Fases 10+11:
+calendario por centros filtrable y rediseñado, ficha de contratación según el modelo del despacho,
+pestaña Convenios); el usuario actualiza con el botón Update de Umbrel. Se le envió el Excel de la
+ficha nueva para revisión: **pendiente su OK o cambios de campos**.
+
+**⚠️ Notas operativas del entorno remoto:** (1) el contenedor puede RESTAURARSE a un estado anterior
+entre turnos → si el árbol local no cuadra con lo esperado, `git fetch` + `git reset --hard origin/...`
+(todo lo importante debe empujarse SIEMPRE al terminar cada cambio; el clon de la store en /workspace
+también se pierde → re-clonar). (2) El proxy de git REESCRIBE los commits al empujar (el sha remoto ≠
+sha local) → para esperar la imagen GHCR del workflow, comprobar el estado del run por la API de
+GitHub o usar el tag `latest`, no el sha local.
 
 **Pendiente / ideas:** confirmar si el plus de transporte va exento; permitir nº de pagas extra distinto
 de 3; posible selector de color/tamaño de pastillas y **mostrar código junto al nombre en la agenda**;
