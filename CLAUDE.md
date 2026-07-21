@@ -54,6 +54,10 @@ Cada categoría es totalmente independiente (equipos, grupos, resultados, cuadro
 - Clasificación por defecto: PG → dif. sets → sets favor → dif. puntos → puntos favor → enfrentamiento directo → manual. **Orden configurable** en la pantalla de config.
 - Formatos por defecto: 8→2 grupos, 16→4, 32→8; clasifican 2 por grupo; partido 3.º puesto activable.
 - Al guardar/corregir un resultado se recalculan clasificación y cuadro; avisa si el cambio afecta rondas posteriores.
+- **Jugadores por equipo configurable** por categoría (`config.jugadoresPorEquipo`, p. ej. 2 en 2x2, 5/6 otras). Se aplica a equipos nuevos; el modal de equipo pinta ese nº de campos.
+- **Subcategoría por equipo** (`Team.subcategoria`, p. ej. SUB-17/SUB-15 compitiendo en la misma competición SUB-17). Lista definible en `config.subcategorias`; en la pantalla de Equipos hay columna + filtro tipo pestaña.
+- Migración: `migrateTournament` en `store.ts` rellena `jugadoresPorEquipo`/`subcategorias` en datos guardados antiguos (aplicado en init/import/replaceAll).
+- CSV: exporta `Jugador1..N` + `Subcategoria`; importación por cabecera (compatible con exports antiguos de 2 jugadores) con respaldo posicional.
 
 ## Convenciones
 - Interfaz **en español**; mensajes de error en español.
@@ -66,5 +70,8 @@ Cada categoría es totalmente independiente (equipos, grupos, resultados, cuadro
 - Pages debe estar en **Settings → Pages → Source: GitHub Actions** (ya activado). El token por defecto no puede crear el site solo; requirió activación manual una vez.
 
 ## Estado / pendientes
-Terminado: todo el flujo funcional + 38 tests + PWA + export PDF/CSV + backup JSON + vista pública/QR.
+Terminado: todo el flujo funcional + **41 tests** + PWA + export PDF/CSV + backup JSON + vista pública/QR + jugadores por equipo configurables + subcategoría de equipo con filtro.
 Ampliable: drag-and-drop en calendario (hoy edición por selectores), siembra automática de mejores terceros en el cuadro, sincronización remota PostgreSQL, export `.xlsx` nativo.
+
+## Notas de uso (PWA instalada)
+- Es PWA con `registerType: 'autoUpdate'`. Tras un despliegue nuevo, en la app instalada basta **recargar** (Mac: Cmd+R, a veces dos veces); si persiste lo antiguo, **Cmd+Q y reabrir**. Recargar/actualizar **no borra datos** (IndexedDB local); solo se pierden con «Borrar todos los datos» o limpieza manual del navegador.
