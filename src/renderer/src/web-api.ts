@@ -85,6 +85,41 @@ export const webApi: ApiGestor = {
     listar: (trabajadorId) => rpc('vacaciones:listar', trabajadorId),
     fijar: (trabajadorId, fechas) => rpc('vacaciones:fijar', trabajadorId, fechas)
   },
+  convenios: {
+    listar: () => rpc('convenios:listar'),
+    crear: (d) => rpc('convenios:crear', d),
+    actualizar: (id, d) => rpc('convenios:actualizar', id, d),
+    borrar: (id) => rpc('convenios:borrar', id)
+  },
+  fichaAlta: {
+    plantilla: async () => {
+      descargar('/api/ficha-alta/plantilla')
+      return { ok: true }
+    },
+    importar: () =>
+      new Promise((resolve) => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = '.xlsx'
+        input.onchange = async () => {
+          const file = input.files?.[0]
+          if (!file) return resolve({ ok: false })
+          try {
+            const r = await fetch('/api/ficha-alta/parse', {
+              method: 'POST',
+              headers: { 'content-type': 'application/octet-stream' },
+              body: await file.arrayBuffer()
+            })
+            const data = await r.json().catch(() => ({}))
+            if (r.ok) resolve({ ok: true, trabajador: data.trabajador })
+            else resolve({ ok: false, error: data?.error || 'No se pudo leer la ficha' })
+          } catch (e) {
+            resolve({ ok: false, error: (e as Error).message })
+          }
+        }
+        input.click()
+      })
+  },
   cuadrante: {
     obtenerOCrear: (trabId, anio, mes) => rpc('cuadrante:obtenerOCrear', trabId, anio, mes),
     turnos: (cuadranteId) => rpc('cuadrante:turnos', cuadranteId),
@@ -112,6 +147,14 @@ export const webApi: ApiGestor = {
     },
     retribucionExcel: async (empresaId) => {
       descargar(`/api/export/retribucion-excel?empresa=${empresaId}`)
+      return { ok: true }
+    },
+    cuadranteCentrosPdf: async (empresaId, anio, mes) => {
+      window.open(`/api/export/cuadrante-centros-pdf?empresa=${empresaId}&anio=${anio}&mes=${mes}`, '_blank')
+      return { ok: true }
+    },
+    cuadranteCentrosExcel: async (empresaId, anio, mes) => {
+      descargar(`/api/export/cuadrante-centros-excel?empresa=${empresaId}&anio=${anio}&mes=${mes}`)
       return { ok: true }
     }
   },

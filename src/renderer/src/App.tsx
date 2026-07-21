@@ -6,6 +6,7 @@ import { PantallaCentros } from './screens/Centros'
 import { PantallaTrabajadores } from './screens/Trabajadores'
 import { PantallaCuadrante } from './screens/Cuadrante'
 import { PantallaInformes } from './screens/Informes'
+import { PantallaConvenios } from './screens/Convenios'
 import { PantallaExportar } from './screens/Exportar'
 import { PantallaAjustes } from './screens/Ajustes'
 
@@ -13,6 +14,7 @@ export type Vista =
   | 'empresas'
   | 'centros'
   | 'trabajadores'
+  | 'convenios'
   | 'cuadrante'
   | 'informes'
   | 'exportar'
@@ -32,6 +34,7 @@ const NAV: Array<{ v: Vista; label: string; icon: string }> = [
   { v: 'empresas', label: 'Empresas', icon: '🏢' },
   { v: 'centros', label: 'Centros', icon: '🏬' },
   { v: 'trabajadores', label: 'Trabajadores', icon: '👤' },
+  { v: 'convenios', label: 'Convenios', icon: '📋' },
   { v: 'cuadrante', label: 'Cuadrantes / Agenda', icon: '🗓️' },
   { v: 'informes', label: 'Informes', icon: '📊' },
   { v: 'exportar', label: 'Exportación', icon: '📄' },
@@ -105,6 +108,7 @@ export function App(): React.JSX.Element {
             {vista === 'empresas' && <PantallaEmpresas />}
             {vista === 'centros' && <PantallaCentros />}
             {vista === 'trabajadores' && <PantallaTrabajadores />}
+            {vista === 'convenios' && <PantallaConvenios />}
             {vista === 'cuadrante' && <PantallaCuadrante />}
             {vista === 'informes' && <PantallaInformes />}
             {vista === 'exportar' && <PantallaExportar />}

@@ -87,6 +87,29 @@ export function PantallaExportar(): React.JSX.Element {
       </div>
 
       <div className="card">
+        <h3>Cuadrante mensual por centros (calendario)</h3>
+        <p className="muted">
+          El calendario de la vista por centro: cada día con sus trabajadores en su color y su
+          horario, ordenados por hora de entrada, y el total de horas por centro. Usa el mes y año
+          seleccionados arriba.
+        </p>
+        <div className="row" style={{ marginTop: 8 }}>
+          <button
+            className="btn primary"
+            onClick={async () => feedback(await window.api.exportar.cuadranteCentrosPdf(empresa.id, anio, mes))}
+          >
+            📄 Calendario PDF
+          </button>
+          <button
+            className="btn"
+            onClick={async () => feedback(await window.api.exportar.cuadranteCentrosExcel(empresa.id, anio, mes))}
+          >
+            📊 Calendario Excel
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
         <h3>Resumen mensual de horas por centro</h3>
         <p className="muted">Total de horas por centro de {empresa.razon_social} en el mes seleccionado.</p>
         <div className="row" style={{ marginTop: 8 }}>

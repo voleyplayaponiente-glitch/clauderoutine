@@ -1,9 +1,23 @@
 // Tabla de manejadores de datos (electron-free) compartida por el IPC de
 // escritorio y por el servidor web. Cada clave es un "canal" namespace:método.
-import { empresas, centros, festivos, trabajadores, cuadrantes, vacaciones } from './db/repos'
+import {
+  empresas,
+  centros,
+  festivos,
+  trabajadores,
+  cuadrantes,
+  vacaciones,
+  conveniosSalario
+} from './db/repos'
 import { rutaBaseDatos } from './db/database'
 import type { FiltroTrabajadores } from './db/repos'
-import type { NuevaEmpresa, NuevoCentro, NuevoTrabajador, Turno } from '../shared/types'
+import type {
+  NuevaEmpresa,
+  NuevoCentro,
+  NuevoTrabajador,
+  NuevoConvenioSalario,
+  Turno
+} from '../shared/types'
 
 export type Manejador = (...args: any[]) => unknown
 
@@ -57,6 +71,13 @@ export const handlers: Record<string, Manejador> = {
   'cuadrante:turnosMesEmpresa': (empresaId: number, anio: number, mes: number) =>
     cuadrantes.turnosMesEmpresa(empresaId, anio, mes),
 
+  // Salarios por convenio
+  'convenios:listar': () => conveniosSalario.listar(),
+  'convenios:crear': (data: NuevoConvenioSalario) => conveniosSalario.crear(data),
+  'convenios:actualizar': (id: number, data: NuevoConvenioSalario) =>
+    conveniosSalario.actualizar(id, data),
+  'convenios:borrar': (id: number) => conveniosSalario.borrar(id),
+
   // Utilidades
   'app:rutaBaseDatos': () => rutaBaseDatos()
 }
@@ -100,6 +121,10 @@ const FIRMAS: Record<string, TipoArg[]> = {
   'cuadrante:guardarTurnos': ['arr'],
   'cuadrante:fijarEntrega': ['num', 'str0'],
   'cuadrante:turnosMesEmpresa': ['num', 'num', 'num'],
+  'convenios:listar': [],
+  'convenios:crear': ['obj'],
+  'convenios:actualizar': ['num', 'obj'],
+  'convenios:borrar': ['num'],
   'app:rutaBaseDatos': []
 }
 

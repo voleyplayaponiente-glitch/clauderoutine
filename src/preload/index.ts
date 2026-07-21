@@ -10,6 +10,8 @@ import type {
   TrabajadorCentro,
   Cuadrante,
   Turno,
+  ConvenioSalario,
+  NuevoConvenioSalario,
   ResultadoOperacion
 } from '../shared/types'
 import type { ApiGestor, FiltroTrabajadores } from '../shared/api'
@@ -56,6 +58,13 @@ export const api: ApiGestor = {
     fijar: (trabajadorId: number, fechas: string[]): Promise<void> =>
       inv('vacaciones:fijar', trabajadorId, fechas)
   },
+  convenios: {
+    listar: (): Promise<ConvenioSalario[]> => inv('convenios:listar'),
+    crear: (d: NuevoConvenioSalario): Promise<ConvenioSalario> => inv('convenios:crear', d),
+    actualizar: (id: number, d: NuevoConvenioSalario): Promise<ConvenioSalario> =>
+      inv('convenios:actualizar', id, d),
+    borrar: (id: number): Promise<void> => inv('convenios:borrar', id)
+  },
   cuadrante: {
     obtenerOCrear: (trabId: number, anio: number, mes: number): Promise<Cuadrante> =>
       inv('cuadrante:obtenerOCrear', trabId, anio, mes),
@@ -81,7 +90,11 @@ export const api: ApiGestor = {
     resumenExcel: (empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion> =>
       inv('export:resumenExcel', empresaId, anio, mes),
     retribucionExcel: (empresaId: number): Promise<ResultadoOperacion> =>
-      inv('export:retribucionExcel', empresaId)
+      inv('export:retribucionExcel', empresaId),
+    cuadranteCentrosPdf: (empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion> =>
+      inv('export:cuadranteCentrosPdf', empresaId, anio, mes),
+    cuadranteCentrosExcel: (empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion> =>
+      inv('export:cuadranteCentrosExcel', empresaId, anio, mes)
   },
   backup: {
     exportar: (): Promise<ResultadoOperacion> => inv('backup:exportar'),

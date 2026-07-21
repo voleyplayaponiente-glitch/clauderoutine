@@ -1,6 +1,8 @@
 // Reúne y calcula los datos de un cuadrante mensual para exportarlo.
 import { empresas, centros, trabajadores, cuadrantes } from '../db/repos'
 import { resumenMesTrabajador, horasDia, horasCentroMes } from '../../shared/calculos'
+import { horaAMinutos } from '../../shared/fechas'
+import { colorTrabajador } from '../../shared/colores'
 import type { Centro, Empresa, Trabajador, Turno } from '../../shared/types'
 
 export interface DatosCuadrante {
@@ -44,4 +46,51 @@ export function datosResumenCentros(empresaId: number, anio: number, mes: number
   })
   const totalHoras = filas.reduce((s, f) => s + f.horas, 0)
   return { empresa, filas, totalHoras, anio, mes }
+}
+
+// ---- Cuadrante mensual por centros (el "calendario" de la vista por centro) ----
+export interface DatosCuadranteCentros {
+  empresa: Empresa
+  centros: Centro[]
+  anio: number
+  mes: number
+  /** nombre visible y color efectivo por trabajador */
+  trabajadoresPorId: Record<number, { nombre: string; color: string }>
+  /** clave `fecha|centroId` → turnos de trabajo ordenados por hora de entrada */
+  porDiaCentro: Map<string, Array<Turno & { trabajador_id: number }>>
+  /** horas totales del mes por centro */
+  horasPorCentro: Record<number, number>
+}
+
+export function datosCuadranteCentros(empresaId: number, anio: number, mes: number): DatosCuadranteCentros {
+  const empresa = empresas.obtener(empresaId)
+  if (!empresa) throw new Error('Empresa no encontrada')
+  const listaCentros = centros.listar(empresaId)
+  const listaTrabs = trabajadores.listar({ empresaId })
+  const trabajadoresPorId: Record<number, { nombre: string; color: string }> = {}
+  for (const t of listaTrabs) {
+    trabajadoresPorId[t.id] = {
+      nombre: t.apellidos || t.nombre,
+      color: colorTrabajador(t.color, t.id)
+    }
+  }
+  const turnos = cuadrantes.turnosMesEmpresa(empresaId, anio, mes)
+  const porDiaCentro = new Map<string, Array<Turno & { trabajador_id: number }>>()
+  const horasPorCentro: Record<number, number> = {}
+  for (const t of turnos) {
+    if (t.situacion !== 'trabaja' || t.centro_id == null) continue
+    const clave = `${t.fecha}|${t.centro_id}`
+    if (!porDiaCentro.has(clave)) porDiaCentro.set(clave, [])
+    porDiaCentro.get(clave)!.push(t)
+    horasPorCentro[t.centro_id] = (horasPorCentro[t.centro_id] ?? 0) + horasDia(t)
+  }
+  // Dentro de cada día: primero el turno de mañana, luego el de tarde.
+  const inicio = (t: Turno): number => {
+    const vals = [horaAMinutos(t.entrada1), horaAMinutos(t.entrada2)].filter(
+      (x): x is number => x !== null
+    )
+    return vals.length ? Math.min(...vals) : 9999
+  }
+  for (const lista of porDiaCentro.values()) lista.sort((a, b) => inicio(a) - inicio(b))
+  return { empresa, centros: listaCentros, anio, mes, trabajadoresPorId, porDiaCentro, horasPorCentro }
 }

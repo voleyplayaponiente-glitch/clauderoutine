@@ -126,6 +126,18 @@ CREATE TABLE IF NOT EXISTS vacacion (
   UNIQUE(trabajador_id, fecha)
 );
 
+CREATE TABLE IF NOT EXISTS convenio_salario (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  convenio TEXT NOT NULL,
+  categoria TEXT NOT NULL,
+  salario_base REAL NOT NULL DEFAULT 0,
+  plus_productividad REAL NOT NULL DEFAULT 0,
+  plus_transporte REAL NOT NULL DEFAULT 0,
+  precio_hora_complementaria REAL NOT NULL DEFAULT 0,
+  horas_convenio_anuales REAL NOT NULL DEFAULT 1768,
+  notas TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_vacacion_trab ON vacacion(trabajador_id);
 CREATE INDEX IF NOT EXISTS idx_centro_empresa ON centro(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_trabajador_empresa ON trabajador(empresa_id);
@@ -134,4 +146,4 @@ CREATE INDEX IF NOT EXISTS idx_cuadrante_trab ON cuadrante(trabajador_id, anio, 
 CREATE INDEX IF NOT EXISTS idx_festivo_centro ON festivo(centro_id);
 `
 
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 7

@@ -106,12 +106,14 @@ npm run web          # servidor web (env: GESTOR_PASSWORD, PORT, GESTOR_DATA_DIR
   TLS en LAN: decidido NO ponerlo (autofirmado rompería la PWA y Tailscale ya cifra el acceso remoto;
   la LAN es propia). Revisar solo si la app se usara desde una red compartida.
 
-## Modelo de datos (SQLite) — esquema v6
-`empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`.
+## Modelo de datos (SQLite) — esquema v7
+`empresa → centro (+ festivo) → trabajador (+ trabajador_centro N:M) → cuadrante (1/mes) → turno (1/día, 2 tramos)`
+`+ convenio_salario` (global, sin FK).
 Versionado por `PRAGMA user_version`, migración incremental en `db/database.ts`:
 - v2: horario del centro por tipo de día + campos de retribución básicos.
 - v3: `retribucion_especie_exenta`. v4: `codigo`, `plus_transporte`. v5: `jornada_completa_semanal`.
-- v6: `color` del trabajador.
+- v6: `color` del trabajador. v7: tabla `convenio_salario` (convenio, categoria, salario_base,
+  plus_productividad, plus_transporte, precio_hora_complementaria, horas_convenio_anuales, notas).
 
 **centro:** horario **por tipo de día** en 3 bloques con su “¿abre?” + apertura/cierre:
 `abre_lunes_sabado`+`hora_apertura_ls/hora_cierre_ls`, `abre_domingos`+`*_dom`, `abre_festivos`+`*_fes`
@@ -157,6 +159,19 @@ identificación, `horas_contrato_semanales`, `jornada_completa_semanal` (def. 40
 - **Exportación cuadrante (PDF `html-docs.ts` + Excel `generate-excel.ts`):** las columnas **Centro** y
   **Horario** solo se rellenan cuando la situación es `trabaja`; en Libre/Vacaciones/Baja/Festivo/Permiso
   van en blanco (el turno puede conservar `centro_id`/tramos heredados, pero no se muestran → no confunde).
+- **Fase 10 (20/07/2026):** (1) **Exportación del calendario por centros** (la vista por centro):
+  `datosCuadranteCentros` en export-data, `htmlCuadranteCentros` (A4 apaisado, pastillas de color,
+  orden mañana→tarde, total h/centro) y `bufferCuadranteCentrosExcel` (richText coloreado); endpoints
+  `/api/export/cuadrante-centros-{pdf,excel}`, tarjeta en Exportación, también en escritorio (ipc).
+  (2) **Ficha de alta Excel** (`services/ficha-alta.ts`): plantilla rellenable (etiquetas col B/valores
+  col C, desplegables ajena/autonomo e indefinido/temporal, parse tolerante: fechas dd/mm/aaaa o Date,
+  números con coma) + endpoints `/api/ficha-alta/{plantilla,parse}`; botones en Trabajadores
+  (`window.api.fichaAlta` **opcional**, solo web) → abre el alta precargada para revisar y guardar.
+  ⚠️ El usuario iba a adjuntar SU modelo de ficha en Excel y no llegó: pedirlo y adaptar etiquetas/CAMPOS.
+  (3) **Pestaña Convenios** (`screens/Convenios.tsx`, nav 📋): CRUD de `convenio_salario`; en la ficha
+  del trabajador (sección Retribución) selector "Aplicar salario según convenio" que rellena salario
+  base, pluses, €/h complementaria y horas anuales del convenio. `colorTrabajador` movido a
+  `shared/colores.ts` (re-export en defaults.ts).
 
 ## Estado
 Desplegada y **en uso real por el usuario en su Umbrel** (versión web), con acceso local (PWA) y

@@ -10,7 +10,9 @@ import type {
   NuevoTrabajador,
   TrabajadorCentro,
   Cuadrante,
-  Turno
+  Turno,
+  ConvenioSalario,
+  NuevoConvenioSalario
 } from '../../shared/types'
 
 // ---------------------------------------------------------------- EMPRESAS
@@ -312,5 +314,41 @@ export const cuadrantes = {
          ORDER BY tu.fecha`
       )
       .all(empresaId, anio, mes) as Array<Turno & { trabajador_id: number }>
+  }
+}
+
+// ---------------------------------------------------------------- CONVENIOS (salarios)
+export const conveniosSalario = {
+  listar(): ConvenioSalario[] {
+    return getDb()
+      .prepare('SELECT * FROM convenio_salario ORDER BY convenio, categoria')
+      .all() as ConvenioSalario[]
+  },
+  crear(c: NuevoConvenioSalario): ConvenioSalario {
+    const info = getDb()
+      .prepare(
+        `INSERT INTO convenio_salario (convenio, categoria, salario_base, plus_productividad,
+          plus_transporte, precio_hora_complementaria, horas_convenio_anuales, notas)
+         VALUES (@convenio,@categoria,@salario_base,@plus_productividad,@plus_transporte,
+          @precio_hora_complementaria,@horas_convenio_anuales,@notas)`
+      )
+      .run(c)
+    return getDb()
+      .prepare('SELECT * FROM convenio_salario WHERE id = ?')
+      .get(Number(info.lastInsertRowid)) as ConvenioSalario
+  },
+  actualizar(id: number, c: NuevoConvenioSalario): ConvenioSalario {
+    getDb()
+      .prepare(
+        `UPDATE convenio_salario SET convenio=@convenio, categoria=@categoria,
+          salario_base=@salario_base, plus_productividad=@plus_productividad,
+          plus_transporte=@plus_transporte, precio_hora_complementaria=@precio_hora_complementaria,
+          horas_convenio_anuales=@horas_convenio_anuales, notas=@notas WHERE id=@id`
+      )
+      .run({ ...c, id })
+    return getDb().prepare('SELECT * FROM convenio_salario WHERE id = ?').get(id) as ConvenioSalario
+  },
+  borrar(id: number): void {
+    getDb().prepare('DELETE FROM convenio_salario WHERE id = ?').run(id)
   }
 }

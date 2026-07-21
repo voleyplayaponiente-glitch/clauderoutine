@@ -2,10 +2,10 @@
 // Lo usan tanto la exportación de escritorio (guarda a fichero) como el servidor
 // web (lo envía como descarga).
 import ExcelJS from 'exceljs'
-import { datosCuadrante, datosResumenCentros } from './export-data'
+import { datosCuadrante, datosResumenCentros, datosCuadranteCentros } from './export-data'
 import { empresas, trabajadores } from '../db/repos'
 import { calcRetribucion } from '../../shared/calculos'
-import { DIAS_SEMANA, MESES, isoALocal } from '../../shared/fechas'
+import { DIAS_SEMANA, DIAS_SEMANA_CORTO, MESES, isoALocal, diaSemanaIso } from '../../shared/fechas'
 import type { Turno } from '../../shared/types'
 
 const SITUACIONES: Record<string, string> = {
@@ -184,5 +184,87 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
       n2(r.neto)
     ])
   }
+  return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)
+}
+
+/** Calendario mensual por centros (la vista por centro), con cada trabajador en su color. */
+export async function bufferCuadranteCentrosExcel(
+  empresaId: number,
+  anio: number,
+  mes: number
+): Promise<Buffer> {
+  const d = datosCuadranteCentros(empresaId, anio, mes)
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Cuadrante por centros', {
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  })
+
+  ws.columns = [
+    { key: 'dia', width: 10 },
+    ...d.centros.map((c) => ({ key: `c${c.id}`, width: 42 }))
+  ]
+
+  ws.mergeCells(1, 1, 1, d.centros.length + 1)
+  ws.getCell('A1').value = `${d.empresa.razon_social} — Cuadrante mensual por centros — ${MESES[mes - 1]} ${anio}`
+  ws.getCell('A1').font = { bold: true, size: 13 }
+
+  const cab = ws.addRow(['Día', ...d.centros.map((c) => c.nombre)])
+  cab.font = { bold: true }
+  cab.alignment = { vertical: 'middle', wrapText: true }
+
+  const mm = String(mes).padStart(2, '0')
+  const totalDias = new Date(anio, mes, 0).getDate()
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const fecha = `${anio}-${mm}-${String(dia).padStart(2, '0')}`
+    const dw = diaSemanaIso(fecha)
+    const finde = dw === 0 || dw === 6
+    const fila = ws.addRow([`${dia} ${DIAS_SEMANA_CORTO[dw]}`])
+    fila.alignment = { vertical: 'top', wrapText: true }
+    d.centros.forEach((c, i) => {
+      const lst = d.porDiaCentro.get(`${fecha}|${c.id}`) ?? []
+      if (!lst.length) return
+      // Texto enriquecido: el nombre de cada trabajador en su color, horario al lado.
+      const richText: ExcelJS.RichText[] = []
+      lst.forEach((t, j) => {
+        const info = d.trabajadoresPorId[t.trabajador_id]
+        const horas = [
+          t.entrada1 && t.salida1 ? `${t.entrada1}–${t.salida1}` : '',
+          t.entrada2 && t.salida2 ? `${t.entrada2}–${t.salida2}` : ''
+        ]
+          .filter(Boolean)
+          .join(' / ')
+        richText.push({
+          text: (j > 0 ? '\n' : '') + (info?.nombre ?? '?'),
+          font: { bold: true, color: { argb: 'FF' + (info?.color ?? '#57534e').slice(1).toUpperCase() } }
+        })
+        richText.push({ text: `  ${horas}`, font: { color: { argb: 'FF444444' } } })
+      })
+      fila.getCell(i + 2).value = { richText }
+    })
+    if (finde) {
+      for (let col = 1; col <= d.centros.length + 1; col++) {
+        fila.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+      }
+    }
+  }
+
+  const tot = ws.addRow([
+    'TOTAL h',
+    ...d.centros.map((c) => Number((d.horasPorCentro[c.id] ?? 0).toFixed(2)))
+  ])
+  tot.font = { bold: true }
+
+  // Bordes finos en toda la tabla
+  for (let r = 2; r <= ws.rowCount; r++) {
+    for (let col = 1; col <= d.centros.length + 1; col++) {
+      ws.getRow(r).getCell(col).border = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      }
+    }
+  }
+
   return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)
 }

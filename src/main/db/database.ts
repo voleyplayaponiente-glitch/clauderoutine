@@ -85,6 +85,9 @@ function migrar(d: Database.Database): void {
     addColumn(d, 'trabajador', "color TEXT NOT NULL DEFAULT ''")
   }
 
+  // v7: tabla convenio_salario (salarios por convenio/categoría). La crea el
+  // propio SCHEMA_SQL (CREATE TABLE IF NOT EXISTS); no hay columnas que migrar.
+
   if (version < SCHEMA_VERSION) d.pragma(`user_version = ${SCHEMA_VERSION}`)
 }
 

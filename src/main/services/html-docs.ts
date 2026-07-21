@@ -1,8 +1,16 @@
 // Generadores de HTML de los documentos (cuadrante firmado y resumen por centro).
 // Sin dependencias de Electron: los usa tanto la exportación PDF de escritorio
 // (printToPDF) como el servidor web (página imprimible desde el navegador).
-import { datosCuadrante, datosResumenCentros } from './export-data'
-import { DIAS_SEMANA, MESES, isoALocal, numEs, hoyIso } from '../../shared/fechas'
+import { datosCuadrante, datosResumenCentros, datosCuadranteCentros } from './export-data'
+import {
+  DIAS_SEMANA,
+  DIAS_SEMANA_CORTO,
+  MESES,
+  isoALocal,
+  numEs,
+  hoyIso,
+  diaSemanaIso
+} from '../../shared/fechas'
 import type { Turno } from '../../shared/types'
 
 const SITUACIONES: Record<string, string> = {
@@ -147,6 +155,73 @@ export function htmlResumenCentros(empresaId: number, anio: number, mes: number,
       <thead><tr><th>Código</th><th>Centro</th><th class="num">Nº trabajadores</th><th class="num">Horas</th></tr></thead>
       <tbody>${filas}
         <tr class="total"><td colspan="3">TOTAL</td><td class="num">${numEs(d.totalHoras)}</td></tr>
+      </tbody>
+    </table>
+  </body></html>`
+}
+
+/** Calendario mensual por centros: la vista por centro de la agenda, imprimible. */
+export function htmlCuadranteCentros(
+  empresaId: number,
+  anio: number,
+  mes: number,
+  conBoton = false
+): string {
+  const d = datosCuadranteCentros(empresaId, anio, mes)
+  const mm = String(mes).padStart(2, '0')
+  const totalDias = new Date(anio, mes, 0).getDate()
+  const cab = d.centros
+    .map((c) => `<th><span class="cua" style="background:${esc(c.color)}"></span> ${esc(c.nombre)}</th>`)
+    .join('')
+  let cuerpo = ''
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const fecha = `${anio}-${mm}-${String(dia).padStart(2, '0')}`
+    const dw = diaSemanaIso(fecha)
+    const finde = dw === 0 || dw === 6 ? ' class="finde"' : ''
+    const celdas = d.centros
+      .map((c) => {
+        const lst = d.porDiaCentro.get(`${fecha}|${c.id}`) ?? []
+        const contenido = lst
+          .map((t) => {
+            const info = d.trabajadoresPorId[t.trabajador_id]
+            const horario = [
+              t.entrada1 && t.salida1 ? `${t.entrada1}–${t.salida1}` : '',
+              t.entrada2 && t.salida2 ? `${t.entrada2}–${t.salida2}` : ''
+            ]
+              .filter(Boolean)
+              .join(' / ')
+            return `<span class="turno"><span class="pill" style="background:${esc(info?.color ?? '#888')}">${esc(
+              info?.nombre ?? '?'
+            )}</span> <span class="hor">${esc(horario)}</span></span>`
+          })
+          .join(' ')
+        return `<td${finde}>${contenido}</td>`
+      })
+      .join('')
+    cuerpo += `<tr><td${finde}><b>${dia}</b> ${DIAS_SEMANA_CORTO[dw]}</td>${celdas}</tr>`
+  }
+  const totales = d.centros
+    .map((c) => `<td class="num"><b>${numEs(d.horasPorCentro[c.id] ?? 0)}</b></td>`)
+    .join('')
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cuadrante por centros ${MESES[mes - 1]} ${anio}</title><style>${ESTILOS}
+  table { table-layout: fixed; }
+  th:first-child, td:first-child { width: 70px; }
+  td { font-size: 10px; }
+  td.finde { background: #f1f5f9; }
+  .cua { display:inline-block; width:9px; height:9px; border-radius:2px; vertical-align:baseline; }
+  .turno { display:inline-block; white-space:nowrap; margin: 1px 6px 1px 0; }
+  .pill { display:inline-block; padding: 0 5px; border-radius: 6px; color: #fff; font-size: 9.5px; font-weight: 600; }
+  .hor { font-size: 9px; color: #444; }
+  @media print { @page { size: A4 landscape; margin: 10mm; } }
+  </style></head>
+  <body>
+    ${conBoton ? BOTON_IMPRIMIR : ''}
+    <h1>${esc(d.empresa.razon_social)}</h1>
+    <h2>Cuadrante mensual por centros — ${MESES[mes - 1]} ${anio}</h2>
+    <table>
+      <thead><tr><th>Día</th>${cab}</tr></thead>
+      <tbody>${cuerpo}
+        <tr class="total"><td>TOTAL h</td>${totales}</tr>
       </tbody>
     </table>
   </body></html>`

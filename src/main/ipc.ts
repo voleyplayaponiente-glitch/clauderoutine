@@ -4,9 +4,14 @@ import { exportarCopia, importarCopia } from './services/backup'
 import {
   exportarCuadranteExcel,
   exportarResumenCentrosExcel,
-  exportarRetribucionExcel
+  exportarRetribucionExcel,
+  exportarCuadranteCentrosExcel
 } from './services/export-excel'
-import { exportarCuadrantePdf, exportarResumenCentrosPdf } from './services/export-pdf'
+import {
+  exportarCuadrantePdf,
+  exportarResumenCentrosPdf,
+  exportarCuadranteCentrosPdf
+} from './services/export-pdf'
 
 /** Registra todos los manejadores IPC (datos compartidos + específicos de escritorio). */
 export function registrarIpc(): void {
@@ -31,6 +36,12 @@ export function registrarIpc(): void {
     exportarResumenCentrosExcel(empresaId, anio, mes)
   )
   h('export:retribucionExcel', (_e, empresaId: number) => exportarRetribucionExcel(empresaId))
+  h('export:cuadranteCentrosPdf', (_e, empresaId: number, anio: number, mes: number) =>
+    exportarCuadranteCentrosPdf(empresaId, anio, mes)
+  )
+  h('export:cuadranteCentrosExcel', (_e, empresaId: number, anio: number, mes: number) =>
+    exportarCuadranteCentrosExcel(empresaId, anio, mes)
+  )
 
   // Copias de seguridad (diálogos nativos: solo escritorio).
   h('backup:exportar', () => exportarCopia())

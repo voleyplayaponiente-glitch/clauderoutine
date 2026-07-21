@@ -12,6 +12,8 @@ import type {
   TrabajadorCentro,
   Cuadrante,
   Turno,
+  ConvenioSalario,
+  NuevoConvenioSalario,
   ResultadoOperacion
 } from './types'
 
@@ -59,6 +61,17 @@ export interface ApiGestor {
     listar(trabajadorId: number): Promise<string[]>
     fijar(trabajadorId: number, fechas: string[]): Promise<void>
   }
+  convenios: {
+    listar(): Promise<ConvenioSalario[]>
+    crear(d: NuevoConvenioSalario): Promise<ConvenioSalario>
+    actualizar(id: number, d: NuevoConvenioSalario): Promise<ConvenioSalario>
+    borrar(id: number): Promise<void>
+  }
+  /** Solo en la versión web: plantilla de ficha de alta e importación. */
+  fichaAlta?: {
+    plantilla(): Promise<ResultadoOperacion>
+    importar(): Promise<{ ok: boolean; trabajador?: Partial<NuevoTrabajador>; error?: string }>
+  }
   cuadrante: {
     obtenerOCrear(trabId: number, anio: number, mes: number): Promise<Cuadrante>
     turnos(cuadranteId: number): Promise<Turno[]>
@@ -77,6 +90,8 @@ export interface ApiGestor {
     resumenPdf(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
     resumenExcel(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
     retribucionExcel(empresaId: number): Promise<ResultadoOperacion>
+    cuadranteCentrosPdf(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
+    cuadranteCentrosExcel(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
   }
   backup: {
     exportar(): Promise<ResultadoOperacion>

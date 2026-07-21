@@ -12,9 +12,11 @@ import { handlers, validarArgs } from '../main/rpc'
 import {
   bufferCuadranteExcel,
   bufferResumenCentrosExcel,
-  bufferRetribucionExcel
+  bufferRetribucionExcel,
+  bufferCuadranteCentrosExcel
 } from '../main/services/generate-excel'
-import { htmlCuadrante, htmlResumenCentros } from '../main/services/html-docs'
+import { htmlCuadrante, htmlResumenCentros, htmlCuadranteCentros } from '../main/services/html-docs'
+import { bufferFichaAltaExcel, parseFichaAlta } from '../main/services/ficha-alta'
 
 const PORT = Number(process.env.PORT || 3000)
 const WEB_DIR = process.env.GESTOR_WEB_DIR || join(process.cwd(), 'dist-web')
@@ -178,6 +180,58 @@ app.get('/api/export/resumen-pdf', (req, res) => {
     res.end(htmlResumenCentros(nInt(req.query.empresa), nInt(req.query.anio), nInt(req.query.mes), true))
   } catch (e) {
     res.status(500).send((e as Error).message)
+  }
+})
+
+// Calendario mensual por centros (la vista por centro de la agenda)
+app.get('/api/export/cuadrante-centros-pdf', (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.end(
+      htmlCuadranteCentros(nInt(req.query.empresa), nInt(req.query.anio), nInt(req.query.mes), true)
+    )
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
+})
+
+app.get('/api/export/cuadrante-centros-excel', async (req, res) => {
+  try {
+    const buf = await bufferCuadranteCentrosExcel(
+      nInt(req.query.empresa),
+      nInt(req.query.anio),
+      nInt(req.query.mes)
+    )
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="cuadrante-centros-${req.query.anio}-${req.query.mes}.xlsx"`
+    )
+    res.end(buf)
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
+})
+
+// ---- Ficha de alta de trabajador (Excel rellenable) ----
+app.get('/api/ficha-alta/plantilla', async (_req, res) => {
+  try {
+    const buf = await bufferFichaAltaExcel()
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', 'attachment; filename="ficha-alta-trabajador.xlsx"')
+    res.end(buf)
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
+})
+
+app.post('/api/ficha-alta/parse', express.raw({ type: '*/*', limit: '20mb' }), async (req, res) => {
+  try {
+    if (!req.body || !(req.body as Buffer).length) return res.status(400).json({ error: 'Fichero vacío' })
+    const trabajador = await parseFichaAlta(req.body as Buffer)
+    res.json({ ok: true, trabajador })
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message })
   }
 })
 

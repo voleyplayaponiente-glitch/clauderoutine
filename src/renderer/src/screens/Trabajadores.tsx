@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import type { Centro, NuevoTrabajador, Trabajador } from '@shared/types'
+import type { Centro, ConvenioSalario, NuevoTrabajador, Trabajador } from '@shared/types'
 import { useApp } from '../App'
 import { Campo, Modal, Vacio, useUI, CalendarioMes } from '../components'
 import { trabajadorVacio, COLORES_TRABAJADOR, colorTrabajador } from '../defaults'
@@ -47,6 +47,24 @@ export function PantallaTrabajadores(): React.JSX.Element {
     if (!empresa) return
     const color = COLORES_TRABAJADOR[lista.length % COLORES_TRABAJADOR.length]
     setEdit({ id: null, data: trabajadorVacio(empresa.id, color), asig: [], vac: [] })
+  }
+
+  // Importa una ficha de alta (Excel) y abre el alta con los datos precargados.
+  const importarFicha = async (): Promise<void> => {
+    if (!empresa || !window.api.fichaAlta) return
+    const r = await window.api.fichaAlta.importar()
+    if (!r.ok) {
+      if (r.error) toast('Error: ' + r.error)
+      return
+    }
+    const color = COLORES_TRABAJADOR[lista.length % COLORES_TRABAJADOR.length]
+    const base = trabajadorVacio(empresa.id, color)
+    const datos = { ...base, ...r.trabajador }
+    // Recalcula el coeficiente con lo que traiga la ficha.
+    const jc = datos.jornada_completa_semanal || 40
+    datos.coef_parcialidad = Math.round(((datos.horas_contrato_semanales || 0) / jc) * 10000) / 10000
+    setEdit({ id: null, data: datos, asig: [], vac: [] })
+    toast('Ficha leída: revisa los datos y guarda')
   }
   const abrirEdicion = async (t: Trabajador): Promise<void> => {
     const { id, ...rest } = t
@@ -120,9 +138,28 @@ export function PantallaTrabajadores(): React.JSX.Element {
     <>
       <div className="topbar">
         <div className="page-title">Trabajadores · {empresa.razon_social}</div>
-        <button className="btn primary" onClick={abrirNuevo}>
-          + Nuevo trabajador
-        </button>
+        <div className="row">
+          {window.api.fichaAlta && (
+            <>
+              <button
+                className="btn"
+                title="Excel rellenable para que el trabajador nuevo aporte sus datos"
+                onClick={async () => {
+                  await window.api.fichaAlta!.plantilla()
+                  toast('Plantilla descargada: envíasela al trabajador nuevo')
+                }}
+              >
+                📥 Ficha de alta (Excel)
+              </button>
+              <button className="btn" onClick={importarFicha}>
+                📤 Importar ficha…
+              </button>
+            </>
+          )}
+          <button className="btn primary" onClick={abrirNuevo}>
+            + Nuevo trabajador
+          </button>
+        </div>
       </div>
 
       <div className="card">
@@ -226,8 +263,15 @@ function FichaTrabajador(props: {
   onToggleVac: (fecha: string) => void
 }): React.JSX.Element {
   const { edit, centros, upd } = props
+  const { toast } = useUI()
   const ahora = new Date()
   const [vacMes, setVacMes] = useState({ anio: ahora.getFullYear(), mes: ahora.getMonth() + 1 })
+  // Salarios por convenio (pestaña Convenios) aplicables con un clic.
+  const [convenios, setConvenios] = useState<ConvenioSalario[]>([])
+  const [convenioSel, setConvenioSel] = useState('')
+  useEffect(() => {
+    window.api.convenios.listar().then(setConvenios)
+  }, [])
   const cambiarVacMes = (delta: number): void =>
     setVacMes((p) => {
       let m = p.mes + delta
@@ -391,6 +435,40 @@ function FichaTrabajador(props: {
 
       <div className="card" style={{ background: 'var(--panel-2)', marginBottom: 12 }}>
         <h3>Retribución (importes mensuales, €)</h3>
+        {convenios.length > 0 && (
+          <div className="row" style={{ alignItems: 'flex-end', marginBottom: 10 }}>
+            <label className="field" style={{ minWidth: 280 }}>
+              <span>Aplicar salario según convenio (pestaña Convenios)</span>
+              <select value={convenioSel} onChange={(e) => setConvenioSel(e.target.value)}>
+                <option value="">— elegir convenio y categoría —</option>
+                {convenios.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.convenio} — {c.categoria} ({numEs(c.salario_base)} €)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="btn small"
+              disabled={!convenioSel}
+              onClick={() => {
+                const c = convenios.find((x) => x.id === Number(convenioSel))
+                if (!c) return
+                upd({
+                  sueldo_convenio_completo: c.salario_base,
+                  plus_productividad: c.plus_productividad,
+                  plus_transporte: c.plus_transporte,
+                  precio_hora_complementaria: c.precio_hora_complementaria,
+                  horas_convenio_completa: c.horas_convenio_anuales,
+                  categoria: d.categoria || c.categoria
+                })
+                toast(`Aplicado: ${c.convenio} — ${c.categoria}`)
+              }}
+            >
+              ✓ Aplicar
+            </button>
+          </div>
+        )}
         <div className="grid-3">
           <Campo label="Salario base según convenio" type="number" step="0.01" value={d.sueldo_convenio_completo} onChange={(v) => upd({ sueldo_convenio_completo: Number(v) })} />
           <Campo label="Plus de productividad" type="number" step="0.01" value={d.plus_productividad} onChange={(v) => upd({ plus_productividad: Number(v) })} />

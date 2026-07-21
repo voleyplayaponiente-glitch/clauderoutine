@@ -2,7 +2,7 @@
 import { BrowserWindow, dialog } from 'electron'
 import { writeFileSync } from 'fs'
 import { datosCuadrante } from './export-data'
-import { htmlCuadrante, htmlResumenCentros } from './html-docs'
+import { htmlCuadrante, htmlResumenCentros, htmlCuadranteCentros } from './html-docs'
 
 async function generarPdf(html: string, defaultName: string) {
   const res = await dialog.showSaveDialog({
@@ -38,4 +38,9 @@ export function exportarResumenCentrosPdf(empresaId: number, anio: number, mes: 
     htmlResumenCentros(empresaId, anio, mes),
     `resumen-centros-${anio}-${String(mes).padStart(2, '0')}.pdf`
   )
+}
+
+export function exportarCuadranteCentrosPdf(empresaId: number, anio: number, mes: number) {
+  const html = htmlCuadranteCentros(empresaId, anio, mes)
+  return generarPdf(html, `cuadrante-centros-${anio}-${String(mes).padStart(2, '0')}.pdf`)
 }

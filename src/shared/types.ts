@@ -101,6 +101,20 @@ export interface Trabajador {
   activo: number
 }
 
+/** Salario según convenio y categoría, para aplicarlo a la ficha del trabajador. */
+export interface ConvenioSalario {
+  id: number
+  convenio: string // nombre del convenio (p. ej. "Comercio vareo — Alicante 2026")
+  categoria: string // p. ej. "Dependiente/a"
+  salario_base: number // mensual, jornada completa
+  plus_productividad: number
+  plus_transporte: number
+  precio_hora_complementaria: number
+  horas_convenio_anuales: number // jornada anual del convenio (def. 1768)
+  notas: string
+}
+export type NuevoConvenioSalario = Omit<ConvenioSalario, 'id'>
+
 /** Relación trabajador ↔ centros donde puede trabajar. */
 export interface TrabajadorCentro {
   id: number
