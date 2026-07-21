@@ -38,13 +38,13 @@ export async function exportarRetribucionExcel(empresaId: number) {
   return { ok: true, ruta: res.filePath }
 }
 
-export async function exportarCuadranteCentrosExcel(empresaId: number, anio: number, mes: number) {
+export async function exportarCuadranteCentrosExcel(empresaId: number, anio: number, mes: number, centroId?: number) {
   const res = await dialog.showSaveDialog({
     title: 'Guardar cuadrante por centros',
     defaultPath: `cuadrante-centros-${anio}-${String(mes).padStart(2, '0')}.xlsx`,
     filters: [{ name: 'Excel', extensions: ['xlsx'] }]
   })
   if (res.canceled || !res.filePath) return { ok: false }
-  await writeFile(res.filePath, await bufferCuadranteCentrosExcel(empresaId, anio, mes))
+  await writeFile(res.filePath, await bufferCuadranteCentrosExcel(empresaId, anio, mes, centroId))
   return { ok: true, ruta: res.filePath }
 }

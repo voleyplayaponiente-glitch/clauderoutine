@@ -163,11 +163,14 @@ identificación, `horas_contrato_semanales`, `jornada_completa_semanal` (def. 40
   `datosCuadranteCentros` en export-data, `htmlCuadranteCentros` (A4 apaisado, pastillas de color,
   orden mañana→tarde, total h/centro) y `bufferCuadranteCentrosExcel` (richText coloreado); endpoints
   `/api/export/cuadrante-centros-{pdf,excel}`, tarjeta en Exportación, también en escritorio (ipc).
-  (2) **Ficha de alta Excel** (`services/ficha-alta.ts`): plantilla rellenable (etiquetas col B/valores
-  col C, desplegables ajena/autonomo e indefinido/temporal, parse tolerante: fechas dd/mm/aaaa o Date,
-  números con coma) + endpoints `/api/ficha-alta/{plantilla,parse}`; botones en Trabajadores
-  (`window.api.fichaAlta` **opcional**, solo web) → abre el alta precargada para revisar y guardar.
-  ⚠️ El usuario iba a adjuntar SU modelo de ficha en Excel y no llegó: pedirlo y adaptar etiquetas/CAMPOS.
+  (2) **Ficha de alta Excel** (`services/ficha-alta.ts`), **rehecha (Fase 11) sobre el modelo real del
+  despacho** (FORMULARIO_CONTRATACION_TRABAJADOR): 8 secciones (personales, contacto/domicilio, banco,
+  modelo 145, contrato/puesto, formación, emergencia, observaciones) + bloque RGPD/firma. Etiquetas col
+  B/valores col C; parse con compuestos (apellido1+2 → apellidos, domicilio por partes → direccion,
+  salario bruto anual ÷ nº pagas → sueldo mensual, prueba en días → fecha fin desde el alta) y el resto
+  de campos se vuelca a Observaciones (nada se pierde). Devuelve además `centro` (nombre) y la UI lo
+  asigna si coincide con un centro existente. Endpoints `/api/ficha-alta/{plantilla,parse}`; botones en
+  Trabajadores (`window.api.fichaAlta` **opcional**, solo web) → abre el alta precargada.
   (3) **Pestaña Convenios** (`screens/Convenios.tsx`, nav 📋): CRUD de `convenio_salario`; en la ficha
   del trabajador (sección Retribución) selector "Aplicar salario según convenio" que rellena salario
   base, pluses, €/h complementaria y horas anuales del convenio. `colorTrabajador` movido a

@@ -63,7 +63,19 @@ export function PantallaTrabajadores(): React.JSX.Element {
     // Recalcula el coeficiente con lo que traiga la ficha.
     const jc = datos.jornada_completa_semanal || 40
     datos.coef_parcialidad = Math.round(((datos.horas_contrato_semanales || 0) / jc) * 10000) / 10000
-    setEdit({ id: null, data: datos, asig: [], vac: [] })
+    // Si la ficha trae el centro de trabajo y coincide con uno existente, se asigna.
+    let asig: Asig[] = []
+    if (r.centro) {
+      const nombreFicha = r.centro.trim().toLowerCase()
+      const c = centros.find(
+        (x) =>
+          x.nombre.toLowerCase() === nombreFicha ||
+          x.nombre.toLowerCase().includes(nombreFicha) ||
+          nombreFicha.includes(x.nombre.toLowerCase())
+      )
+      if (c) asig = [{ centro_id: c.id, es_principal: true }]
+    }
+    setEdit({ id: null, data: datos, asig, vac: [] })
     toast('Ficha leída: revisa los datos y guarda')
   }
   const abrirEdicion = async (t: Trabajador): Promise<void> => {

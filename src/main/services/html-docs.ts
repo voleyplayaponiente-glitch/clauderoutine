@@ -160,24 +160,38 @@ export function htmlResumenCentros(empresaId: number, anio: number, mes: number,
   </body></html>`
 }
 
-/** Calendario mensual por centros: la vista por centro de la agenda, imprimible. */
+/** Calendario mensual por centros: la vista por centro de la agenda, imprimible y en color. */
 export function htmlCuadranteCentros(
   empresaId: number,
   anio: number,
   mes: number,
-  conBoton = false
+  conBoton = false,
+  centroId?: number
 ): string {
-  const d = datosCuadranteCentros(empresaId, anio, mes)
+  const d = datosCuadranteCentros(empresaId, anio, mes, centroId)
   const mm = String(mes).padStart(2, '0')
   const totalDias = new Date(anio, mes, 0).getDate()
-  const cab = d.centros
-    .map((c) => `<th><span class="cua" style="background:${esc(c.color)}"></span> ${esc(c.nombre)}</th>`)
+  const unSolo = d.centros.length === 1
+
+  // Leyenda: solo los trabajadores que aparecen en el mes, con su color.
+  const idsUsados = new Set<number>()
+  for (const lista of d.porDiaCentro.values()) for (const t of lista) idsUsados.add(t.trabajador_id)
+  const leyenda = [...idsUsados]
+    .map((id) => d.trabajadoresPorId[id])
+    .filter(Boolean)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+    .map((i) => `<span class="chip" style="background:${esc(i.color)}">${esc(i.nombre)}</span>`)
     .join('')
+
+  const cab = d.centros
+    .map((c) => `<th style="background:${esc(c.color)}">${esc(c.nombre)}</th>`)
+    .join('')
+
   let cuerpo = ''
   for (let dia = 1; dia <= totalDias; dia++) {
     const fecha = `${anio}-${mm}-${String(dia).padStart(2, '0')}`
     const dw = diaSemanaIso(fecha)
-    const finde = dw === 0 || dw === 6 ? ' class="finde"' : ''
+    const finde = dw === 0 || dw === 6
     const celdas = d.centros
       .map((c) => {
         const lst = d.porDiaCentro.get(`${fecha}|${c.id}`) ?? []
@@ -189,39 +203,66 @@ export function htmlCuadranteCentros(
               t.entrada2 && t.salida2 ? `${t.entrada2}–${t.salida2}` : ''
             ]
               .filter(Boolean)
-              .join(' / ')
-            return `<span class="turno"><span class="pill" style="background:${esc(info?.color ?? '#888')}">${esc(
-              info?.nombre ?? '?'
-            )}</span> <span class="hor">${esc(horario)}</span></span>`
+              .join(' · ')
+            return `<div class="turno" style="border-left-color:${esc(info?.color ?? '#888')}">
+              <span class="pill" style="background:${esc(info?.color ?? '#888')}">${esc(info?.nombre ?? '?')}</span>
+              <span class="hor">${esc(horario)}</span>
+            </div>`
           })
-          .join(' ')
-        return `<td${finde}>${contenido}</td>`
+          .join('')
+        return `<td class="${finde ? 'finde' : ''}">${contenido}</td>`
       })
       .join('')
-    cuerpo += `<tr><td${finde}><b>${dia}</b> ${DIAS_SEMANA_CORTO[dw]}</td>${celdas}</tr>`
+    cuerpo += `<tr><td class="dia ${finde ? 'finde' : ''}"><span class="num">${dia}</span><span class="dsem">${DIAS_SEMANA_CORTO[dw]}</span></td>${celdas}</tr>`
   }
+
   const totales = d.centros
-    .map((c) => `<td class="num"><b>${numEs(d.horasPorCentro[c.id] ?? 0)}</b></td>`)
+    .map((c) => `<td class="tot">${numEs(d.horasPorCentro[c.id] ?? 0)} h</td>`)
     .join('')
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cuadrante por centros ${MESES[mes - 1]} ${anio}</title><style>${ESTILOS}
-  table { table-layout: fixed; }
-  th:first-child, td:first-child { width: 70px; }
-  td { font-size: 10px; }
-  td.finde { background: #f1f5f9; }
-  .cua { display:inline-block; width:9px; height:9px; border-radius:2px; vertical-align:baseline; }
-  .turno { display:inline-block; white-space:nowrap; margin: 1px 6px 1px 0; }
-  .pill { display:inline-block; padding: 0 5px; border-radius: 6px; color: #fff; font-size: 9.5px; font-weight: 600; }
-  .hor { font-size: 9px; color: #444; }
-  @media print { @page { size: A4 landscape; margin: 10mm; } }
+
+  const titulo = unSolo
+    ? `${d.centros[0].nombre} — ${MESES[mes - 1]} ${anio}`
+    : `Cuadrante por centros — ${MESES[mes - 1]} ${anio}`
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #1d1d1f; margin: 20px; }
+  .cabecera { display: flex; align-items: baseline; gap: 14px; border-bottom: 3px solid #1d4ed8; padding-bottom: 8px; margin-bottom: 10px; }
+  .mes { font-size: 26px; font-weight: 800; color: #1d4ed8; letter-spacing: -0.5px; }
+  .empresa { font-size: 13px; color: #555; font-weight: 600; }
+  .leyenda { margin: 8px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 1px solid #d6dbe3; padding: 4px 6px; vertical-align: top; text-align: left; }
+  th { color: #fff; font-size: 11.5px; padding: 7px 8px; letter-spacing: 0.2px; }
+  th:first-child { background: #1e293b !important; width: 56px; }
+  td.dia { width: 56px; text-align: center; background: #f8fafc; }
+  td.dia .num { display: block; font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.1; }
+  td.dia .dsem { display: block; font-size: 9.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  td.finde { background: #eef2f7; }
+  td.dia.finde { background: #e2e8f0; }
+  td.dia.finde .num { color: #b91c1c; }
+  .turno { display: flex; align-items: center; gap: 6px; margin: 2px 0; padding: 2px 4px 2px 6px; border-left: 3px solid; border-radius: 4px; background: #fff; }
+  td.finde .turno { background: #fbfcfe; }
+  .pill { display: inline-block; padding: 1.5px 8px; border-radius: 999px; color: #fff; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+  .hor { font-size: 10px; color: #475569; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr.total td { background: #1e293b; color: #fff; font-weight: 800; font-size: 12px; padding: 7px 8px; }
+  tr.total td.tot { text-align: right; }
+  .noprint { position: fixed; top: 12px; right: 12px; }
+  .noprint button { font-size: 13px; padding: 8px 14px; border-radius: 8px; border: 1px solid #0071e3; background: #0071e3; color: #fff; cursor: pointer; }
+  @media print { .noprint { display: none; } body { margin: 0; } @page { size: A4 ${unSolo ? 'portrait' : 'landscape'}; margin: 9mm; } }
   </style></head>
   <body>
     ${conBoton ? BOTON_IMPRIMIR : ''}
-    <h1>${esc(d.empresa.razon_social)}</h1>
-    <h2>Cuadrante mensual por centros — ${MESES[mes - 1]} ${anio}</h2>
+    <div class="cabecera">
+      <span class="mes">${MESES[mes - 1]} ${anio}</span>
+      <span class="empresa">${esc(d.empresa.razon_social)}${unSolo ? ' · ' + esc(d.centros[0].nombre) : ''}</span>
+    </div>
+    ${leyenda ? `<div class="leyenda">${leyenda}</div>` : ''}
     <table>
       <thead><tr><th>Día</th>${cab}</tr></thead>
       <tbody>${cuerpo}
-        <tr class="total"><td>TOTAL h</td>${totales}</tr>
+        <tr class="total"><td>TOTAL</td>${totales}</tr>
       </tbody>
     </table>
   </body></html>`

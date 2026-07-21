@@ -40,7 +40,7 @@ export function exportarResumenCentrosPdf(empresaId: number, anio: number, mes: 
   )
 }
 
-export function exportarCuadranteCentrosPdf(empresaId: number, anio: number, mes: number) {
-  const html = htmlCuadranteCentros(empresaId, anio, mes)
+export function exportarCuadranteCentrosPdf(empresaId: number, anio: number, mes: number, centroId?: number) {
+  const html = htmlCuadranteCentros(empresaId, anio, mes, false, centroId)
   return generarPdf(html, `cuadrante-centros-${anio}-${String(mes).padStart(2, '0')}.pdf`)
 }

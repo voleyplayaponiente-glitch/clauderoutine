@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import type { Trabajador } from '@shared/types'
+import type { Centro, Trabajador } from '@shared/types'
 import { useApp } from '../App'
 import { Vacio, useUI } from '../components'
 import { MESES } from '@shared/fechas'
@@ -14,6 +14,8 @@ export function PantallaExportar(): React.JSX.Element {
   const [mes, setMes] = useState(hoy.getMonth() + 1)
   const [trabajadores, setTrabajadores] = useState<Trabajador[]>([])
   const [trabId, setTrabId] = useState<number | null>(null)
+  const [centros, setCentros] = useState<Centro[]>([])
+  const [centroSel, setCentroSel] = useState('') // '' = todos los centros
 
   useEffect(() => {
     if (!empresa) return
@@ -21,6 +23,7 @@ export function PantallaExportar(): React.JSX.Element {
       setTrabajadores(ts)
       setTrabId((prev) => prev ?? ts[0]?.id ?? null)
     })
+    window.api.centros.listar(empresa.id).then(setCentros)
   }, [empresa?.id])
 
   const feedback = (r: ResultadoOperacion): void => {
@@ -90,19 +93,48 @@ export function PantallaExportar(): React.JSX.Element {
         <h3>Cuadrante mensual por centros (calendario)</h3>
         <p className="muted">
           El calendario de la vista por centro: cada día con sus trabajadores en su color y su
-          horario, ordenados por hora de entrada, y el total de horas por centro. Usa el mes y año
-          seleccionados arriba.
+          horario, ordenados por hora de entrada, y el total de horas por centro. Puedes imprimir
+          todos los centros juntos o solo uno. Usa el mes y año seleccionados arriba.
         </p>
-        <div className="row" style={{ marginTop: 8 }}>
+        <div className="row" style={{ alignItems: 'flex-end', marginTop: 8 }}>
+          <label className="field" style={{ minWidth: 240 }}>
+            <span>Centro</span>
+            <select value={centroSel} onChange={(e) => setCentroSel(e.target.value)}>
+              <option value="">Todos los centros</option>
+              {centros.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             className="btn primary"
-            onClick={async () => feedback(await window.api.exportar.cuadranteCentrosPdf(empresa.id, anio, mes))}
+            onClick={async () =>
+              feedback(
+                await window.api.exportar.cuadranteCentrosPdf(
+                  empresa.id,
+                  anio,
+                  mes,
+                  centroSel ? Number(centroSel) : undefined
+                )
+              )
+            }
           >
             📄 Calendario PDF
           </button>
           <button
             className="btn"
-            onClick={async () => feedback(await window.api.exportar.cuadranteCentrosExcel(empresa.id, anio, mes))}
+            onClick={async () =>
+              feedback(
+                await window.api.exportar.cuadranteCentrosExcel(
+                  empresa.id,
+                  anio,
+                  mes,
+                  centroSel ? Number(centroSel) : undefined
+                )
+              )
+            }
           >
             📊 Calendario Excel
           </button>

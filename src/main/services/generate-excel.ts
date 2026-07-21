@@ -191,9 +191,10 @@ export async function bufferRetribucionExcel(empresaId: number): Promise<Buffer>
 export async function bufferCuadranteCentrosExcel(
   empresaId: number,
   anio: number,
-  mes: number
+  mes: number,
+  centroId?: number
 ): Promise<Buffer> {
-  const d = datosCuadranteCentros(empresaId, anio, mes)
+  const d = datosCuadranteCentros(empresaId, anio, mes, centroId)
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Cuadrante por centros', {
     pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }

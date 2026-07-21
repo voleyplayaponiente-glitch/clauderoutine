@@ -187,8 +187,9 @@ app.get('/api/export/resumen-pdf', (req, res) => {
 app.get('/api/export/cuadrante-centros-pdf', (req, res) => {
   try {
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    const centro = req.query.centro ? nInt(req.query.centro) : undefined
     res.end(
-      htmlCuadranteCentros(nInt(req.query.empresa), nInt(req.query.anio), nInt(req.query.mes), true)
+      htmlCuadranteCentros(nInt(req.query.empresa), nInt(req.query.anio), nInt(req.query.mes), true, centro)
     )
   } catch (e) {
     res.status(500).send((e as Error).message)
@@ -200,7 +201,8 @@ app.get('/api/export/cuadrante-centros-excel', async (req, res) => {
     const buf = await bufferCuadranteCentrosExcel(
       nInt(req.query.empresa),
       nInt(req.query.anio),
-      nInt(req.query.mes)
+      nInt(req.query.mes),
+      req.query.centro ? nInt(req.query.centro) : undefined
     )
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader(
@@ -228,8 +230,8 @@ app.get('/api/ficha-alta/plantilla', async (_req, res) => {
 app.post('/api/ficha-alta/parse', express.raw({ type: '*/*', limit: '20mb' }), async (req, res) => {
   try {
     if (!req.body || !(req.body as Buffer).length) return res.status(400).json({ error: 'Fichero vacío' })
-    const trabajador = await parseFichaAlta(req.body as Buffer)
-    res.json({ ok: true, trabajador })
+    const ficha = await parseFichaAlta(req.body as Buffer)
+    res.json({ ok: true, trabajador: ficha.trabajador, centro: ficha.centro })
   } catch (e) {
     res.status(400).json({ error: (e as Error).message })
   }

@@ -36,11 +36,11 @@ export function registrarIpc(): void {
     exportarResumenCentrosExcel(empresaId, anio, mes)
   )
   h('export:retribucionExcel', (_e, empresaId: number) => exportarRetribucionExcel(empresaId))
-  h('export:cuadranteCentrosPdf', (_e, empresaId: number, anio: number, mes: number) =>
-    exportarCuadranteCentrosPdf(empresaId, anio, mes)
+  h('export:cuadranteCentrosPdf', (_e, empresaId: number, anio: number, mes: number, centroId?: number) =>
+    exportarCuadranteCentrosPdf(empresaId, anio, mes, centroId)
   )
-  h('export:cuadranteCentrosExcel', (_e, empresaId: number, anio: number, mes: number) =>
-    exportarCuadranteCentrosExcel(empresaId, anio, mes)
+  h('export:cuadranteCentrosExcel', (_e, empresaId: number, anio: number, mes: number, centroId?: number) =>
+    exportarCuadranteCentrosExcel(empresaId, anio, mes, centroId)
   )
 
   // Copias de seguridad (diálogos nativos: solo escritorio).

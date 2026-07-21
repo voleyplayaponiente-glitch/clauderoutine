@@ -111,7 +111,7 @@ export const webApi: ApiGestor = {
               body: await file.arrayBuffer()
             })
             const data = await r.json().catch(() => ({}))
-            if (r.ok) resolve({ ok: true, trabajador: data.trabajador })
+            if (r.ok) resolve({ ok: true, trabajador: data.trabajador, centro: data.centro })
             else resolve({ ok: false, error: data?.error || 'No se pudo leer la ficha' })
           } catch (e) {
             resolve({ ok: false, error: (e as Error).message })
@@ -149,12 +149,14 @@ export const webApi: ApiGestor = {
       descargar(`/api/export/retribucion-excel?empresa=${empresaId}`)
       return { ok: true }
     },
-    cuadranteCentrosPdf: async (empresaId, anio, mes) => {
-      window.open(`/api/export/cuadrante-centros-pdf?empresa=${empresaId}&anio=${anio}&mes=${mes}`, '_blank')
+    cuadranteCentrosPdf: async (empresaId, anio, mes, centroId) => {
+      const extra = centroId ? `&centro=${centroId}` : ''
+      window.open(`/api/export/cuadrante-centros-pdf?empresa=${empresaId}&anio=${anio}&mes=${mes}${extra}`, '_blank')
       return { ok: true }
     },
-    cuadranteCentrosExcel: async (empresaId, anio, mes) => {
-      descargar(`/api/export/cuadrante-centros-excel?empresa=${empresaId}&anio=${anio}&mes=${mes}`)
+    cuadranteCentrosExcel: async (empresaId, anio, mes, centroId) => {
+      const extra = centroId ? `&centro=${centroId}` : ''
+      descargar(`/api/export/cuadrante-centros-excel?empresa=${empresaId}&anio=${anio}&mes=${mes}${extra}`)
       return { ok: true }
     }
   },

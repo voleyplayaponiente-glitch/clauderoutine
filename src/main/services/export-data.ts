@@ -62,10 +62,16 @@ export interface DatosCuadranteCentros {
   horasPorCentro: Record<number, number>
 }
 
-export function datosCuadranteCentros(empresaId: number, anio: number, mes: number): DatosCuadranteCentros {
+export function datosCuadranteCentros(
+  empresaId: number,
+  anio: number,
+  mes: number,
+  centroId?: number
+): DatosCuadranteCentros {
   const empresa = empresas.obtener(empresaId)
   if (!empresa) throw new Error('Empresa no encontrada')
-  const listaCentros = centros.listar(empresaId)
+  // Con centroId se exporta/imprime solo ese centro de trabajo.
+  const listaCentros = centros.listar(empresaId).filter((c) => !centroId || c.id === centroId)
   const listaTrabs = trabajadores.listar({ empresaId })
   const trabajadoresPorId: Record<number, { nombre: string; color: string }> = {}
   for (const t of listaTrabs) {

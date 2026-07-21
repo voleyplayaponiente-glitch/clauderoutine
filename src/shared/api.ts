@@ -70,7 +70,7 @@ export interface ApiGestor {
   /** Solo en la versión web: plantilla de ficha de alta e importación. */
   fichaAlta?: {
     plantilla(): Promise<ResultadoOperacion>
-    importar(): Promise<{ ok: boolean; trabajador?: Partial<NuevoTrabajador>; error?: string }>
+    importar(): Promise<{ ok: boolean; trabajador?: Partial<NuevoTrabajador>; centro?: string; error?: string }>
   }
   cuadrante: {
     obtenerOCrear(trabId: number, anio: number, mes: number): Promise<Cuadrante>
@@ -90,8 +90,8 @@ export interface ApiGestor {
     resumenPdf(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
     resumenExcel(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
     retribucionExcel(empresaId: number): Promise<ResultadoOperacion>
-    cuadranteCentrosPdf(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
-    cuadranteCentrosExcel(empresaId: number, anio: number, mes: number): Promise<ResultadoOperacion>
+    cuadranteCentrosPdf(empresaId: number, anio: number, mes: number, centroId?: number): Promise<ResultadoOperacion>
+    cuadranteCentrosExcel(empresaId: number, anio: number, mes: number, centroId?: number): Promise<ResultadoOperacion>
   }
   backup: {
     exportar(): Promise<ResultadoOperacion>
