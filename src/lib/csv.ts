@@ -2,12 +2,15 @@ import type { Team } from '@/types'
 import { uid } from '@/engine/id'
 
 export function teamsToCSV(teams: Team[]): string {
-  const header = ['Numero', 'Equipo', 'Jugador1', 'Jugador2', 'Telefono', 'CabezaSerie', 'Estado', 'ImportePagado', 'Observaciones']
+  const header = ['Numero', 'Equipo', 'Jugador1', 'Jugador2', 'Jugador3', 'Jugador4', 'Jugador5', 'Telefono', 'CabezaSerie', 'Estado', 'ImportePagado', 'Observaciones']
   const rows = teams.map((t) => [
     t.numero,
     t.nombre,
     t.jugadores[0]?.nombre ?? '',
     t.jugadores[1]?.nombre ?? '',
+    t.jugadores[2]?.nombre ?? '',
+    t.jugadores[3]?.nombre ?? '',
+    t.jugadores[4]?.nombre ?? '',
     t.telefono ?? '',
     t.cabezaSerie ? 'Si' : 'No',
     t.estadoInscripcion,
@@ -49,37 +52,63 @@ export function csvToTeams(text: string, startNumero = 1): Team[] {
   const lines = clean.split('\n')
   const delim = (lines[0].match(/;/g)?.length ?? 0) >= (lines[0].match(/,/g)?.length ?? 0) ? ';' : ','
   // detect header
-  const first = parseLine(lines[0], delim).map((c) => c.toLowerCase())
-  const hasHeader = first.some((c) => /equipo|nombre|jugador|numero/.test(c))
+  const headerCells = parseLine(lines[0], delim).map((c) => c.trim().toLowerCase())
+  const hasHeader = headerCells.some((c) => /equipo|nombre|jugador|numero/.test(c))
   const dataLines = hasHeader ? lines.slice(1) : lines
+
+  // header-aware column index lookup (robust to old 2-player and new 5-player exports)
+  const colIndex = (matcher: (h: string) => boolean): number =>
+    hasHeader ? headerCells.findIndex(matcher) : -1
+
+  const valid: Team['estadoInscripcion'][] = ['inscrito', 'pendiente', 'confirmado', 'baja']
+
   return dataLines
     .filter((l) => l.trim())
     .map((line, i) => {
       const cols = parseLine(line, delim)
-      // flexible: if first col is a number treat as numero
+
+      if (hasHeader) {
+        const at = (idx: number) => (idx >= 0 ? cols[idx]?.trim() ?? '' : '')
+        const numCol = colIndex((h) => /numero|nº|num/.test(h))
+        const numeroRaw = at(numCol)
+        const numero = /^\d+$/.test(numeroRaw) ? Number(numeroRaw) : startNumero + i
+        const nombre = at(colIndex((h) => /equipo|nombre/.test(h) && !/jugador/.test(h))) || `Equipo ${numero}`
+        const jugadores = Array.from({ length: 5 }, (_, p) => ({
+          id: uid('p'),
+          nombre: at(colIndex((h) => h === `jugador${p + 1}` || h === `jugador ${p + 1}`)),
+        }))
+        const estadoRaw = at(colIndex((h) => /estado/.test(h))) as Team['estadoInscripcion']
+        return {
+          id: uid('t'),
+          numero,
+          nombre,
+          jugadores,
+          telefono: at(colIndex((h) => /tel|fono|phone/.test(h))),
+          cabezaSerie: /^(si|sí|1|true|x)$/i.test(at(colIndex((h) => /serie|seed|cabeza/.test(h)))),
+          estadoInscripcion: valid.includes(estadoRaw) ? estadoRaw : 'inscrito',
+          importePagado: Number(at(colIndex((h) => /importe|pago|pagado/.test(h)))) || 0,
+          observaciones: at(colIndex((h) => /observ|nota/.test(h))),
+        } as Team
+      }
+
+      // no header: positional layout matching the current export order
+      // Numero;Equipo;Jugador1..5;Telefono;CabezaSerie;Estado;Importe;Observaciones
       let idx = 0
       let numero = startNumero + i
       if (/^\d+$/.test(cols[0]?.trim() ?? '')) { numero = Number(cols[0]); idx = 1 }
       const nombre = cols[idx]?.trim() || `Equipo ${numero}`
-      const j1 = cols[idx + 1]?.trim() ?? ''
-      const j2 = cols[idx + 2]?.trim() ?? ''
-      const telefono = cols[idx + 3]?.trim() ?? ''
-      const seed = /^(si|sí|1|true|x)$/i.test(cols[idx + 4]?.trim() ?? '')
-      const estado = (cols[idx + 5]?.trim() as Team['estadoInscripcion']) || 'inscrito'
-      const importe = Number(cols[idx + 6]) || 0
+      const jugadores = Array.from({ length: 5 }, (_, p) => ({ id: uid('p'), nombre: cols[idx + 1 + p]?.trim() ?? '' }))
+      const estado = (cols[idx + 8]?.trim() as Team['estadoInscripcion']) || 'inscrito'
       return {
         id: uid('t'),
         numero,
         nombre,
-        jugadores: [
-          { id: uid('p'), nombre: j1 },
-          { id: uid('p'), nombre: j2 },
-        ],
-        telefono,
-        cabezaSerie: seed,
-        estadoInscripcion: ['inscrito', 'pendiente', 'confirmado', 'baja'].includes(estado) ? estado : 'inscrito',
-        importePagado: importe,
-        observaciones: cols[idx + 7]?.trim() ?? '',
+        jugadores,
+        telefono: cols[idx + 6]?.trim() ?? '',
+        cabezaSerie: /^(si|sí|1|true|x)$/i.test(cols[idx + 7]?.trim() ?? ''),
+        estadoInscripcion: valid.includes(estado) ? estado : 'inscrito',
+        importePagado: Number(cols[idx + 9]) || 0,
+        observaciones: cols[idx + 10]?.trim() ?? '',
       } as Team
     })
 }

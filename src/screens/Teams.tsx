@@ -67,7 +67,7 @@ export function Teams() {
               <Card className="text-center text-muted py-10">
                 <IconUsers size={40} className="mx-auto mb-3 opacity-50" />
                 <p>No hay equipos. Añade equipos manualmente o importa un CSV.</p>
-                <p className="text-xs mt-2">Formato CSV: Numero;Equipo;Jugador1;Jugador2;Telefono;CabezaSerie;Estado;Importe;Observaciones</p>
+                <p className="text-xs mt-2">Formato CSV: Numero;Equipo;Jugador1;Jugador2;Jugador3;Jugador4;Jugador5;Telefono;CabezaSerie;Estado;Importe;Observaciones</p>
               </Card>
             ) : (
               <div className="card p-0 overflow-hidden">
@@ -140,8 +140,9 @@ function TeamModal({ team, onClose, onChange }: { team: Team; onClose: () => voi
         <Field label="Teléfono de contacto"><input className="input" value={team.telefono ?? ''} onChange={(e) => onChange({ telefono: e.target.value })} /></Field>
         <Field label="Jugador 1"><input className="input" value={team.jugadores[0]?.nombre ?? ''} onChange={(e) => setPlayer(0, e.target.value)} /></Field>
         <Field label="Jugador 2"><input className="input" value={team.jugadores[1]?.nombre ?? ''} onChange={(e) => setPlayer(1, e.target.value)} /></Field>
-        <Field label="Jugador 3 (opcional)"><input className="input" value={team.jugadores[2]?.nombre ?? ''} onChange={(e) => setPlayer(2, e.target.value)} /></Field>
-        <Field label="Jugador 4 (opcional)"><input className="input" value={team.jugadores[3]?.nombre ?? ''} onChange={(e) => setPlayer(3, e.target.value)} /></Field>
+        <Field label="Jugador 3"><input className="input" value={team.jugadores[2]?.nombre ?? ''} onChange={(e) => setPlayer(2, e.target.value)} /></Field>
+        <Field label="Jugador 4"><input className="input" value={team.jugadores[3]?.nombre ?? ''} onChange={(e) => setPlayer(3, e.target.value)} /></Field>
+        <Field label="Jugador 5"><input className="input" value={team.jugadores[4]?.nombre ?? ''} onChange={(e) => setPlayer(4, e.target.value)} /></Field>
         <Field label="Estado de inscripción">
           <Select value={team.estadoInscripcion} onChange={(v) => onChange({ estadoInscripcion: v as RegistrationStatus })} options={ESTADOS.map((s) => ({ value: s, label: cap(s) }))} />
         </Field>

@@ -18,10 +18,7 @@ const NOMBRES = [
 function makeTeams(n: number) {
   return Array.from({ length: n }, (_, i) => {
     const t = newTeam(i + 1, NOMBRES[i] ?? `Equipo ${i + 1}`)
-    t.jugadores = [
-      { id: uid('p'), nombre: `Jugador ${i * 2 + 1}` },
-      { id: uid('p'), nombre: `Jugador ${i * 2 + 2}` },
-    ]
+    t.jugadores = Array.from({ length: 5 }, (_, p) => ({ id: uid('p'), nombre: `Jugador ${i * 5 + p + 1}` }))
     t.telefono = `6${String(10000000 + i).slice(0, 8)}`
     t.estadoInscripcion = 'confirmado'
     t.importePagado = 30

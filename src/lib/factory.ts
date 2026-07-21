@@ -7,10 +7,7 @@ export function newTeam(numero: number, nombre = ''): Team {
     id: uid('t'),
     numero,
     nombre: nombre || `Equipo ${numero}`,
-    jugadores: [
-      { id: uid('p'), nombre: '' },
-      { id: uid('p'), nombre: '' },
-    ],
+    jugadores: Array.from({ length: 5 }, () => ({ id: uid('p'), nombre: '' })),
     cabezaSerie: false,
     estadoInscripcion: 'inscrito',
     importePagado: 0,
