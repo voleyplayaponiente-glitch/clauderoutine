@@ -4,14 +4,14 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, DeudorVario } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, DeudorVario, Presupuesto } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import { cargarConfig, guardarConfig, cargarTema, guardarTema, cargarDatos, guardarDatos } from '../lib/db'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [] }
 }
 
 /** Colección de datos que recibe cada destino de importación. */
@@ -62,6 +62,7 @@ interface Estado {
   anularDeuda: (id: string) => void
   guardarDeudor: (d: DeudorVario) => void
   anularDeudor: (id: string) => void
+  guardarPresupuesto: (p: Presupuesto) => void
   reemplazarDatos: (d: DatosOperativos) => void
 }
 
@@ -287,6 +288,11 @@ export const useStore = create<Estado>((set, get) => ({
   anularDeudor: (id) => {
     const deudores = get().datos.deudores.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
     const datos = { ...get().datos, deudores }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarPresupuesto: (p) => {
+    const datos = { ...get().datos, presupuestos: upsert(get().datos.presupuestos, p) }
     set({ datos })
     persistirDatos(datos)
   },

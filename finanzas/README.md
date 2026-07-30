@@ -87,7 +87,18 @@ npm run preview  # previsualizar producción / PWA
 - **Deudores**: clientes aplazados, préstamos concedidos, anticipos y fianzas con
   **antigüedad de saldos** por tramos, **provisión por insolvencia** escalonada,
   historial de reclamaciones y generación de email de reclamación.
-- Motor: `amortizacion` y `vencimientos` con tests. **83 tests en verde.**
+- Motor: `amortizacion` y `vencimientos` con tests.
+
+**Fase 7 (planificación financiera)**:
+- **Previsión de tesorería**: saldo diario proyectado (30/60/90 días y 12 meses) a partir
+  de la posición de partida y los flujos previstos (compras pendientes, cobros de deudores,
+  cuotas de deuda, recurrentes e **IVA estimado del trimestre**). Gráfico con línea de saldo
+  mínimo, **alerta de tensión de liquidez** y ratios (fondo de maniobra, liquidez, PMC, PMP),
+  **separando deuda comercial de deuda fiscal** para no distorsionar el PMP.
+- **Presupuesto y cash flow**: presupuesto anual por línea (ingresos, coste de ventas,
+  gastos, inversión, financiación) con apertura mensual, **Presupuesto vs. Real vs. Desviación**,
+  generación automática desde el histórico con factor de crecimiento y resumen de resultado.
+- Motor: `prevision` y `ratios` con tests. **90 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

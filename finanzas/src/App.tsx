@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Layout } from './componentes/Layout'
 import { Esqueleto } from './componentes/ui'
 import { useRuta } from './lib/router'
@@ -13,7 +14,11 @@ import { Stock } from './pantallas/Stock'
 import { Importacion } from './pantallas/Importacion'
 import { Deudas } from './pantallas/Deudas'
 import { Deudores } from './pantallas/Deudores'
+import { Presupuesto } from './pantallas/Presupuesto'
 import { PantallaModulo } from './pantallas/Pantalla'
+
+// Carga diferida: la previsión usa Recharts, que no debe pesar en el arranque.
+const Tesoreria = lazy(() => import('./pantallas/Tesoreria').then((m) => ({ default: m.Tesoreria })))
 
 function Contenido() {
   const ruta = useRuta()
@@ -32,6 +37,8 @@ function Contenido() {
   if (modulo.id === 'importacion') return <Importacion />
   if (modulo.id === 'deudas') return <Deudas />
   if (modulo.id === 'deudores') return <Deudores />
+  if (modulo.id === 'presupuesto') return <Presupuesto />
+  if (modulo.id === 'tesoreria') return <Suspense fallback={<Esqueleto className="h-64 w-full" />}><Tesoreria /></Suspense>
   return <PantallaModulo modulo={modulo} />
 }
 

@@ -359,6 +359,25 @@ export interface DeudorVario extends Trazable {
   provisionManual?: number
 }
 
+// ─────────────────────────── Presupuesto (Fase 7) ───────────────────────────
+
+export type TipoLineaPresupuesto = 'INGRESO' | 'COSTE_VENTAS' | 'GASTO' | 'INVERSION' | 'FINANCIACION'
+
+export interface LineaPresupuesto {
+  id: ID
+  concepto: string
+  tipo: TipoLineaPresupuesto
+  centroCosteId?: ID
+  meses: number[] // 12 valores (enero..diciembre)
+}
+
+export interface Presupuesto {
+  id: ID
+  ejercicio: number
+  factorCrecimiento: number // % aplicado en la generación automática
+  lineas: LineaPresupuesto[]
+}
+
 /** Registro de una importación (para poder deshacerla como bloque). */
 export interface LoteImportacion {
   id: ID
@@ -383,6 +402,7 @@ export interface DatosOperativos {
   importaciones: LoteImportacion[]
   deudas: Deuda[]
   deudores: DeudorVario[]
+  presupuestos: Presupuesto[]
 }
 
 /** Plantilla de importación: mapeo de columnas guardado con nombre. */
