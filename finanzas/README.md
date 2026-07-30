@@ -17,15 +17,27 @@ npm run build    # tsc -b && vite build
 npm run preview  # previsualizar producción / PWA
 ```
 
-## Estado — Fase 0 (cimientos) ✅
+## Estado — Fases 0 y 1 ✅
+**Fase 0 (cimientos)**
 - Motor puro en `src/dominio/` con tests: `dinero` (aritmética en céntimos, sin float),
   `parseo-es` (heurística de millar: `180.000` = ciento ochenta mil), `iva` (base/cuota/total
-  en cualquier dirección, exento/no sujeto/ISP), `partida-doble` (detección de descuadre).
+  en cualquier dirección, exento/no sujeto/ISP), `partida-doble` (detección de descuadre),
+  `validacion` (NIF/NIE/CIF).
 - Configuración por defecto (PGC, tipos de IVA, calendario fiscal 303/111/115/200/202/347/573,
   impuesto especial de vapeo por ml y límite de pago en efectivo) **verificada y editable,
   nunca hardcodeada** en la lógica.
 - Shell: tokens de diseño, modo claro/oscuro, layout responsive con navegación a los 13
   módulos, estados vacíos cuidados, esqueletos de carga y persistencia en IndexedDB.
+
+**Fase 1 (configuración)** — se puede configurar la empresa entera:
+- **Empresa**: datos fiscales, CIF con validación (aviso, no bloqueo), logo, estructura de grupo.
+- **Puntos de venta / centros de coste**: alta, edición y cierre conservando histórico, con
+  tipo, coste fijo y objetivo de venta.
+- **Plan contable** editable (alta/edición/borrado, buscador, restaurar PGC).
+- **Impuestos**: tipos de IVA, impuestos especiales por ml/unidad y calendario fiscal.
+- **Categorías de gasto** con deducibilidad y cuenta contable.
+- **Umbrales y alertas** · **Apariencia** (tema, densidad, fecha, moneda).
+- **Datos**: exportar/importar la configuración en JSON abierto. 31 tests en verde.
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

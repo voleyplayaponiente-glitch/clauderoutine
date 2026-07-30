@@ -134,5 +134,6 @@ export function configuracionInicial(): Configuracion {
     obligacionesFiscales: [...OBLIGACIONES_FISCALES_DEFECTO],
     categoriasGasto: [...CATEGORIAS_GASTO_DEFECTO],
     umbrales: { ...UMBRALES_DEFECTO },
+    apariencia: { densidad: 'comoda', formatoFecha: 'dd/mm/aaaa', moneda: 'EUR' },
   }
 }

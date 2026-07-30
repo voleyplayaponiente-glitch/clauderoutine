@@ -105,6 +105,12 @@ export interface Umbrales {
   mesesNegativoAlertaPunto: number
 }
 
+export interface Apariencia {
+  densidad: 'comoda' | 'compacta'
+  formatoFecha: 'dd/mm/aaaa' | 'aaaa-mm-dd'
+  moneda: 'EUR'
+}
+
 export interface Configuracion {
   empresa: DatosEmpresa
   centrosCoste: CentroCoste[]
@@ -114,4 +120,5 @@ export interface Configuracion {
   obligacionesFiscales: ObligacionFiscal[]
   categoriasGasto: CategoriaGasto[]
   umbrales: Umbrales
+  apariencia: Apariencia
 }

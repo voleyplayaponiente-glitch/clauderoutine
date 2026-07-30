@@ -4,6 +4,7 @@ import { useRuta } from './lib/router'
 import { moduloPorRuta } from './lib/modulos'
 import { useStore } from './store/store'
 import { Dashboard } from './pantallas/Dashboard'
+import { Configuracion } from './pantallas/Configuracion'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 function Contenido() {
@@ -14,6 +15,7 @@ function Contenido() {
     return <div className="p-8">Página no encontrada. <a href="#/" className="underline">Volver al inicio</a></div>
   }
   if (modulo.id === 'dashboard') return <Dashboard />
+  if (modulo.id === 'configuracion') return <Configuracion />
   return <PantallaModulo modulo={modulo} />
 }
 

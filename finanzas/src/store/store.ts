@@ -34,7 +34,7 @@ export const useStore = create<Estado>((set, get) => ({
   init: async () => {
     const [config, tema] = await Promise.all([cargarConfig(), cargarTema()])
     set({
-      config: config ?? configuracionInicial(),
+      config: config ? migrarConfig(config) : configuracionInicial(),
       tema: tema ?? (prefiereOscuro() ? 'oscuro' : 'claro'),
       loaded: true,
     })
@@ -62,4 +62,20 @@ export const useStore = create<Estado>((set, get) => ({
 
 function prefiereOscuro(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+}
+
+/** Rellena campos ausentes en configuraciones guardadas con versiones anteriores. */
+function migrarConfig(c: Partial<Configuracion>): Configuracion {
+  const base = configuracionInicial()
+  return {
+    empresa: { ...base.empresa, ...c.empresa },
+    centrosCoste: c.centrosCoste ?? base.centrosCoste,
+    planContable: c.planContable ?? base.planContable,
+    tiposIva: c.tiposIva ?? base.tiposIva,
+    impuestosEspeciales: c.impuestosEspeciales ?? base.impuestosEspeciales,
+    obligacionesFiscales: c.obligacionesFiscales ?? base.obligacionesFiscales,
+    categoriasGasto: c.categoriasGasto ?? base.categoriasGasto,
+    umbrales: { ...base.umbrales, ...c.umbrales },
+    apariencia: { ...base.apariencia, ...c.apariencia },
+  }
 }
