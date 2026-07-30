@@ -4,14 +4,14 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import { cargarConfig, guardarConfig, cargarTema, guardarTema, cargarDatos, guardarDatos } from '../lib/db'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [] }
 }
 
 interface Estado {
@@ -38,6 +38,13 @@ interface Estado {
   importarMovimientos: (ms: MovimientoTesoreria[]) => number
   conciliarMovimiento: (id: string, conciliado: boolean) => void
   guardarArqueo: (a: ArqueoCaja) => void
+  // Stock
+  guardarAlmacen: (a: Almacen) => void
+  guardarArticulo: (a: Articulo) => void
+  anularArticulo: (id: string) => void
+  guardarMovimientoStock: (m: MovimientoStock) => void
+  guardarMovimientosStock: (ms: MovimientoStock[]) => void
+  anularMovimientoStock: (id: string) => void
   reemplazarDatos: (d: DatosOperativos) => void
 }
 
@@ -171,6 +178,39 @@ export const useStore = create<Estado>((set, get) => ({
   },
   guardarArqueo: (a) => {
     const datos = { ...get().datos, arqueos: upsert(get().datos.arqueos, a) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+
+  guardarAlmacen: (a) => {
+    const datos = { ...get().datos, almacenes: upsert(get().datos.almacenes, a) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarArticulo: (a) => {
+    const datos = { ...get().datos, articulos: upsert(get().datos.articulos, a) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularArticulo: (id) => {
+    const articulos = get().datos.articulos.map((a) => (a.id === id ? { ...a, anuladoEn: new Date().toISOString() } : a))
+    const datos = { ...get().datos, articulos }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarMovimientoStock: (m) => {
+    const datos = { ...get().datos, movimientosStock: upsert(get().datos.movimientosStock, m) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarMovimientosStock: (ms) => {
+    const datos = { ...get().datos, movimientosStock: [...get().datos.movimientosStock, ...ms] }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularMovimientoStock: (id) => {
+    const movimientosStock = get().datos.movimientosStock.map((m) => (m.id === id ? { ...m, anuladoEn: new Date().toISOString() } : m))
+    const datos = { ...get().datos, movimientosStock }
     set({ datos })
     persistirDatos(datos)
   },

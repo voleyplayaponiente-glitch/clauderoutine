@@ -249,6 +249,54 @@ export interface ArqueoCaja extends Trazable {
   responsable?: string
 }
 
+// ─────────────────────────── Stock (Fase 4) ───────────────────────────
+
+export type TipoAlmacen = 'CENTRAL' | 'TIENDA' | 'TRANSITO'
+
+export interface Almacen extends Trazable {
+  nombre: string
+  tipo: TipoAlmacen
+  puntoVentaId?: ID
+}
+
+export interface Articulo extends Trazable {
+  referencia: string
+  ean?: string
+  descripcion: string
+  familia?: string
+  subfamilia?: string
+  proveedorPrincipalId?: ID
+  pvp: number
+  stockMinimo: number
+  stockOptimo: number
+  ubicacion?: string
+  impuestoEspecialId?: ID
+  contenidoMl?: number
+}
+
+export type TipoMovStock =
+  | 'COMPRA'
+  | 'VENTA'
+  | 'TRASPASO'
+  | 'MERMA'
+  | 'ROTURA'
+  | 'AUTOCONSUMO'
+  | 'REGULARIZACION'
+  | 'APERTURA'
+
+export interface MovimientoStock extends Trazable {
+  articuloId: ID
+  almacenId: ID
+  fecha: string
+  tipo: TipoMovStock
+  cantidad: number // + entrada / − salida
+  costeUnitario: number // relevante en entradas
+  esAprovisionamientoApertura: boolean
+  documentoOrigenId?: ID
+  traspasoParejaId?: ID
+  motivo?: string
+}
+
 /** Colección de datos operativos (persistida aparte de la configuración). */
 export interface DatosOperativos {
   terceros: Tercero[]
@@ -258,6 +306,9 @@ export interface DatosOperativos {
   cuentasTesoreria: CuentaTesoreria[]
   movimientos: MovimientoTesoreria[]
   arqueos: ArqueoCaja[]
+  almacenes: Almacen[]
+  articulos: Articulo[]
+  movimientosStock: MovimientoStock[]
 }
 
 export interface Configuracion {

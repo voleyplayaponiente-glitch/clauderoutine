@@ -57,7 +57,18 @@ npm run preview  # previsualizar producción / PWA
   **importación Norma 43** (parser propio, idempotente: no duplica al reimportar).
 - **Conciliación** semiautomática: bandeja de no conciliados, conciliar con un clic y
   **sugerencias caja → banco** por el motor de emparejamiento (importe + fecha + concepto).
-- Motor: `tesoreria`, `conciliacion` y `n43` con tests. **53 tests en verde.**
+- Motor: `tesoreria`, `conciliacion` y `n43` con tests.
+
+**Fase 4 (stock)** — inventario operativo:
+- **Maestro de artículos** (referencia, EAN, familia, PVP, stock mínimo/óptimo, impuesto
+  especial por ml) y **multi-almacén** (central, tienda, tránsito).
+- **Movimientos**: entradas por compra, salidas por venta, **traspasos entre almacenes**
+  (pareja de apuntes), mermas, roturas, autoconsumo y aprovisionamiento de apertura.
+- **Valoración a coste medio ponderado** por artículo y almacén; valor de inventario a
+  coste y a PVP, alertas de bajo mínimo y **stock muerto**.
+- **Inventario físico**: recuento vs. teórico y **regularización** que genera los
+  movimientos y su asiento 300/610.
+- Motor: `valoracion`, `stock` e `inventario` con tests. **61 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).
