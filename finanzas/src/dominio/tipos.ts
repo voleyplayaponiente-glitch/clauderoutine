@@ -190,12 +190,74 @@ export interface GastoRecurrente {
   activo: boolean
 }
 
+// ─────────────────────────── Tesorería (Fase 3) ───────────────────────────
+
+export type TipoCuentaTesoreria = 'CAJA' | 'BANCO' | 'TPV_LIQUIDADOR' | 'PASARELA'
+
+/** Cuenta de tesorería: unifica caja y banco. */
+export interface CuentaTesoreria extends Trazable {
+  nombre: string
+  tipo: TipoCuentaTesoreria
+  centroCosteId?: ID // caja por punto de venta
+  iban?: string
+  saldoInicial: number
+  limiteDescubierto?: number
+  cuentaPGC?: string // 570 caja / 572 banco
+}
+
+/** Clase de movimiento (sobre todo para caja). */
+export type ClaseMovimiento =
+  | 'APERTURA'
+  | 'VENTA_EFECTIVO'
+  | 'COBRO'
+  | 'PAGO_PROVEEDOR'
+  | 'GASTO_MENOR'
+  | 'INGRESO_BANCO'
+  | 'RETIRADA'
+  | 'TRASPASO'
+  | 'CIERRE'
+  | 'COMISION'
+  | 'OTRO'
+
+export interface MovimientoTesoreria extends Trazable {
+  cuentaId: ID
+  fecha: string // yyyy-mm-dd
+  concepto: string
+  importe: number // + entrada / − salida
+  clase: ClaseMovimiento
+  categoriaId?: ID
+  conciliado: boolean
+  traspasoParejaId?: ID // otro movimiento del traspaso
+  referencia?: string // referencia bancaria (para conciliación / idempotencia)
+}
+
+/** Recuento de una denominación (billete o moneda) en el arqueo. */
+export interface Denominacion {
+  valor: number // en euros: 500,200,…,0.01
+  cantidad: number
+}
+
+/** Arqueo de caja: saldo contado vs. teórico con explicación si descuadra. */
+export interface ArqueoCaja extends Trazable {
+  cuentaId: ID
+  fecha: string
+  denominaciones: Denominacion[]
+  saldoTeorico: number
+  saldoContado: number
+  diferencia: number // contado − teórico
+  explicacion?: string
+  responsable?: string
+}
+
 /** Colección de datos operativos (persistida aparte de la configuración). */
 export interface DatosOperativos {
   terceros: Tercero[]
   ventas: Venta[]
   compras: Compra[]
   recurrentes: GastoRecurrente[]
+  cuentasTesoreria: CuentaTesoreria[]
+  movimientos: MovimientoTesoreria[]
+  arqueos: ArqueoCaja[]
 }
 
 export interface Configuracion {

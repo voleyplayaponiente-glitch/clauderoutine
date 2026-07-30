@@ -47,7 +47,17 @@ npm run preview  # previsualizar producción / PWA
   del proveedor), centro de coste, categoría, **deducibilidad con motivo obligatorio** y adjunto.
 - **Proveedores** con CIF validado, condiciones de pago e IBAN; alta rápida desde la compra.
 - **Partida doble interna**: cada venta y cada compra generan su asiento cuadrado
-  (`asientoVenta`/`asientoCompra`), verificado en los tests. **41 tests en verde.**
+  (`asientoVenta`/`asientoCompra`), verificado en los tests.
+
+**Fase 3 (caja y bancos)** — control de efectivo y banco completo:
+- **Caja y arqueos**: una caja por punto de venta / caja central, movimientos de efectivo
+  y **arqueo por denominación** (billetes y monedas) con control de descuadre; si supera el
+  umbral tolerado, exige **explicación obligatoria** y genera el ajuste.
+- **Bancos**: cuentas corrientes, TPV liquidadores y pasarelas; movimientos manuales e
+  **importación Norma 43** (parser propio, idempotente: no duplica al reimportar).
+- **Conciliación** semiautomática: bandeja de no conciliados, conciliar con un clic y
+  **sugerencias caja → banco** por el motor de emparejamiento (importe + fecha + concepto).
+- Motor: `tesoreria`, `conciliacion` y `n43` con tests. **53 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

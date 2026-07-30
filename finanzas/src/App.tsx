@@ -7,6 +7,8 @@ import { Dashboard } from './pantallas/Dashboard'
 import { Configuracion } from './pantallas/Configuracion'
 import { Ventas } from './pantallas/Ventas'
 import { Compras } from './pantallas/Compras'
+import { Caja } from './pantallas/Caja'
+import { Bancos } from './pantallas/Bancos'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 function Contenido() {
@@ -20,6 +22,8 @@ function Contenido() {
   if (modulo.id === 'configuracion') return <Configuracion />
   if (modulo.id === 'ventas') return <Ventas />
   if (modulo.id === 'compras') return <Compras />
+  if (modulo.id === 'caja') return <Caja />
+  if (modulo.id === 'bancos') return <Bancos />
   return <PantallaModulo modulo={modulo} />
 }
 

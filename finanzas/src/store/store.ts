@@ -4,14 +4,14 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import { cargarConfig, guardarConfig, cargarTema, guardarTema, cargarDatos, guardarDatos } from '../lib/db'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [] }
 }
 
 interface Estado {
@@ -31,6 +31,13 @@ interface Estado {
   anularCompra: (id: string) => void
   guardarRecurrente: (r: GastoRecurrente) => void
   eliminarRecurrente: (id: string) => void
+  // Tesorería
+  guardarCuentaTesoreria: (c: CuentaTesoreria) => void
+  guardarMovimiento: (m: MovimientoTesoreria) => void
+  anularMovimiento: (id: string) => void
+  importarMovimientos: (ms: MovimientoTesoreria[]) => number
+  conciliarMovimiento: (id: string, conciliado: boolean) => void
+  guardarArqueo: (a: ArqueoCaja) => void
   reemplazarDatos: (d: DatosOperativos) => void
 }
 
@@ -124,6 +131,46 @@ export const useStore = create<Estado>((set, get) => ({
   },
   eliminarRecurrente: (id) => {
     const datos = { ...get().datos, recurrentes: get().datos.recurrentes.filter((r) => r.id !== id) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+
+  guardarCuentaTesoreria: (c) => {
+    const datos = { ...get().datos, cuentasTesoreria: upsert(get().datos.cuentasTesoreria, c) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarMovimiento: (m) => {
+    const datos = { ...get().datos, movimientos: upsert(get().datos.movimientos, m) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularMovimiento: (id) => {
+    const movimientos = get().datos.movimientos.map((m) => (m.id === id ? { ...m, anuladoEn: new Date().toISOString() } : m))
+    const datos = { ...get().datos, movimientos }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  importarMovimientos: (ms) => {
+    // Idempotencia: no duplica por (cuenta, fecha, importe, referencia).
+    const existentes = new Set(
+      get().datos.movimientos.map((m) => `${m.cuentaId}|${m.fecha}|${m.importe}|${m.referencia ?? ''}`),
+    )
+    const nuevos = ms.filter((m) => !existentes.has(`${m.cuentaId}|${m.fecha}|${m.importe}|${m.referencia ?? ''}`))
+    if (nuevos.length === 0) return 0
+    const datos = { ...get().datos, movimientos: [...get().datos.movimientos, ...nuevos] }
+    set({ datos })
+    persistirDatos(datos)
+    return nuevos.length
+  },
+  conciliarMovimiento: (id, conciliado) => {
+    const movimientos = get().datos.movimientos.map((m) => (m.id === id ? { ...m, conciliado } : m))
+    const datos = { ...get().datos, movimientos }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarArqueo: (a) => {
+    const datos = { ...get().datos, arqueos: upsert(get().datos.arqueos, a) }
     set({ datos })
     persistirDatos(datos)
   },
