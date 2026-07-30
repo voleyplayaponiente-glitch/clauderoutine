@@ -5,6 +5,8 @@ import { moduloPorRuta } from './lib/modulos'
 import { useStore } from './store/store'
 import { Dashboard } from './pantallas/Dashboard'
 import { Configuracion } from './pantallas/Configuracion'
+import { Ventas } from './pantallas/Ventas'
+import { Compras } from './pantallas/Compras'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 function Contenido() {
@@ -16,6 +18,8 @@ function Contenido() {
   }
   if (modulo.id === 'dashboard') return <Dashboard />
   if (modulo.id === 'configuracion') return <Configuracion />
+  if (modulo.id === 'ventas') return <Ventas />
+  if (modulo.id === 'compras') return <Compras />
   return <PantallaModulo modulo={modulo} />
 }
 

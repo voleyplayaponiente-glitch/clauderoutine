@@ -1,0 +1,257 @@
+import { useMemo, useState } from 'react'
+import { useStore } from '../store/store'
+import { CabeceraPantalla } from './Pantalla'
+import { Proveedores, terceroNuevo } from './Proveedores'
+import { Tarjeta, Boton, EstadoVacio, Semaforo, ImporteEuro } from '../componentes/ui'
+import { Campo, CampoNumero, Select, Toggle, Modal } from '../componentes/formularios'
+import { EditorLineasIva } from '../componentes/EditorLineasIva'
+import { hoyISO, formatearFecha, mesDe, nombreMes, sumarDias } from '../lib/fechas'
+import { nuevoId } from '../dominio/id'
+import { totalesCompra } from '../dominio/compras'
+import { formatearEuro } from '../dominio/dinero'
+import type { Compra, Tercero, NaturalezaCompra, FormaPago, EstadoPago, LineaIva } from '../dominio/tipos'
+
+const FORMAS_PAGO: { valor: FormaPago; texto: string }[] = [
+  { valor: 'TRANSFERENCIA', texto: 'Transferencia' },
+  { valor: 'DOMICILIADO', texto: 'Domiciliado' },
+  { valor: 'EFECTIVO', texto: 'Efectivo' },
+  { valor: 'TARJETA', texto: 'Tarjeta' },
+  { valor: 'APLAZADO', texto: 'Aplazado' },
+]
+const ESTADOS: { valor: EstadoPago; texto: string }[] = [
+  { valor: 'PENDIENTE', texto: 'Pendiente' },
+  { valor: 'PARCIAL', texto: 'Parcial' },
+  { valor: 'PAGADA', texto: 'Pagada' },
+]
+
+function compraNueva(): Compra {
+  return {
+    id: nuevoId(), creadoEn: new Date().toISOString(), creadoPor: 'admin', origen: 'MANUAL',
+    naturaleza: 'MERCADERIA', terceroId: '', numFactura: '', fechaFactura: hoyISO(),
+    lineasIva: [], retencion: 0, formaPago: 'TRANSFERENCIA', estadoPago: 'PENDIENTE', deducible: true,
+  }
+}
+
+export function Compras() {
+  const [tab, setTab] = useState<'compras' | 'proveedores'>('compras')
+  return (
+    <>
+      <CabeceraPantalla titulo="Compras" descripcion="Compras de mercadería y de servicios, con IVA, deducibilidad y vencimientos." />
+      <div className="flex gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }} role="tablist">
+        {(['compras', 'proveedores'] as const).map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+            className="px-3.5 py-2 text-sm capitalize rounded-t-lg"
+            style={{ color: tab === t ? 'var(--text)' : 'var(--text-muted)', fontWeight: tab === t ? 600 : 400, borderBottom: tab === t ? '2px solid var(--color-brand-500)' : '2px solid transparent' }}>
+            {t}
+          </button>
+        ))}
+      </div>
+      {tab === 'compras' ? <ListaCompras /> : <Proveedores />}
+    </>
+  )
+}
+
+function ListaCompras() {
+  const config = useStore((s) => s.config)
+  const terceros = useStore((s) => s.datos.terceros).filter((t) => !t.anuladoEn)
+  const compras = useStore((s) => s.datos.compras).filter((c) => !c.anuladoEn)
+  const guardarCompra = useStore((s) => s.guardarCompra)
+  const anularCompra = useStore((s) => s.anularCompra)
+  const guardarTercero = useStore((s) => s.guardarTercero)
+
+  const [editando, setEditando] = useState<Compra | null>(null)
+  const [provNuevo, setProvNuevo] = useState<Tercero | null>(null)
+
+  const nombreProv = (id: string) => terceros.find((t) => t.id === id)?.nombre ?? '—'
+  const puntos = config.centrosCoste.filter((c) => !c.activoHasta)
+
+  const porMes = useMemo(() => {
+    const mapa = new Map<string, Compra[]>()
+    for (const c of [...compras].sort((a, b) => b.fechaFactura.localeCompare(a.fechaFactura))) {
+      const k = mesDe(c.fechaFactura)
+      mapa.set(k, [...(mapa.get(k) ?? []), c])
+    }
+    return [...mapa.entries()]
+  }, [compras])
+
+  const abrirNueva = () => {
+    const c = compraNueva()
+    if (terceros[0]) c.terceroId = terceros[0].id
+    setEditando(c)
+  }
+
+  const setNaturaleza = (n: NaturalezaCompra) => {
+    if (!editando) return
+    setEditando({ ...editando, naturaleza: n, cuentaGasto: n === 'MERCADERIA' ? '600' : editando.cuentaGasto ?? '629' })
+  }
+  const setCategoria = (categoriaGastoId: string) => {
+    if (!editando) return
+    const cat = config.categoriasGasto.find((x) => x.id === categoriaGastoId)
+    setEditando({ ...editando, categoriaGastoId, cuentaGasto: cat?.cuentaPGC ?? editando.cuentaGasto, deducible: cat?.deduciblePorDefecto ?? editando.deducible })
+  }
+  const setProveedor = (terceroId: string) => {
+    if (!editando) return
+    const prov = terceros.find((t) => t.id === terceroId)
+    const venc = prov?.condicionesPagoDias ? sumarDias(editando.fechaFactura, prov.condicionesPagoDias) : editando.fechaVencimiento
+    setEditando({ ...editando, terceroId, fechaVencimiento: venc })
+  }
+
+  const guardar = () => {
+    if (!editando || !editando.terceroId || !editando.numFactura.trim()) return
+    guardarCompra(editando)
+    setEditando(null)
+  }
+
+  const totales = editando ? totalesCompra(editando) : null
+
+  return (
+    <>
+      <div className="flex justify-end mb-4">
+        <Boton onClick={abrirNueva}>+ Registrar compra</Boton>
+      </div>
+
+      {compras.length === 0 ? (
+        <Tarjeta><EstadoVacio icono="compras" titulo="Aún no hay compras registradas" descripcion="Registra facturas de mercadería y de servicios con su IVA, retención, vencimiento y deducibilidad." accion={<Boton onClick={abrirNueva}>Registrar la primera</Boton>} /></Tarjeta>
+      ) : (
+        <div className="space-y-6">
+          {porMes.map(([mes, lista]) => {
+            const totalMes = lista.reduce((s, c) => s + totalesCompra(c).total, 0)
+            return (
+              <div key={mes}>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <h3 className="font-semibold capitalize">{nombreMes(mes)}</h3>
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Total <ImporteEuro valor={totalMes} className="font-medium" /></span>
+                </div>
+                <Tarjeta className="!p-0 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ color: 'var(--text-muted)' }} className="text-left">
+                        <th className="px-4 py-2.5 font-medium">Fecha</th>
+                        <th className="px-4 py-2.5 font-medium">Proveedor</th>
+                        <th className="px-4 py-2.5 font-medium hidden sm:table-cell">Factura</th>
+                        <th className="px-4 py-2.5 font-medium text-right">Total</th>
+                        <th className="px-4 py-2.5 font-medium text-center">Estado</th>
+                        <th className="px-4 py-2.5"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lista.map((c) => {
+                        const t = totalesCompra(c)
+                        return (
+                          <tr key={c.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                            <td className="px-4 py-2.5 tabular">{formatearFecha(c.fechaFactura)}</td>
+                            <td className="px-4 py-2.5">
+                              {nombreProv(c.terceroId)}
+                              {!c.deducible && <span className="ml-2 text-xs" style={{ color: 'var(--warn)' }}>· no deducible</span>}
+                            </td>
+                            <td className="px-4 py-2.5 tabular hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>{c.numFactura}</td>
+                            <td className="px-4 py-2.5 text-right"><ImporteEuro valor={t.total} /></td>
+                            <td className="px-4 py-2.5 text-center">
+                              <Semaforo estado={c.estadoPago === 'PAGADA' ? 'positivo' : c.estadoPago === 'PARCIAL' ? 'atencion' : 'neutro'} texto={ESTADOS.find((e) => e.valor === c.estadoPago)!.texto} />
+                            </td>
+                            <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <button className="underline text-xs mr-3" onClick={() => setEditando({ ...c })}>Editar</button>
+                              <button className="underline text-xs" style={{ color: 'var(--neg)' }} onClick={() => anularCompra(c.id)}>Anular</button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </Tarjeta>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {editando && totales && (
+        <Modal titulo="Registrar compra" onCerrar={() => setEditando(null)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Select etiqueta="Naturaleza" valor={editando.naturaleza} onChange={setNaturaleza} opciones={[{ valor: 'MERCADERIA', texto: 'Mercadería (stock)' }, { valor: 'SERVICIO', texto: 'Servicio / gasto' }]} />
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium">Proveedor</span>
+                  <button type="button" className="text-xs underline" style={{ color: 'var(--color-brand-500)' }} onClick={() => setProvNuevo(terceroNuevo())}>+ Nuevo</button>
+                </div>
+                <select value={editando.terceroId} onChange={(e) => setProveedor(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                  <option value="">— Selecciona —</option>
+                  {terceros.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <Campo etiqueta="Nº factura" valor={editando.numFactura} onChange={(v) => setEditando({ ...editando, numFactura: v })} />
+              <Campo etiqueta="Fecha factura" valor={editando.fechaFactura} onChange={(v) => setEditando({ ...editando, fechaFactura: v })} tipo="date" />
+              <Campo etiqueta="Vencimiento" valor={editando.fechaVencimiento ?? ''} onChange={(v) => setEditando({ ...editando, fechaVencimiento: v })} tipo="date" />
+            </div>
+
+            <EditorLineasIva lineas={editando.lineasIva} tiposIva={config.tiposIva} onChange={(l: LineaIva[]) => setEditando({ ...editando, lineasIva: l })} />
+
+            <div className="grid grid-cols-2 gap-4">
+              <CampoNumero etiqueta="Retención (111/115)" valor={editando.retencion} onChange={(v) => setEditando({ ...editando, retencion: v })} sufijo="€" />
+              {editando.naturaleza === 'SERVICIO' ? (
+                <Select etiqueta="Categoría de gasto" valor={editando.categoriaGastoId ?? ''} onChange={setCategoria}
+                  opciones={[{ valor: '', texto: '— Sin categoría —' }, ...config.categoriasGasto.map((c) => ({ valor: c.id, texto: c.nombre }))]} />
+              ) : (
+                <Select etiqueta="Centro de coste" valor={editando.centroCosteId ?? ''} onChange={(v) => setEditando({ ...editando, centroCosteId: v || undefined })}
+                  opciones={[{ valor: '', texto: '— Estructura —' }, ...puntos.map((p) => ({ valor: p.id, texto: p.nombre }))]} />
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Select etiqueta="Forma de pago" valor={editando.formaPago} onChange={(v) => setEditando({ ...editando, formaPago: v })} opciones={FORMAS_PAGO} />
+              <Select etiqueta="Estado" valor={editando.estadoPago} onChange={(v) => setEditando({ ...editando, estadoPago: v })} opciones={ESTADOS} />
+            </div>
+
+            <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
+              <Toggle etiqueta="Gasto deducible" valor={editando.deducible} onChange={(v) => setEditando({ ...editando, deducible: v })} />
+              {!editando.deducible && (
+                <div className="mt-2">
+                  <Campo etiqueta="Motivo de no deducibilidad" valor={editando.motivoNoDeducible ?? ''} onChange={(v) => setEditando({ ...editando, motivoNoDeducible: v })} placeholder="Obligatorio: por qué no es deducible" />
+                </div>
+              )}
+            </div>
+
+            <label className="block">
+              <span className="block text-sm font-medium mb-1.5">Documento adjunto</span>
+              <input type="file" onChange={(e) => setEditando({ ...editando, adjuntoNombre: e.target.files?.[0]?.name })} className="text-sm" />
+              {editando.adjuntoNombre && <span className="block text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{editando.adjuntoNombre}</span>}
+            </label>
+
+            <div className="flex items-center justify-between rounded-xl p-3 text-sm" style={{ background: 'var(--surface-2)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Base {formatearEuro(totales.base)} · IVA {formatearEuro(totales.cuota)}{totales.retencion > 0 ? ` · Ret. −${formatearEuro(totales.retencion)}` : ''}</span>
+              <span className="font-semibold tabular">Total {formatearEuro(totales.total)}</span>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Boton variante="secundario" onClick={() => setEditando(null)}>Cancelar</Boton>
+              <Boton onClick={guardar}>Guardar compra</Boton>
+            </div>
+            {(!editando.terceroId || !editando.numFactura.trim()) && <p className="text-xs text-right" style={{ color: 'var(--text-muted)' }}>Indica proveedor y nº de factura para guardar.</p>}
+          </div>
+        </Modal>
+      )}
+
+      {/* Alta rápida de proveedor desde la compra */}
+      {provNuevo && (
+        <Modal titulo="Nuevo proveedor" onCerrar={() => setProvNuevo(null)}>
+          <div className="space-y-4">
+            <Campo etiqueta="Nombre / Razón social" valor={provNuevo.nombre} onChange={(v) => setProvNuevo({ ...provNuevo, nombre: v })} autoFocus />
+            <div className="grid grid-cols-2 gap-4">
+              <Campo etiqueta="CIF / NIF" valor={provNuevo.cif} onChange={(v) => setProvNuevo({ ...provNuevo, cif: v.toUpperCase() })} />
+              <CampoNumero etiqueta="Pago a" valor={provNuevo.condicionesPagoDias ?? 0} onChange={(v) => setProvNuevo({ ...provNuevo, condicionesPagoDias: v })} sufijo="días" />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Boton variante="secundario" onClick={() => setProvNuevo(null)}>Cancelar</Boton>
+              <Boton onClick={() => { if (provNuevo.nombre.trim()) { guardarTercero(provNuevo); if (editando) setProveedor(provNuevo.id); setProvNuevo(null) } }}>Crear y usar</Boton>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}

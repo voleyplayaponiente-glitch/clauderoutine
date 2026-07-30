@@ -111,6 +111,93 @@ export interface Apariencia {
   moneda: 'EUR'
 }
 
+// ─────────────────────────── Operativa (Fase 2) ───────────────────────────
+
+/** Tercero: proveedor/cliente/acreedor… (unificado, un rol no excluye otro). */
+export interface Tercero extends Trazable {
+  nombre: string
+  cif: string
+  esProveedor: boolean
+  esCliente: boolean
+  esVinculada: boolean // operación vinculada (socio o grupo)
+  iban?: string
+  contacto?: string
+  condicionesPagoDias?: number // p. ej. 30, 60
+}
+
+/** Forma de cobro de una venta. */
+export type FormaCobro = 'EFECTIVO' | 'TARJETA' | 'BIZUM' | 'TRANSFERENCIA' | 'PASARELA' | 'APLAZADO'
+
+/** Forma de pago de una compra. */
+export type FormaPago = 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'DOMICILIADO' | 'APLAZADO'
+
+/** Línea de IVA (base + régimen + tipo), reutilizada en ventas y compras. */
+export interface LineaIva {
+  base: number
+  tipoIvaId: ID
+  tipo: number
+  regimen: RegimenIva
+  cuota: number
+}
+
+/** Registro diario de ventas: único por punto de venta y fecha. */
+export interface Venta extends Trazable {
+  centroCosteId: ID
+  fecha: string // yyyy-mm-dd
+  lineasIva: LineaIva[]
+  cobros: { forma: FormaCobro; importe: number }[]
+  numTickets: number
+  unidades: number
+  cerrado: boolean // cierre diario
+  firmadoPor?: string
+}
+
+export type NaturalezaCompra = 'MERCADERIA' | 'SERVICIO'
+export type EstadoPago = 'PENDIENTE' | 'PARCIAL' | 'PAGADA'
+
+/** Compra / gasto (factura recibida). */
+export interface Compra extends Trazable {
+  naturaleza: NaturalezaCompra
+  terceroId: ID
+  numFactura: string
+  fechaFactura: string
+  fechaVencimiento?: string
+  lineasIva: LineaIva[]
+  retencion: number // importe de retención (111/115)
+  formaPago: FormaPago
+  estadoPago: EstadoPago
+  centroCosteId?: ID // centro de coste o estructura
+  categoriaGastoId?: ID
+  cuentaGasto?: string // cuenta PGC de gasto (600/62x)
+  deducible: boolean
+  motivoNoDeducible?: string
+  adjuntoNombre?: string
+  esRecurrente?: boolean
+  previsto?: boolean // recurrente auto-generado pendiente de confirmar
+}
+
+/** Gasto recurrente que se auto-genera cada mes (alquiler, cuota, seguro…). */
+export interface GastoRecurrente {
+  id: ID
+  concepto: string
+  terceroId: ID
+  base: number
+  tipoIvaId: ID
+  categoriaGastoId?: ID
+  centroCosteId?: ID
+  diaDelMes: number
+  cuentaGasto?: string
+  activo: boolean
+}
+
+/** Colección de datos operativos (persistida aparte de la configuración). */
+export interface DatosOperativos {
+  terceros: Tercero[]
+  ventas: Venta[]
+  compras: Compra[]
+  recurrentes: GastoRecurrente[]
+}
+
 export interface Configuracion {
   empresa: DatosEmpresa
   centrosCoste: CentroCoste[]

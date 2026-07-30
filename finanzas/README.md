@@ -37,7 +37,17 @@ npm run preview  # previsualizar producción / PWA
 - **Impuestos**: tipos de IVA, impuestos especiales por ml/unidad y calendario fiscal.
 - **Categorías de gasto** con deducibilidad y cuenta contable.
 - **Umbrales y alertas** · **Apariencia** (tema, densidad, fecha, moneda).
-- **Datos**: exportar/importar la configuración en JSON abierto. 31 tests en verde.
+- **Datos**: exportar/importar la configuración en JSON abierto.
+
+**Fase 2 (ventas diarias + compras)** — ya se puede usar a diario:
+- **Ventas diarias** por punto de venta: líneas por tipo de IVA, cobros por forma
+  (efectivo/tarjeta/Bizum/transferencia/pasarela/aplazado), tickets, ticket medio y
+  **cierre firmado**. Detecta el descuadre cobros ≠ bruto y no deja cerrar el día si no cuadra.
+- **Compras**: mercadería o servicio, IVA, retención, vencimiento (auto según condiciones
+  del proveedor), centro de coste, categoría, **deducibilidad con motivo obligatorio** y adjunto.
+- **Proveedores** con CIF validado, condiciones de pago e IBAN; alta rápida desde la compra.
+- **Partida doble interna**: cada venta y cada compra generan su asiento cuadrado
+  (`asientoVenta`/`asientoCompra`), verificado en los tests. **41 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

@@ -4,10 +4,19 @@
  * haya dependencia del proveedor.
  */
 import { get, set, del } from 'idb-keyval'
-import type { Configuracion } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos } from '../dominio/tipos'
 
 const CLAVE_CONFIG = 'finanzas:configuracion'
 const CLAVE_TEMA = 'finanzas:tema'
+const CLAVE_DATOS = 'finanzas:datos'
+
+export async function cargarDatos(): Promise<DatosOperativos | undefined> {
+  return get<DatosOperativos>(CLAVE_DATOS)
+}
+
+export async function guardarDatos(datos: DatosOperativos): Promise<void> {
+  await set(CLAVE_DATOS, datos)
+}
 
 export async function cargarConfig(): Promise<Configuracion | undefined> {
   return get<Configuracion>(CLAVE_CONFIG)
@@ -28,4 +37,5 @@ export async function guardarTema(tema: 'claro' | 'oscuro'): Promise<void> {
 export async function borrarTodo(): Promise<void> {
   await del(CLAVE_CONFIG)
   await del(CLAVE_TEMA)
+  await del(CLAVE_DATOS)
 }
