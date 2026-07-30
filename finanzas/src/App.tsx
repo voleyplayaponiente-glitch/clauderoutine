@@ -11,6 +11,8 @@ import { Caja } from './pantallas/Caja'
 import { Bancos } from './pantallas/Bancos'
 import { Stock } from './pantallas/Stock'
 import { Importacion } from './pantallas/Importacion'
+import { Deudas } from './pantallas/Deudas'
+import { Deudores } from './pantallas/Deudores'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 function Contenido() {
@@ -28,6 +30,8 @@ function Contenido() {
   if (modulo.id === 'bancos') return <Bancos />
   if (modulo.id === 'stock') return <Stock />
   if (modulo.id === 'importacion') return <Importacion />
+  if (modulo.id === 'deudas') return <Deudas />
+  if (modulo.id === 'deudores') return <Deudores />
   return <PantallaModulo modulo={modulo} />
 }
 

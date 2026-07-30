@@ -4,14 +4,14 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, DeudorVario } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import { cargarConfig, guardarConfig, cargarTema, guardarTema, cargarDatos, guardarDatos } from '../lib/db'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [] }
 }
 
 /** Colección de datos que recibe cada destino de importación. */
@@ -57,6 +57,11 @@ interface Estado {
   eliminarPlantilla: (id: string) => void
   aplicarImportacion: (destinoId: string, entidades: { id: string }[], nombreFichero: string) => LoteImportacion
   deshacerImportacion: (loteId: string) => void
+  // Deudas y deudores
+  guardarDeuda: (d: Deuda) => void
+  anularDeuda: (id: string) => void
+  guardarDeudor: (d: DeudorVario) => void
+  anularDeudor: (id: string) => void
   reemplazarDatos: (d: DatosOperativos) => void
 }
 
@@ -259,6 +264,29 @@ export const useStore = create<Estado>((set, get) => ({
       datos[coleccion] = (datos[coleccion] as { id: string }[]).filter((x) => !ids.has(x.id)) as any
     }
     datos.importaciones = datos.importaciones.filter((l) => l.id !== loteId)
+    set({ datos })
+    persistirDatos(datos)
+  },
+
+  guardarDeuda: (d) => {
+    const datos = { ...get().datos, deudas: upsert(get().datos.deudas, d) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularDeuda: (id) => {
+    const deudas = get().datos.deudas.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
+    const datos = { ...get().datos, deudas }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarDeudor: (d) => {
+    const datos = { ...get().datos, deudores: upsert(get().datos.deudores, d) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularDeudor: (id) => {
+    const deudores = get().datos.deudores.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
+    const datos = { ...get().datos, deudores }
     set({ datos })
     persistirDatos(datos)
   },

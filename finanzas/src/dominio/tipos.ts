@@ -297,6 +297,68 @@ export interface MovimientoStock extends Trazable {
   motivo?: string
 }
 
+// ─────────────────────────── Deudas y deudores (Fase 6) ───────────────────────────
+
+export type TipoDeuda =
+  | 'PRESTAMO'
+  | 'POLIZA'
+  | 'LEASING'
+  | 'RENTING'
+  | 'PROVEEDOR'
+  | 'ACREEDOR'
+  | 'SOCIOS'
+  | 'GRUPO'
+  | 'HACIENDA'
+  | 'SEG_SOCIAL'
+  | 'DIVIDENDO'
+
+/** Deuda / acreedor. Todo se modela con cuadro (una deuda simple = 1 periodo). */
+export interface Deuda extends Trazable {
+  tipo: TipoDeuda
+  acreedor: string
+  terceroId?: ID
+  importeOriginal: number
+  tipoInteres: number // % anual
+  comisiones?: number
+  periodicidad: 'MENSUAL' | 'TRIMESTRAL' | 'ANUAL'
+  nPeriodos: number
+  sistema: 'FRANCES' | 'LINEAL'
+  fechaInicio: string
+  garantias?: string
+  esVinculada: boolean
+  notas?: string
+}
+
+export type EstadoDeudor = 'AL_CORRIENTE' | 'VENCIDO' | 'EN_RECLAMACION' | 'INCOBRABLE'
+export type TipoDeudor =
+  | 'CLIENTE_APLAZADO'
+  | 'PRESTAMO_CONCEDIDO'
+  | 'ANTICIPO_PROVEEDOR'
+  | 'FIANZA'
+  | 'GRUPO'
+  | 'ANTICIPO_EMPLEADO'
+
+export interface Reclamacion {
+  id: ID
+  fecha: string
+  medio: 'EMAIL' | 'CARTA' | 'TELEFONO' | 'BUROFAX'
+  nota?: string
+}
+
+/** Deudor vario (cobros pendientes, préstamos concedidos, anticipos, fianzas). */
+export interface DeudorVario extends Trazable {
+  tipo: TipoDeudor
+  nombre: string
+  terceroId?: ID
+  importe: number
+  fechaOrigen: string
+  fechaVencimiento?: string
+  estado: EstadoDeudor
+  esVinculada: boolean
+  reclamaciones: Reclamacion[]
+  provisionManual?: number
+}
+
 /** Registro de una importación (para poder deshacerla como bloque). */
 export interface LoteImportacion {
   id: ID
@@ -319,6 +381,8 @@ export interface DatosOperativos {
   articulos: Articulo[]
   movimientosStock: MovimientoStock[]
   importaciones: LoteImportacion[]
+  deudas: Deuda[]
+  deudores: DeudorVario[]
 }
 
 /** Plantilla de importación: mapeo de columnas guardado con nombre. */

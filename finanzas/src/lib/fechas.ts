@@ -18,6 +18,17 @@ export function sumarDias(iso: string, dias: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Suma meses a una fecha ISO (respetando el fin de mes). */
+export function sumarMeses(iso: string, meses: number): string {
+  const d = new Date(iso + 'T00:00:00')
+  const dia = d.getDate()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + meses)
+  const ultimoDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  d.setDate(Math.min(dia, ultimoDia))
+  return d.toISOString().slice(0, 10)
+}
+
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 /** "2026-07" → "julio 2026". */

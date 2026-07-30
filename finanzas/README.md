@@ -78,7 +78,16 @@ npm run preview  # previsualizar producción / PWA
   separador y comillas). Los PDF de factura se completan a mano (nunca se inventan datos).
 - Destinos: artículos, proveedores/clientes y movimientos bancarios. **Deshacer la
   importación completa como bloque.** Idempotencia por clave de duplicado.
-- Motor: `csv` e `importacion` con tests. **72 tests en verde.**
+- Motor: `csv` e `importacion` con tests.
+
+**Fase 6 (deudas y deudores)** — posición deudora y acreedora completa:
+- **Deudas**: préstamos, pólizas, leasing/renting y acreedores con **cuadro de
+  amortización** (francés o lineal, desglose capital/intereses), capital pendiente,
+  **vencimientos por tramos** y aviso de operaciones vinculadas.
+- **Deudores**: clientes aplazados, préstamos concedidos, anticipos y fianzas con
+  **antigüedad de saldos** por tramos, **provisión por insolvencia** escalonada,
+  historial de reclamaciones y generación de email de reclamación.
+- Motor: `amortizacion` y `vencimientos` con tests. **83 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).
