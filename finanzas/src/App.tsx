@@ -4,7 +4,6 @@ import { Esqueleto } from './componentes/ui'
 import { useRuta } from './lib/router'
 import { moduloPorRuta } from './lib/modulos'
 import { useStore } from './store/store'
-import { Dashboard } from './pantallas/Dashboard'
 import { Configuracion } from './pantallas/Configuracion'
 import { Ventas } from './pantallas/Ventas'
 import { Compras } from './pantallas/Compras'
@@ -17,7 +16,8 @@ import { Deudores } from './pantallas/Deudores'
 import { Presupuesto } from './pantallas/Presupuesto'
 import { PantallaModulo } from './pantallas/Pantalla'
 
-// Carga diferida: la previsión usa Recharts, que no debe pesar en el arranque.
+// Carga diferida: dashboard y previsión usan Recharts, que no debe pesar en el arranque.
+const Dashboard = lazy(() => import('./pantallas/Dashboard').then((m) => ({ default: m.Dashboard })))
 const Tesoreria = lazy(() => import('./pantallas/Tesoreria').then((m) => ({ default: m.Tesoreria })))
 
 function Contenido() {
@@ -27,7 +27,7 @@ function Contenido() {
   if (!modulo) {
     return <div className="p-8">Página no encontrada. <a href="#/" className="underline">Volver al inicio</a></div>
   }
-  if (modulo.id === 'dashboard') return <Dashboard />
+  if (modulo.id === 'dashboard') return <Suspense fallback={<Esqueleto className="h-64 w-full" />}><Dashboard /></Suspense>
   if (modulo.id === 'configuracion') return <Configuracion />
   if (modulo.id === 'ventas') return <Ventas />
   if (modulo.id === 'compras') return <Compras />

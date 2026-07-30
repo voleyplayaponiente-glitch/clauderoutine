@@ -98,7 +98,16 @@ npm run preview  # previsualizar producción / PWA
 - **Presupuesto y cash flow**: presupuesto anual por línea (ingresos, coste de ventas,
   gastos, inversión, financiación) con apertura mensual, **Presupuesto vs. Real vs. Desviación**,
   generación automática desde el histórico con factor de crecimiento y resumen de resultado.
-- Motor: `prevision` y `ratios` con tests. **90 tests en verde.**
+- Motor: `prevision` y `ratios` con tests.
+
+**Fase 8 (dashboard interactivo)** — vista de dirección:
+- Fila de **KPIs clicables**: tesorería, venta del mes vs. objetivo, margen bruto %, resultado,
+  deuda total y stock valorado (cada uno navega a su detalle).
+- **Centro de alertas priorizado** (crítico/aviso/info): tensión de liquidez, facturas vencidas,
+  descuadres de caja, puntos bajo objetivo, stock bajo, impuestos próximos y conciliaciones.
+- **Evolución de tesorería real + proyectada**, ventas por canal (barras apiladas), ranking por
+  punto de venta, **waterfall de resultado** y vencimientos de los próximos 15 días.
+- Motor: `alertas` con tests. **94 tests en verde.** Dashboard con Recharts en carga diferida.
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).
