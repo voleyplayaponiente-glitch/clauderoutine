@@ -297,6 +297,15 @@ export interface MovimientoStock extends Trazable {
   motivo?: string
 }
 
+/** Registro de una importación (para poder deshacerla como bloque). */
+export interface LoteImportacion {
+  id: ID
+  fecha: string
+  destinoId: string
+  nombreFichero: string
+  ids: ID[]
+}
+
 /** Colección de datos operativos (persistida aparte de la configuración). */
 export interface DatosOperativos {
   terceros: Tercero[]
@@ -309,6 +318,15 @@ export interface DatosOperativos {
   almacenes: Almacen[]
   articulos: Articulo[]
   movimientosStock: MovimientoStock[]
+  importaciones: LoteImportacion[]
+}
+
+/** Plantilla de importación: mapeo de columnas guardado con nombre. */
+export interface PlantillaImportacion {
+  id: ID
+  nombre: string
+  destinoId: string
+  mapeo: Record<string, number>
 }
 
 export interface Configuracion {
@@ -321,4 +339,5 @@ export interface Configuracion {
   categoriasGasto: CategoriaGasto[]
   umbrales: Umbrales
   apariencia: Apariencia
+  plantillasImportacion: PlantillaImportacion[]
 }

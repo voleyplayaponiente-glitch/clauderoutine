@@ -10,6 +10,7 @@ import { Compras } from './pantallas/Compras'
 import { Caja } from './pantallas/Caja'
 import { Bancos } from './pantallas/Bancos'
 import { Stock } from './pantallas/Stock'
+import { Importacion } from './pantallas/Importacion'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 function Contenido() {
@@ -26,6 +27,7 @@ function Contenido() {
   if (modulo.id === 'caja') return <Caja />
   if (modulo.id === 'bancos') return <Bancos />
   if (modulo.id === 'stock') return <Stock />
+  if (modulo.id === 'importacion') return <Importacion />
   return <PantallaModulo modulo={modulo} />
 }
 

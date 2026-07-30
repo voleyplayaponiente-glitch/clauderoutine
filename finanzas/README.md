@@ -68,7 +68,17 @@ npm run preview  # previsualizar producción / PWA
   coste y a PVP, alertas de bajo mínimo y **stock muerto**.
 - **Inventario físico**: recuento vs. teórico y **regularización** que genera los
   movimientos y su asiento 300/610.
-- Motor: `valoracion`, `stock` e `inventario` con tests. **61 tests en verde.**
+- Motor: `valoracion`, `stock` e `inventario` con tests.
+
+**Fase 5 (importación universal)** — carga masiva de histórico:
+- Asistente de **4 pasos**: subida y detección de tipo → **mapeo visual de columnas**
+  (con sugerencia automática y **plantillas guardables**) → **previsualización validada**
+  (filas verde/ámbar/rojo, celdas editables, **detección de duplicados**) → importación.
+- **Excel** (SheetJS, carga diferida) y **CSV/TSV** (parser propio con detección de
+  separador y comillas). Los PDF de factura se completan a mano (nunca se inventan datos).
+- Destinos: artículos, proveedores/clientes y movimientos bancarios. **Deshacer la
+  importación completa como bloque.** Idempotencia por clave de duplicado.
+- Motor: `csv` e `importacion` con tests. **72 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

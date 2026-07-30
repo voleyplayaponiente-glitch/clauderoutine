@@ -135,5 +135,6 @@ export function configuracionInicial(): Configuracion {
     categoriasGasto: [...CATEGORIAS_GASTO_DEFECTO],
     umbrales: { ...UMBRALES_DEFECTO },
     apariencia: { densidad: 'comoda', formatoFecha: 'dd/mm/aaaa', moneda: 'EUR' },
+    plantillasImportacion: [],
   }
 }

@@ -4,14 +4,21 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import { cargarConfig, guardarConfig, cargarTema, guardarTema, cargarDatos, guardarDatos } from '../lib/db'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [] }
+}
+
+/** Colección de datos que recibe cada destino de importación. */
+const COLECCION_DESTINO: Record<string, keyof DatosOperativos> = {
+  articulos: 'articulos',
+  terceros: 'terceros',
+  'movimientos-banco': 'movimientos',
 }
 
 interface Estado {
@@ -45,6 +52,11 @@ interface Estado {
   guardarMovimientoStock: (m: MovimientoStock) => void
   guardarMovimientosStock: (ms: MovimientoStock[]) => void
   anularMovimientoStock: (id: string) => void
+  // Importación
+  guardarPlantilla: (p: PlantillaImportacion) => void
+  eliminarPlantilla: (id: string) => void
+  aplicarImportacion: (destinoId: string, entidades: { id: string }[], nombreFichero: string) => LoteImportacion
+  deshacerImportacion: (loteId: string) => void
   reemplazarDatos: (d: DatosOperativos) => void
 }
 
@@ -214,6 +226,42 @@ export const useStore = create<Estado>((set, get) => ({
     set({ datos })
     persistirDatos(datos)
   },
+
+  guardarPlantilla: (p) => {
+    const config = { ...get().config, plantillasImportacion: upsert(get().config.plantillasImportacion, p) }
+    set({ config })
+    persistirConDebounce(config)
+  },
+  eliminarPlantilla: (id) => {
+    const config = { ...get().config, plantillasImportacion: get().config.plantillasImportacion.filter((p) => p.id !== id) }
+    set({ config })
+    persistirConDebounce(config)
+  },
+  aplicarImportacion: (destinoId, entidades, nombreFichero) => {
+    const coleccion = COLECCION_DESTINO[destinoId]
+    const lote: LoteImportacion = { id: 'lote-' + Math.random().toString(36).slice(2), fecha: new Date().toISOString(), destinoId, nombreFichero, ids: entidades.map((e) => e.id) }
+    const datos = { ...get().datos }
+    if (coleccion) {
+      datos[coleccion] = [...(datos[coleccion] as { id: string }[]), ...entidades] as any
+    }
+    datos.importaciones = [...datos.importaciones, lote]
+    set({ datos })
+    persistirDatos(datos)
+    return lote
+  },
+  deshacerImportacion: (loteId) => {
+    const lote = get().datos.importaciones.find((l) => l.id === loteId)
+    if (!lote) return
+    const coleccion = COLECCION_DESTINO[lote.destinoId]
+    const ids = new Set(lote.ids)
+    const datos = { ...get().datos }
+    if (coleccion) {
+      datos[coleccion] = (datos[coleccion] as { id: string }[]).filter((x) => !ids.has(x.id)) as any
+    }
+    datos.importaciones = datos.importaciones.filter((l) => l.id !== loteId)
+    set({ datos })
+    persistirDatos(datos)
+  },
   reemplazarDatos: (d) => {
     set({ datos: d })
     persistirDatos(d)
@@ -237,5 +285,6 @@ function migrarConfig(c: Partial<Configuracion>): Configuracion {
     categoriasGasto: c.categoriasGasto ?? base.categoriasGasto,
     umbrales: { ...base.umbrales, ...c.umbrales },
     apariencia: { ...base.apariencia, ...c.apariencia },
+    plantillasImportacion: c.plantillasImportacion ?? base.plantillasImportacion,
   }
 }
