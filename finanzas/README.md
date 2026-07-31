@@ -17,6 +17,20 @@ npm run build    # tsc -b && vite build
 npm run preview  # previsualizar producción / PWA
 ```
 
+## Despliegue (GitHub Pages)
+El workflow `.github/workflows/deploy.yml` (al hacer push a `main`) compila la app de
+vóley en la raíz **y** esta app en `/finanzas/`, sin interferir entre ellas. Una vez
+fusionado a `main`, la app queda disponible en:
+
+**https://voleyplayaponiente-glitch.github.io/clauderoutine/finanzas/**
+
+Es una PWA: desde el iPhone/Mac, abrir esa URL y «Añadir a pantalla de inicio».
+
+## Servicio de conectores (Umbrel)
+En `servidor/` hay un microservicio Node (sin dependencias) para enchufar Square, banco,
+etc. de forma segura: guarda las credenciales en el servidor, no en el navegador. Ver
+`servidor/README.md` para levantarlo con Docker en el Umbrel.
+
 ## Estado — Fases 0 y 1 ✅
 **Fase 0 (cimientos)**
 - Motor puro en `src/dominio/` con tests: `dinero` (aritmética en céntimos, sin float),
