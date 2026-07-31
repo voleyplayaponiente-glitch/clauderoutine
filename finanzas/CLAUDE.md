@@ -1,0 +1,107 @@
+# CLAUDE.md — App de Gestión Financiera Integral
+
+Memoria del proyecto para Claude Code. Léelo al empezar cualquier sesión que toque `finanzas/`.
+
+## Qué es
+Aplicación web **en español**, **client-first / PWA offline-first**, de **gestión financiera
+integral** para una S.L. de retail (negocio de **vapeo**) con varios puntos de venta, stands
+y venta online. Estética estilo Apple, modo claro/oscuro, responsive.
+
+- **App en producción:** https://voleyplayaponiente-glitch.github.io/clauderoutine/finanzas/
+- **Repo:** voleyplayaponiente-glitch/clauderoutine · vive en la carpeta `finanzas/`
+- **Rama de desarrollo (finanzas):** `claude/preparar-aplicacion-c947u8`
+- **Convive con** la app de vóley (raíz del repo) y una de gestión laboral; **no se tocan**.
+
+## Decisión de arquitectura (deliberada)
+**Client-first** como la app de vóley: Vite + React 19 + TypeScript + Tailwind v4 + Zustand +
+IndexedDB (idb-keyval). Gráficos con Recharts, PDF con jsPDF, Excel con SheetJS (xlsx).
+**No backend obligatorio**: el usuario es **un solo administrador**, aloja en GitHub Pages
+(estático) y usa la app desde el **iPhone en la tienda** (un backend en su Mac no sería
+accesible). El motor de cálculo está aislado en **TS puro** para poder añadir sincronización
+a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en **carga diferida**.
+
+## Comandos
+```bash
+cd finanzas
+npm install
+npm run dev      # http://localhost:5173
+npm test         # 113 tests (Vitest) del motor
+npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
+npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
+```
+
+## Arquitectura
+- `src/dominio/` — **motor puro en TS, sin React** (aquí vive la lógica, todo testeado):
+  `dinero` (céntimos, sin float), `parseo-es` (heurística de millar: `180.000`=180000),
+  `iva`, `partida-doble`, `validacion` (NIF/CIF), `ventas`, `compras`, `asientos`,
+  `tesoreria`, `conciliacion`, `n43`, `valoracion` (coste medio), `stock`, `inventario`,
+  `amortizacion`, `vencimientos`, `prevision`, `ratios`, `alertas`, `libros` (sumas y saldos,
+  balance, P&G), `registros-fiscales` (303/347), `backup` (checksum), `conectores`, `csv`,
+  `importacion`, `defaults`, `tipos`, `id`.
+- `src/lib/` — capa con efectos: `db` (IndexedDB), `router` (hash), `fechas`, `flujos`,
+  `dashboard`, `contabilidad` (genera asientos), `exportar` (CSV/Excel/PDF), `copias`,
+  `conectores` (transporte), `importacion` (lectura ficheros), `backup`.
+- `src/store/store.ts` — estado global (Zustand) + persistencia con debounce + migración.
+- `src/pantallas/` — una pantalla por módulo. `src/componentes/` — UI reutilizable.
+- `servidor/` — microservicio Node (Umbrel) para conectores (ver abajo).
+
+## Reglas de negocio clave
+- **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
+  El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
+  y P&G (criterio 4). Un descuadre **nunca se oculta**: se muestra en rojo.
+- IVA con separación base/cuota/total en cualquier dirección; exento/no sujeto/ISP.
+- **Impuesto especial de vapeo (modelo 573, desde 01/04/2025):** 0,15 €/ml (≤15 mg/ml o sin
+  nicotina) y 0,20 €/ml (>15 mg/ml). **Editable**, con vigencia; nunca hardcodeado.
+- **Límite de pago en efectivo entre empresarios: 1.000 €** (Ley 11/2021). Editable.
+- Ventas: cobros deben cuadrar con el bruto; no se cierra el día con descuadre. Firma responsable.
+- Compras: deducibilidad con motivo obligatorio si no es deducible.
+- Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
+- Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
+
+## Estado — Fases 0–12 completadas (113 tests en verde)
+Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
+Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
+tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
+PDF ejecutivo) · Copias de seguridad (JSON+Excel, checksum, restauración) · Pulido
+(accesibilidad, densidad, iconos PWA) · **Conectores** (Fase 11).
+
+## Despliegue (importante)
+- El workflow `.github/workflows/deploy.yml` (raíz del repo) compila **el vóley en la raíz**
+  y **finanzas en `/finanzas/`** (instala deps, tests y build de finanzas, y combina el artefacto).
+- **El entorno `github-pages` está restringido a la rama del vóley**
+  (`claude/tournament-bracket-manager-gvrcdt`). Por eso `main` y la rama de finanzas **compilan
+  pero no publican** (el job `deploy` se rechaza sin runner). **Para publicar hay que desplegar
+  desde la rama del vóley**: se hizo con un PR de la rama de finanzas → rama del vóley
+  (fast-forward, vóley idéntico + finanzas añadida). Alternativa: cambiar en Settings →
+  Environments → github-pages → «Deployment branches» a «No restriction» y desplegar desde main.
+- Base en Pages: `/clauderoutine/finanzas/` (con `GITHUB_PAGES=true`). Router por hash (sin 404).
+- Datos en el dispositivo (IndexedDB). Para pasar de un equipo a otro: Copias → Descargar JSON
+  → Restaurar. «Borrar datos del sitio» los pierde.
+
+## Conectores (Fase 11) y servidor Umbrel
+- Arquitectura enchufable: interfaz común probar/sincronizar/**previsualizar antes de aplicar**/
+  **idempotencia** (por `externalId`). Tipos: Square, banca PSD2, Stripe, Shopify, WooCommerce, Demo.
+- **Tres modos** (`Configuración → Conexiones`): DEMO (simulado, para probar sin credenciales),
+  DISPOSITIVO (token en IndexedDB; falla con APIs sin CORS como Square), **SERVIDOR (Umbrel,
+  recomendado)** — el navegador solo habla con tu servidor, que guarda las credenciales cifradas.
+- **Servicio en `finanzas/servidor/`** (Node sin dependencias, Docker). Contrato con
+  `Authorization: Bearer <SECRETO>`:
+  - `GET /api/estado` → `{ ok: true }`
+  - `GET /api/sync/<tipo>` → `{ movimientos: [{ externalId, fecha, concepto, importe }] }`
+  - Adaptador real de **Square (payouts)** + demo. `.env.example`, Dockerfile, docker-compose, README.
+- **Pendiente para Square real:** levantar el servicio en el Umbrel **con HTTPS** (Tailscale /
+  túnel de Cloudflare / reverse proxy), porque la app es HTTPS y bloquea http:// (contenido mixto).
+  Luego: Conexiones → Square → modo Servidor → URL del Umbrel + secreto.
+
+## Convenciones
+- Interfaz y errores **en español**. Motor **sin dependencias de React** (testeable aislado).
+- Formato español: coma decimal, punto de millar, € detrás; números tabulares.
+- Nunca inventar un dato que no se puede leer (PDF de factura → a mano). Nunca borrado físico
+  sin rastro (borrado lógico `anuladoEn`). Tipos fiscales siempre editables en Configuración.
+- Verificado en cada fase con build limpio, tests en verde y captura en navegador (Playwright).
+
+## Ampliable / pendiente
+- Roles por tienda y auditoría inmutable → requieren backend.
+- Facturación electrónica verificable (estructura preparada, sin certificar en v1).
+- Más adaptadores de conector en el servidor (banco PSD2, Stripe, Shopify…).
+- Siembra de mejores terceros, drag-and-drop, sincronización PostgreSQL.
