@@ -125,7 +125,20 @@ npm run preview  # previsualizar producción / PWA
 - **Restauración verificada**: comprueba el checksum antes de restaurar, muestra el contenido
   y crea un **backup previo de seguridad** automático antes de sobrescribir.
 - **Snapshots automáticos diarios** en el dispositivo con retención de 7 días.
-- Motor: `backup` (checksum determinista + verificación) con tests. **109 tests en verde.**
+- Motor: `backup` (checksum determinista + verificación) con tests.
+
+**Fase 12 (pulido)** — producto terminado:
+- **Accesibilidad**: foco visible por teclado, contraste AA, controles nativos con
+  `color-scheme` en modo oscuro, etiquetas correctas.
+- **Densidad configurable** (cómoda/compacta) aplicada de verdad a tablas y contenido.
+- **Iconos PWA** (192/512 + apple-touch-icon) e instalación en iPhone/Mac.
+- **Guía de usuario** (`../GUIA_USUARIO.md`) módulo a módulo. **109 tests en verde.**
+
+## Estado
+Fases 0–10 y 12 completadas (109 tests, build limpio). **Fase 11 (conectores externos:
+Square, banca PSD2, tienda online) pendiente**: requiere un servidor para cifrar las
+credenciales en reposo, incompatible con el despliegue estático actual. Hasta entonces todo
+se cubre con importación de ficheros (Excel/CSV/N43).
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).
