@@ -15,6 +15,7 @@ import { Deudas } from './pantallas/Deudas'
 import { Deudores } from './pantallas/Deudores'
 import { Presupuesto } from './pantallas/Presupuesto'
 import { Informes } from './pantallas/Informes'
+import { Copias } from './pantallas/Copias'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 // Carga diferida: dashboard y previsión usan Recharts, que no debe pesar en el arranque.
@@ -41,6 +42,7 @@ function Contenido() {
   if (modulo.id === 'presupuesto') return <Presupuesto />
   if (modulo.id === 'tesoreria') return <Suspense fallback={<Esqueleto className="h-64 w-full" />}><Tesoreria /></Suspense>
   if (modulo.id === 'informes') return <Informes />
+  if (modulo.id === 'copias') return <Copias />
   return <PantallaModulo modulo={modulo} />
 }
 

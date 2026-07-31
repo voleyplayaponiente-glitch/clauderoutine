@@ -64,6 +64,7 @@ interface Estado {
   anularDeudor: (id: string) => void
   guardarPresupuesto: (p: Presupuesto) => void
   reemplazarDatos: (d: DatosOperativos) => void
+  restaurarTodo: (config: Configuracion, datos: DatosOperativos) => void
 }
 
 let debounce: ReturnType<typeof setTimeout> | undefined
@@ -103,6 +104,8 @@ export const useStore = create<Estado>((set, get) => ({
     })
     // Si no había nada guardado, deja la config inicial persistida.
     if (!config) void guardarConfig(get().config)
+    // Copia de seguridad automática diaria (retención gestionada en la capa lib).
+    void import('../lib/copias').then((m) => m.crearSnapshotDiario(get().config, get().datos, new Date().toISOString()))
   },
 
   alternarTema: () => {
@@ -299,6 +302,13 @@ export const useStore = create<Estado>((set, get) => ({
   reemplazarDatos: (d) => {
     set({ datos: d })
     persistirDatos(d)
+  },
+  restaurarTodo: (config, datos) => {
+    const c = migrarConfig(config)
+    const d = { ...datosIniciales(), ...datos }
+    set({ config: c, datos: d })
+    void guardarConfig(c)
+    void guardarDatos(d)
   },
 }))
 

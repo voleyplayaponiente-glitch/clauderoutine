@@ -117,7 +117,15 @@ npm run preview  # previsualizar producción / PWA
   Balance de Situación cuadra con la P&G (criterio de aceptación 4).
 - **Exportación a CSV, Excel (SheetJS) y PDF (jsPDF)** e **informe ejecutivo mensual en PDF**
   con portada, logo, resumen, 303, P&G y balance.
-- Motor: `libros` y `registros-fiscales` con tests. **104 tests en verde.** jsPDF en carga diferida.
+- Motor: `libros` y `registros-fiscales` con tests. jsPDF en carga diferida.
+
+**Fase 10 (copias de seguridad)** — datos a salvo:
+- **Backup completo** en JSON (formato abierto, con **checksum de integridad**) y en Excel
+  (una hoja por colección).
+- **Restauración verificada**: comprueba el checksum antes de restaurar, muestra el contenido
+  y crea un **backup previo de seguridad** automático antes de sobrescribir.
+- **Snapshots automáticos diarios** en el dispositivo con retención de 7 días.
+- Motor: `backup` (checksum determinista + verificación) con tests. **109 tests en verde.**
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

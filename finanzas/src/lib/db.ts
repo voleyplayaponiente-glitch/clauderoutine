@@ -5,10 +5,20 @@
  */
 import { get, set, del } from 'idb-keyval'
 import type { Configuracion, DatosOperativos } from '../dominio/tipos'
+import type { Backup } from '../dominio/backup'
 
 const CLAVE_CONFIG = 'finanzas:configuracion'
 const CLAVE_TEMA = 'finanzas:tema'
 const CLAVE_DATOS = 'finanzas:datos'
+const CLAVE_SNAPSHOTS = 'finanzas:snapshots'
+
+export async function cargarSnapshots(): Promise<Backup[]> {
+  return (await get<Backup[]>(CLAVE_SNAPSHOTS)) ?? []
+}
+
+export async function guardarSnapshots(snapshots: Backup[]): Promise<void> {
+  await set(CLAVE_SNAPSHOTS, snapshots)
+}
 
 export async function cargarDatos(): Promise<DatosOperativos | undefined> {
   return get<DatosOperativos>(CLAVE_DATOS)
@@ -38,4 +48,5 @@ export async function borrarTodo(): Promise<void> {
   await del(CLAVE_CONFIG)
   await del(CLAVE_TEMA)
   await del(CLAVE_DATOS)
+  await del(CLAVE_SNAPSHOTS)
 }
