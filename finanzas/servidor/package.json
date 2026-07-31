@@ -1,0 +1,11 @@
+{
+  "name": "conectores-finanzas-servidor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Servicio de conectores (Square, banco…) para la app de Gestión Financiera. Para correr en Umbrel u otro servidor.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

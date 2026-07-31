@@ -42,6 +42,26 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
 
+      # ── App de gestión financiera (subruta /finanzas/), sin afectar al vóley ──
+      - name: Instalar dependencias (finanzas)
+        run: npm ci
+        working-directory: finanzas
+
+      - name: Ejecutar pruebas (finanzas)
+        run: npm test
+        working-directory: finanzas
+
+      - name: Compilar finanzas (base /clauderoutine/finanzas/)
+        run: npm run build
+        working-directory: finanzas
+        env:
+          GITHUB_PAGES: 'true'
+
+      - name: Combinar finanzas en el artefacto de Pages
+        run: |
+          mkdir -p dist/finanzas
+          cp -r finanzas/dist/. dist/finanzas/
+
       - name: Configurar Pages
         uses: actions/configure-pages@v5
         with:

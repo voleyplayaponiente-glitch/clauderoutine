@@ -1,0 +1,102 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #d9eaff;
+  --color-brand-200: #bcdcff;
+  --color-brand-300: #8ec5ff;
+  --color-brand-400: #59a4ff;
+  --color-brand-500: #0a84ff;
+  --color-brand-600: #0069d9;
+  --color-brand-700: #0053ad;
+  --color-brand-800: #06478c;
+  --color-brand-900: #0b3d73;
+  --radius-xl2: 1.25rem;
+}
+
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fbfbfd;
+  --text: #1d1d1f;
+  --text-muted: #6e6e73;
+  --border: #e5e5ea;
+  --pos: #1a7f37;
+  --neg: #c9313b;
+  --warn: #b25e00;
+}
+
+.dark {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --text: #f5f5f7;
+  --text-muted: #98989d;
+  --border: #38383a;
+  --pos: #30d158;
+  --neg: #ff453a;
+  --warn: #ff9f0a;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Números en variante tabular para que las columnas cuadren. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Foco visible para navegación por teclado (accesibilidad AA). */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Densidad compacta: reduce el espaciado de las tablas y de las tarjetas. */
+.densidad-compacta table td,
+.densidad-compacta table th {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+}
+.densidad-compacta main {
+  font-size: 0.94rem;
+}
+
+/* Transiciones suaves y contenidas (150–250 ms), estilo Apple. */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Esqueleto de carga. */
+@keyframes brillo {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+.esqueleto {
+  background: var(--surface-2);
+  animation: brillo 1.4s ease-in-out infinite;
+}
