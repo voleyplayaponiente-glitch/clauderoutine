@@ -11,11 +11,18 @@
  *
  * El fallo de un conector nunca bloquea la app: se captura y se registra.
  */
-import { generarDemoSquare, type ResultadoSync, type MovimientoExterno } from '../dominio/conectores'
+import { generarDemoSquare, urlServidorSegura, type ResultadoSync, type MovimientoExterno } from '../dominio/conectores'
 import type { Conector } from '../dominio/tipos'
 
 function esResultado(x: unknown): x is ResultadoSync {
   return !!x && typeof x === 'object' && Array.isArray((x as ResultadoSync).movimientos)
+}
+
+/** Valida la URL y devuelve la base sin barra final. Lanza si no es segura. */
+function baseServidor(url: string | undefined): string {
+  const v = urlServidorSegura(url)
+  if (!v.ok) throw new Error(v.motivo ?? 'URL del servidor no admitida')
+  return (url as string).replace(/\/$/, '')
 }
 
 /** Normaliza y valida los movimientos que llegan de un servidor externo. */
@@ -31,8 +38,7 @@ export async function sincronizar(conector: Conector, hoyISO: string): Promise<R
     return generarDemoSquare(hoyISO, 5)
   }
   if (conector.modo === 'SERVIDOR') {
-    if (!conector.urlServidor) throw new Error('Falta la URL del servidor')
-    const url = `${conector.urlServidor.replace(/\/$/, '')}/api/sync/${conector.tipo.toLowerCase()}`
+    const url = `${baseServidor(conector.urlServidor)}/api/sync/${conector.tipo.toLowerCase()}`
     const res = await fetch(url, { headers: { Authorization: `Bearer ${conector.secretoServidor ?? ''}` } })
     if (!res.ok) throw new Error(`El servidor respondió ${res.status}`)
     return { movimientos: normalizar(await res.json()) }
@@ -48,8 +54,7 @@ export async function probarConexion(conector: Conector): Promise<{ ok: boolean;
     if (conector.modo === 'DISPOSITIVO') {
       return conector.token ? { ok: true, mensaje: 'Token guardado en el dispositivo.' } : { ok: false, mensaje: 'Falta el token.' }
     }
-    if (!conector.urlServidor) return { ok: false, mensaje: 'Falta la URL del servidor.' }
-    const url = `${conector.urlServidor.replace(/\/$/, '')}/api/estado`
+    const url = `${baseServidor(conector.urlServidor)}/api/estado`
     const res = await fetch(url, { headers: { Authorization: `Bearer ${conector.secretoServidor ?? ''}` } })
     return res.ok ? { ok: true, mensaje: 'Servidor accesible.' } : { ok: false, mensaje: `El servidor respondió ${res.status}.` }
   } catch (e) {

@@ -3,9 +3,13 @@
  * proveedor). En la Fase 10 se ampliará al backup completo de todos los datos.
  */
 import type { Configuracion } from '../dominio/tipos'
+import { redactarCredenciales, parseJsonSeguro } from '../dominio/backup'
+
+export { parseJsonSeguro }
 
 export function exportarConfigJson(config: Configuracion): void {
-  const contenido = JSON.stringify({ version: 1, tipo: 'configuracion', config }, null, 2)
+  // Nunca exportar credenciales de conectores en claro.
+  const contenido = JSON.stringify({ version: 1, tipo: 'configuracion', config: redactarCredenciales(config) }, null, 2)
   const blob = new Blob([contenido], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -17,7 +21,7 @@ export function exportarConfigJson(config: Configuracion): void {
 
 export async function importarConfigJson(fichero: File): Promise<Configuracion> {
   const texto = await fichero.text()
-  const datos = JSON.parse(texto)
+  const datos = parseJsonSeguro(texto) as any
   const config = datos?.config ?? datos
   if (!config || typeof config !== 'object' || !('empresa' in config)) {
     throw new Error('El fichero no contiene una configuración válida')

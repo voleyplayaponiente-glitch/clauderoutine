@@ -16,6 +16,16 @@ export interface Backup {
   datos: DatosOperativos
 }
 
+/**
+ * JSON.parse que descarta las claves capaces de contaminar el prototipo
+ * (`__proto__`, `constructor`, `prototype`). Todo JSON que entra en la app
+ * (backups, configuración importada) debe pasar por aquí.
+ */
+const CLAVES_PELIGROSAS = new Set(['__proto__', 'constructor', 'prototype'])
+export function parseJsonSeguro(texto: string): unknown {
+  return JSON.parse(texto, (clave, valor) => (CLAVES_PELIGROSAS.has(clave) ? undefined : valor))
+}
+
 /** Serialización determinista (claves ordenadas) para un checksum estable. */
 export function stableStringify(valor: unknown): string {
   if (valor === null || typeof valor !== 'object') return JSON.stringify(valor)
@@ -32,9 +42,21 @@ export function calcularChecksum(obj: unknown): string {
   return h.toString(16).padStart(8, '0')
 }
 
+/**
+ * Elimina las credenciales de los conectores (token, secreto del servidor) para
+ * que NUNCA salgan en un fichero de backup en claro. Al restaurar se re-introducen.
+ */
+export function redactarCredenciales(config: Configuracion): Configuracion {
+  return {
+    ...config,
+    conectores: (config.conectores ?? []).map((c) => ({ ...c, token: undefined, secretoServidor: undefined })),
+  }
+}
+
 /** Construye un backup con su checksum. `fecha` se pasa desde fuera (motor puro). */
 export function construirBackup(config: Configuracion, datos: DatosOperativos, fecha: string): Backup {
-  return { version: VERSION_BACKUP, tipo: 'backup-completo', fecha, checksum: calcularChecksum({ config, datos }), config, datos }
+  const limpia = redactarCredenciales(config)
+  return { version: VERSION_BACKUP, tipo: 'backup-completo', fecha, checksum: calcularChecksum({ config: limpia, datos }), config: limpia, datos }
 }
 
 /** Verifica que el backup es estructuralmente válido y su checksum coincide. */
