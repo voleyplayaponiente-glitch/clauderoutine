@@ -107,7 +107,17 @@ npm run preview  # previsualizar producción / PWA
   descuadres de caja, puntos bajo objetivo, stock bajo, impuestos próximos y conciliaciones.
 - **Evolución de tesorería real + proyectada**, ventas por canal (barras apiladas), ranking por
   punto de venta, **waterfall de resultado** y vencimientos de los próximos 15 días.
-- Motor: `alertas` con tests. **94 tests en verde.** Dashboard con Recharts en carga diferida.
+- Motor: `alertas` con tests. Dashboard con Recharts en carga diferida.
+
+**Fase 9 (listados e informes)** — documentación para asesoría y banco:
+- **Libro registro de IVA** repercutido y soportado + resumen del **modelo 303**, y resumen
+  del **modelo 347** (operaciones con terceros por encima de 3.005,06 €).
+- **Balance de sumas y saldos**, **Balance de Situación** y **Cuenta de Pérdidas y Ganancias**
+  en formato PGC, generados desde los asientos. El balance **cuadra por construcción** y el
+  Balance de Situación cuadra con la P&G (criterio de aceptación 4).
+- **Exportación a CSV, Excel (SheetJS) y PDF (jsPDF)** e **informe ejecutivo mensual en PDF**
+  con portada, logo, resumen, 303, P&G y balance.
+- Motor: `libros` y `registros-fiscales` con tests. **104 tests en verde.** jsPDF en carga diferida.
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).
