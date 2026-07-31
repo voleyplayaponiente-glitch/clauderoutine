@@ -134,11 +134,28 @@ npm run preview  # previsualizar producción / PWA
 - **Iconos PWA** (192/512 + apple-touch-icon) e instalación en iPhone/Mac.
 - **Guía de usuario** (`../GUIA_USUARIO.md`) módulo a módulo. **109 tests en verde.**
 
+**Fase 11 (conectores externos)** — automatización:
+- **Arquitectura de conectores enchufables** (Square, banca PSD2, Stripe, Shopify,
+  WooCommerce, Demo) con interfaz común: **probar**, **sincronizar**, **previsualizar antes
+  de aplicar** e **idempotencia** (reimportar no duplica, por identificador externo).
+- **Dos modos de credenciales**: token en el dispositivo (IndexedDB, nunca en el repo) o
+  **vía servidor propio (Umbrel)** —recomendado— que guarda las credenciales cifradas y
+  hace la llamada real; el navegador solo habla con tu servidor. **Modo demo** para probar
+  sin credenciales. Registro de cada sincronización; el fallo de un conector nunca bloquea la app.
+- Motor: `conectores` con tests. **113 tests en verde.**
+
+### Contrato del servidor (Umbrel) para el modo SERVIDOR
+El PWA llama a tu servidor con `Authorization: Bearer <secreto>`:
+- `GET  /api/estado` → 200 si está vivo.
+- `GET  /api/sync/<tipo>` → `{ "movimientos": [{ "externalId", "fecha", "concepto", "importe" }] }`
+  (`tipo` en minúsculas: `square`, `banco_psd2`, `stripe`…). Tu servidor guarda el token del
+  tercero cifrado y hace la llamada real; el navegador nunca ve la credencial del proveedor.
+
 ## Estado
-Fases 0–10 y 12 completadas (109 tests, build limpio). **Fase 11 (conectores externos:
-Square, banca PSD2, tienda online) pendiente**: requiere un servidor para cifrar las
-credenciales en reposo, incompatible con el despliegue estático actual. Hasta entonces todo
-se cubre con importación de ficheros (Excel/CSV/N43).
+**Fases 0–12 completadas** (113 tests, build limpio). La app financiera es un producto
+funcional completo. Para conectores reales en producción (Square, banco) hace falta levantar
+el pequeño servicio del contrato anterior en el Umbrel; mientras tanto todo se cubre con el
+modo demo y con importación de ficheros (Excel/CSV/N43).
 
 ## Arquitectura
 - `src/dominio/` — motor contable en TS puro, sin React (testeable en aislamiento).

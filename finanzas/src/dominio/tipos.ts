@@ -403,6 +403,41 @@ export interface DatosOperativos {
   deudas: Deuda[]
   deudores: DeudorVario[]
   presupuestos: Presupuesto[]
+  logsSync: LogSync[]
+}
+
+// ─────────────────────────── Conectores (Fase 11) ───────────────────────────
+
+export type TipoConector = 'SQUARE' | 'BANCO_PSD2' | 'STRIPE' | 'SHOPIFY' | 'WOOCOMMERCE' | 'DEMO'
+
+/**
+ * Modo de conexión:
+ *  · DEMO        → datos simulados (para probar el flujo sin credenciales).
+ *  · DISPOSITIVO → token guardado en este dispositivo (IndexedDB, nunca en el repo).
+ *  · SERVIDOR    → vía un servidor propio (p. ej. Umbrel) que guarda las credenciales
+ *                  cifradas y hace las llamadas; el navegador solo llama a tu servidor.
+ */
+export type ModoConexion = 'DEMO' | 'DISPOSITIVO' | 'SERVIDOR'
+
+export interface Conector {
+  id: ID
+  tipo: TipoConector
+  nombre: string
+  modo: ModoConexion
+  token?: string // modo DISPOSITIVO
+  urlServidor?: string // modo SERVIDOR (p. ej. https://umbrel.local:3001)
+  secretoServidor?: string // credencial compartida con tu servidor
+  activo: boolean
+  ultimaSync?: string
+}
+
+export interface LogSync {
+  id: ID
+  conectorId: ID
+  fecha: string
+  resultado: 'OK' | 'ERROR' | 'PREVISUALIZADO'
+  mensaje: string
+  registros: number
 }
 
 /** Plantilla de importación: mapeo de columnas guardado con nombre. */
@@ -424,4 +459,5 @@ export interface Configuracion {
   umbrales: Umbrales
   apariencia: Apariencia
   plantillasImportacion: PlantillaImportacion[]
+  conectores: Conector[]
 }

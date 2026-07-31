@@ -136,5 +136,6 @@ export function configuracionInicial(): Configuracion {
     umbrales: { ...UMBRALES_DEFECTO },
     apariencia: { densidad: 'comoda', formatoFecha: 'dd/mm/aaaa', moneda: 'EUR' },
     plantillasImportacion: [],
+    conectores: [],
   }
 }

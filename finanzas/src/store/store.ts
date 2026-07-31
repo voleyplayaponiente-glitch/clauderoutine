@@ -4,14 +4,14 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, DeudorVario, Presupuesto } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, DeudorVario, Presupuesto, Conector, LogSync } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import { cargarConfig, guardarConfig, cargarTema, guardarTema, cargarDatos, guardarDatos } from '../lib/db'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [], logsSync: [] }
 }
 
 /** Colección de datos que recibe cada destino de importación. */
@@ -63,6 +63,10 @@ interface Estado {
   guardarDeudor: (d: DeudorVario) => void
   anularDeudor: (id: string) => void
   guardarPresupuesto: (p: Presupuesto) => void
+  // Conectores
+  guardarConector: (c: Conector) => void
+  eliminarConector: (id: string) => void
+  guardarLogSync: (l: LogSync) => void
   reemplazarDatos: (d: DatosOperativos) => void
   restaurarTodo: (config: Configuracion, datos: DatosOperativos) => void
 }
@@ -299,6 +303,22 @@ export const useStore = create<Estado>((set, get) => ({
     set({ datos })
     persistirDatos(datos)
   },
+
+  guardarConector: (c) => {
+    const config = { ...get().config, conectores: upsert(get().config.conectores, c) }
+    set({ config })
+    persistirConDebounce(config)
+  },
+  eliminarConector: (id) => {
+    const config = { ...get().config, conectores: get().config.conectores.filter((c) => c.id !== id) }
+    set({ config })
+    persistirConDebounce(config)
+  },
+  guardarLogSync: (l) => {
+    const datos = { ...get().datos, logsSync: [l, ...get().datos.logsSync].slice(0, 100) }
+    set({ datos })
+    persistirDatos(datos)
+  },
   reemplazarDatos: (d) => {
     set({ datos: d })
     persistirDatos(d)
@@ -330,5 +350,6 @@ function migrarConfig(c: Partial<Configuracion>): Configuracion {
     umbrales: { ...base.umbrales, ...c.umbrales },
     apariencia: { ...base.apariencia, ...c.apariencia },
     plantillasImportacion: c.plantillasImportacion ?? base.plantillasImportacion,
+    conectores: c.conectores ?? base.conectores,
   }
 }
