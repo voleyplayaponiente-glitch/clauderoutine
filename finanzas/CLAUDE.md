@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 113 tests (Vitest) del motor
+npm test         # 122 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -58,7 +58,7 @@ npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview loca
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 completadas (113 tests en verde)
+## Estado — Fases 0–12 completadas + auditoría de seguridad (122 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
@@ -74,6 +74,11 @@ PDF ejecutivo) · Copias de seguridad (JSON+Excel, checksum, restauración) · P
   desde la rama del vóley**: se hizo con un PR de la rama de finanzas → rama del vóley
   (fast-forward, vóley idéntico + finanzas añadida). Alternativa: cambiar en Settings →
   Environments → github-pages → «Deployment branches» a «No restriction» y desplegar desde main.
+- **Receta de despliegue ya probada** (desde la rama de finanzas, sin tocar el vóley):
+  `git checkout -B despliegue origin/claude/tournament-bracket-manager-gvrcdt`,
+  `git merge claude/preparar-aplicacion-c947u8` (comprobar que el diff **solo** toca `finanzas/`),
+  correr tests+build de las dos apps, y
+  `git push origin despliegue:claude/tournament-bracket-manager-gvrcdt`.
 - Base en Pages: `/clauderoutine/finanzas/` (con `GITHUB_PAGES=true`). Router por hash (sin 404).
 - Datos en el dispositivo (IndexedDB). Para pasar de un equipo a otro: Copias → Descargar JSON
   → Restaurar. «Borrar datos del sitio» los pierde.
@@ -92,6 +97,21 @@ PDF ejecutivo) · Copias de seguridad (JSON+Excel, checksum, restauración) · P
 - **Pendiente para Square real:** levantar el servicio en el Umbrel **con HTTPS** (Tailscale /
   túnel de Cloudflare / reverse proxy), porque la app es HTTPS y bloquea http:// (contenido mixto).
   Luego: Conexiones → Square → modo Servidor → URL del Umbrel + secreto.
+
+## Seguridad (auditoría 2026-07-31 — informe completo en `SEGURIDAD.md`)
+Invariantes que **no** se deben romper al tocar el código:
+- **Los backups y el export de configuración nunca llevan credenciales**: pasan por
+  `redactarCredenciales()` (`dominio/backup.ts`). Si añades un campo secreto a `Conector`,
+  añádelo ahí y al test correspondiente.
+- **Todo JSON que entra se lee con `parseJsonSeguro()`** (descarta `__proto__`/`constructor`/
+  `prototype`). Nunca `JSON.parse` directo sobre un fichero del usuario.
+- **La URL del servidor de conectores pasa por `urlServidorSegura()`**: solo HTTPS o HTTP en
+  red local, porque el secreto viaja en la cabecera `Authorization`.
+- **El servicio `servidor/`**: sin `SECRETO` solo atiende loopback; el secreto se compara con
+  `crypto.timingSafeEqual`. No volver a dejarlo abierto por defecto.
+- CSP en `index.html` (`script-src 'self'`, `object-src 'none'`): sin scripts externos ni CDN.
+- Pendiente asumido: `xlsx` 0.18.5 tiene avisos sin arreglo en npm (SheetJS ya no publica ahí).
+  Se mitiga leyendo con `sheet_to_json({ header: 1 })`. Ver `SEGURIDAD.md` para las 2 opciones.
 
 ## Convenciones
 - Interfaz y errores **en español**. Motor **sin dependencias de React** (testeable aislado).
