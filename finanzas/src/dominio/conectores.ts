@@ -30,6 +30,34 @@ export function definicionConector(tipo: TipoConector): DefinicionConector {
   return CONECTORES.find((c) => c.tipo === tipo) ?? CONECTORES[CONECTORES.length - 1]
 }
 
+/**
+ * El secreto del servidor viaja en la cabecera Authorization, así que solo se
+ * admite HTTPS o HTTP contra la propia red local (localhost, .local o rango
+ * privado). Así el secreto nunca sale en claro hacia Internet.
+ */
+export function urlServidorSegura(url: string | undefined): { ok: boolean; motivo?: string } {
+  if (!url) return { ok: false, motivo: 'Falta la URL del servidor' }
+  let u: URL
+  try {
+    u = new URL(url)
+  } catch {
+    return { ok: false, motivo: 'La URL del servidor no es válida' }
+  }
+  if (u.protocol === 'https:') return { ok: true }
+  if (u.protocol !== 'http:') return { ok: false, motivo: 'La URL del servidor debe empezar por https://' }
+  const h = u.hostname
+  const esLocal =
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '[::1]' ||
+    h === '::1' ||
+    h.endsWith('.local') ||
+    /^10\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h)
+  return esLocal ? { ok: true } : { ok: false, motivo: 'Sin HTTPS solo se admite un servidor de tu red local' }
+}
+
 /** Movimiento normalizado que devuelve cualquier conector de tesorería/pasarela. */
 export interface MovimientoExterno {
   externalId: string

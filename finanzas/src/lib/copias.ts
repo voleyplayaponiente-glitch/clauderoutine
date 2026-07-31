@@ -5,6 +5,7 @@
  */
 import { construirBackup, verificarIntegridad, type Backup } from '../dominio/backup'
 import { cargarSnapshots, guardarSnapshots } from './db'
+import { parseJsonSeguro } from './backup'
 import type { Configuracion, DatosOperativos } from '../dominio/tipos'
 
 const RETENCION_DIARIOS = 7
@@ -42,7 +43,7 @@ export async function descargarBackupExcel(datos: DatosOperativos, fecha: string
 
 /** Lee y valida un backup desde un fichero. Lanza si la integridad falla. */
 export async function leerBackup(file: File): Promise<Backup> {
-  const backup = JSON.parse(await file.text())
+  const backup = parseJsonSeguro(await file.text())
   const r = verificarIntegridad(backup)
   if (!r.valido) throw new Error(r.motivo ?? 'Backup no válido')
   return backup as Backup

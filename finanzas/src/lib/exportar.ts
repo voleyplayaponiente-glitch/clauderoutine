@@ -44,9 +44,9 @@ export async function exportarPDF(
   secciones: SeccionPDF[],
 ): Promise<void> {
   const { jsPDF } = await import('jspdf')
-  await import('jspdf-autotable') // registra doc.autoTable en el prototipo
+  const { default: autoTablePlugin } = await import('jspdf-autotable')
   const doc = new jsPDF()
-  const autoTable = (opts: Record<string, unknown>) => (doc as unknown as { autoTable: (o: unknown) => void }).autoTable(opts)
+  const autoTable = (opts: Record<string, unknown>) => autoTablePlugin(doc, opts as never)
 
   if (meta.logoDataUrl) {
     try {

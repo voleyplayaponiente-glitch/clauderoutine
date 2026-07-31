@@ -12,6 +12,7 @@
  *   con cabecera  Authorization: Bearer <SECRETO>
  */
 import http from 'node:http'
+import crypto from 'node:crypto'
 
 const PUERTO = Number(process.env.PUERTO || 3001)
 const SECRETO = process.env.SECRETO || ''
@@ -33,9 +34,25 @@ function json(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(obj))
 }
+/** ¿La petición viene de la propia máquina (loopback)? */
+function esLocal(req) {
+  const a = req.socket.remoteAddress || ''
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1'
+}
+
+/** Comparación en tiempo constante para evitar ataques de temporización. */
+function secretoValido(dado) {
+  const esperado = `Bearer ${SECRETO}`
+  const a = Buffer.from(dado || '')
+  const b = Buffer.from(esperado)
+  return a.length === b.length && crypto.timingSafeEqual(a, b)
+}
+
 function autorizado(req) {
-  if (!SECRETO) return true // sin secreto configurado: solo para pruebas locales
-  return req.headers['authorization'] === `Bearer ${SECRETO}`
+  // Sin SECRETO configurado, solo se permite acceso desde la propia máquina
+  // (nunca queda abierto a la red). Configura SECRETO para uso remoto.
+  if (!SECRETO) return esLocal(req)
+  return secretoValido(req.headers['authorization'])
 }
 
 /** Adaptador Square: liquidaciones (payouts) → movimientos normalizados. */
@@ -103,4 +120,6 @@ servidor.listen(PUERTO, () => {
   console.log(`Servicio de conectores escuchando en el puerto ${PUERTO}`)
   console.log(`Origen permitido (CORS): ${ORIGEN}`)
   console.log(`Square: ${SQUARE_TOKEN ? SQUARE_ENV : 'sin token (solo demo)'}`)
+  if (!SECRETO) console.warn('AVISO: sin SECRETO -> solo se aceptan peticiones locales. Configura SECRETO para uso remoto.')
+  if (ORIGEN === '*') console.warn('AVISO: ORIGEN_PERMITIDO="*". Fija la URL exacta de tu app en producción.')
 })
