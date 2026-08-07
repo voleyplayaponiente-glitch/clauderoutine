@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { construirBackup, verificarIntegridad, calcularChecksum, stableStringify, parseJsonSeguro, redactarCredenciales } from './backup'
+import { construirBackup, verificarIntegridad, calcularChecksum, stableStringify, parseJsonSeguro, redactarCredenciales, mismaEmpresa } from './backup'
 import { configuracionInicial } from './defaults'
 import type { DatosOperativos } from './tipos'
 
@@ -73,5 +73,27 @@ describe('seguridad del backup', () => {
     const b = construirBackup(configuracionInicial(), datosVacios(), '2026-07-31')
     const leido = parseJsonSeguro(JSON.stringify(b))
     expect(verificarIntegridad(leido).valido).toBe(true)
+  })
+})
+
+describe('restaurar en la empresa correcta (grupo)', () => {
+  it('el CIF manda sobre el nombre', () => {
+    expect(mismaEmpresa({ cif: 'B12345678', razonSocial: 'Antigua SL' }, { cif: 'B12345678', razonSocial: 'Nueva SL' })).toBe(true)
+    expect(mismaEmpresa({ cif: 'B12345678', razonSocial: 'Igual SL' }, { cif: 'B87654321', razonSocial: 'Igual SL' })).toBe(false)
+  })
+
+  it('ignora espacios, puntos y mayúsculas', () => {
+    expect(mismaEmpresa({ cif: 'b-12.345.678' }, { cif: 'B12345678' })).toBe(true)
+  })
+
+  it('si falta algún CIF compara la razón social', () => {
+    // La misma sociedad escrita de otra forma no debe dar un falso aviso.
+    expect(mismaEmpresa({ razonSocial: 'Holding SL' }, { razonSocial: 'holding s.l.' })).toBe(true)
+    expect(mismaEmpresa({ razonSocial: 'Tienda A SL' }, { cif: '', razonSocial: 'Tienda B SL' })).toBe(false)
+  })
+
+  it('sin datos suficientes no alarma', () => {
+    expect(mismaEmpresa({}, { cif: 'B12345678' })).toBe(true)
+    expect(mismaEmpresa({}, {})).toBe(true)
   })
 })

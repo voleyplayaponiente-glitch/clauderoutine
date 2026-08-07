@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 122 tests (Vitest) del motor
+npm test         # 154 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -45,6 +45,27 @@ npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview loca
 - `src/pantallas/` — una pantalla por módulo. `src/componentes/` — UI reutilizable.
 - `servidor/` — microservicio Node (Umbrel) para conectores (ver abajo).
 
+## Grupo de empresas (multi-empresa)
+**Invariante**: cada sociedad es una entidad jurídica independiente y sus datos viven en un
+espacio propio de IndexedDB (`finanzas:config:<id>` / `finanzas:datos:<id>`). NUNCA se mezclan
+libros de dos empresas. El índice del grupo (`finanzas:grupo`) solo guarda las fichas y las
+participaciones.
+- `dominio/grupo.ts` (puro): validación de participaciones (rango, capital ≤ 100 %, sin
+  duplicados, **sin ciclos**), `porcentajeEfectivo` (multiplica por cadena y suma caminos),
+  `relacionPorPorcentaje` (>50 dependiente, ≥20 asociada), organigrama y `agregarGrupo`.
+- `lib/grupo.ts`: lee el espacio de cada empresa y calcula sus cifras con el mismo motor.
+- `store.ts`: `grupo` + `cambiarEmpresa`/`crearEmpresa`/`eliminarEmpresa`/`guardarParticipacion`.
+  El debounce **captura la empresa destino en el momento de la llamada** y `cambiarEmpresa`
+  vacía lo pendiente antes de soltar el espacio: un guardado tardío nunca cae en otra sociedad.
+- Migración desde la versión de empresa única en `db.ts` (`migrarDesdeEmpresaUnica`): copia
+  `finanzas:configuracion`/`finanzas:datos` al espacio de la primera empresa y **solo borra las
+  claves antiguas tras verificar** que las nuevas se escribieron.
+- **La suma del grupo NO es consolidación** (no elimina tráfico intragrupo). La pantalla lo
+  advierte; no sirve para depositar cuentas consolidadas.
+- Restaurar un backup afecta **solo a la empresa activa**; si el CIF/razón social no coinciden
+  (`mismaEmpresa`) se muestra un aviso rojo antes de sobrescribir.
+- Fiscalidad decidida: **cada empresa declara por separado** (303/347/IS propios).
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -58,7 +79,7 @@ npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview loca
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 completadas + auditoría de seguridad (122 tests en verde)
+## Estado — Fases 0–12 + auditoría de seguridad + multi-empresa (154 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
