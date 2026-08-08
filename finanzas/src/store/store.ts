@@ -27,11 +27,12 @@ import {
   type Participacion,
 } from '../dominio/grupo'
 import { validarSocio, type Socio } from '../dominio/socios'
+import type { Inversion, OperacionInversion, ValoracionInversion } from '../dominio/inversiones'
 
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [], logsSync: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
 }
 
 /** Colección de datos que recibe cada destino de importación. */
@@ -99,6 +100,13 @@ interface Estado {
   guardarDeudor: (d: DeudorVario) => void
   anularDeudor: (id: string) => void
   guardarPresupuesto: (p: Presupuesto) => void
+  // Inversiones
+  guardarInversion: (i: Inversion) => void
+  anularInversion: (id: string) => void
+  guardarOperacionInversion: (o: OperacionInversion) => void
+  anularOperacionInversion: (id: string) => void
+  guardarValoracionInversion: (v: ValoracionInversion) => void
+  anularValoracionInversion: (id: string) => void
   // Conectores
   guardarConector: (c: Conector) => void
   eliminarConector: (id: string) => void
@@ -543,6 +551,49 @@ export const useStore = create<Estado>((set, get) => ({
   },
   guardarPresupuesto: (p) => {
     const datos = { ...get().datos, presupuestos: upsert(get().datos.presupuestos, p) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+
+  guardarInversion: (i) => {
+    const datos = { ...get().datos, inversiones: upsert(get().datos.inversiones, i) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularInversion: (id) => {
+    const sello = new Date().toISOString()
+    const datos = {
+      ...get().datos,
+      inversiones: get().datos.inversiones.map((x) => (x.id === id ? { ...x, anuladoEn: sello } : x)),
+    }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarOperacionInversion: (o) => {
+    const datos = { ...get().datos, operacionesInversion: upsert(get().datos.operacionesInversion, o) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularOperacionInversion: (id) => {
+    const sello = new Date().toISOString()
+    const datos = {
+      ...get().datos,
+      operacionesInversion: get().datos.operacionesInversion.map((x) => (x.id === id ? { ...x, anuladoEn: sello } : x)),
+    }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarValoracionInversion: (v) => {
+    const datos = { ...get().datos, valoracionesInversion: upsert(get().datos.valoracionesInversion, v) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularValoracionInversion: (id) => {
+    const sello = new Date().toISOString()
+    const datos = {
+      ...get().datos,
+      valoracionesInversion: get().datos.valoracionesInversion.map((x) => (x.id === id ? { ...x, anuladoEn: sello } : x)),
+    }
     set({ datos })
     persistirDatos(datos)
   },

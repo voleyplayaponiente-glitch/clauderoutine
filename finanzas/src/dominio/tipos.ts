@@ -5,6 +5,8 @@
  * que la Fase 1 rellena y el resto de módulos consumen.
  */
 
+import type { Inversion, OperacionInversion, ValoracionInversion } from './inversiones'
+
 export type ID = string
 
 /** Metadatos de trazabilidad presentes en TODO registro (nunca se borra nada). */
@@ -404,6 +406,9 @@ export interface DatosOperativos {
   deudores: DeudorVario[]
   presupuestos: Presupuesto[]
   logsSync: LogSync[]
+  inversiones: Inversion[]
+  operacionesInversion: OperacionInversion[]
+  valoracionesInversion: ValoracionInversion[]
 }
 
 // ─────────────────────────── Conectores (Fase 11) ───────────────────────────
