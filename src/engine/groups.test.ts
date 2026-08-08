@@ -43,6 +43,38 @@ describe('generateGroups', () => {
     const g1 = groups.find((g) => g.teamIds.includes('T1'))!
     expect(g1.teamIds.includes('T2')).toBe(false)
   })
+
+  /**
+   * The draw is random, so a single run used to pass ~97% of the time while the
+   * constraint was actually broken in ~2.4% of draws. Hammering it makes the
+   * regression impossible to miss.
+   */
+  it('honours keep-apart across many random draws', () => {
+    const cfg = defaultConfig(16)
+    const teams = makeTeams(16)
+    let violations = 0
+    for (let i = 0; i < 400; i++) {
+      const groups = generateGroups(teams, cfg, { keepApart: [['T1', 'T2']] })
+      const g1 = groups.find((g) => g.teamIds.includes('T1'))!
+      if (g1.teamIds.includes('T2')) violations++
+    }
+    expect(violations).toBe(0)
+  })
+
+  it('keeps groups balanced and places everyone while honouring keep-apart', () => {
+    const cfg = defaultConfig(16)
+    const teams = makeTeams(16)
+    for (let i = 0; i < 200; i++) {
+      const groups = generateGroups(teams, cfg, { keepApart: [['T1', 'T2'], ['T3', 'T4']] })
+      expect(groups.flatMap((g) => g.teamIds)).toHaveLength(16)
+      expect(new Set(groups.flatMap((g) => g.teamIds)).size).toBe(16)
+      groups.forEach((g) => expect(g.teamIds).toHaveLength(4))
+      const g1 = groups.find((g) => g.teamIds.includes('T1'))!
+      const g3 = groups.find((g) => g.teamIds.includes('T3'))!
+      expect(g1.teamIds.includes('T2')).toBe(false)
+      expect(g3.teamIds.includes('T4')).toBe(false)
+    }
+  })
 })
 
 describe('roundRobinPairs', () => {

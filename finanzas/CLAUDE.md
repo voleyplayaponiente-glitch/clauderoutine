@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 233 tests (Vitest) del motor
+npm test         # 236 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -99,6 +99,12 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
 - **`lib/extracto.ts`**: N43 · Excel · CSV · PDF (pdf.js en carga diferida; el worker se sirve
   del propio bundle porque la CSP prohíbe CDN). Un PDF escaneado **no se adivina**: se dice que
   no tiene capa de texto y que se metan a mano.
+- **Anular movimientos**: selección múltiple en la tabla de Bancos + «Anular N». Es anulación
+  **lógica** (`anuladoEn`): salen de la lista y del saldo, pero queda el rastro. `esFechaIsoValida`
+  (en `validacion.ts`) detecta los movimientos que quedaron con fecha imposible (`2016-32-26`)
+  del parser antiguo y ofrece seleccionarlos de golpe.
+- Cada importación registra un `LoteImportacion` (destino `movimientos-banco`) con los ids
+  insertados, así que se puede deshacer una tanda entera.
 - La importación **siempre pasa por previsualización** (`ModalImportarExtracto`): se ven los
   movimientos leídos, la suma y las líneas descartadas con su motivo antes de tocar nada.
 
@@ -115,7 +121,7 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos (233 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos (236 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

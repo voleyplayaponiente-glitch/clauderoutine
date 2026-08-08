@@ -7,6 +7,7 @@ import { hoyISO, formatearFecha } from '../lib/fechas'
 import { nuevoId } from '../dominio/id'
 import { formatearEuro } from '../dominio/dinero'
 import { saldoCuenta } from '../dominio/tesoreria'
+import { esFechaIsoValida } from '../dominio/validacion'
 import { leerExtracto, type LecturaExtracto } from '../lib/extracto'
 import { ModalImportarExtracto } from './bancos/ModalImportarExtracto'
 import { sugerencias, type Emparejable } from '../dominio/conciliacion'
@@ -32,6 +33,7 @@ export function Bancos() {
   const guardarCuenta = useStore((s) => s.guardarCuentaTesoreria)
   const guardarMovimiento = useStore((s) => s.guardarMovimiento)
   const importarMovimientos = useStore((s) => s.importarMovimientos)
+  const anularMovimientos = useStore((s) => s.anularMovimientos)
   const conciliar = useStore((s) => s.conciliarMovimiento)
 
   const cuentas = datos.cuentasTesoreria.filter((c) => c.tipo !== 'CAJA' && !c.anuladoEn)
@@ -43,6 +45,7 @@ export function Bancos() {
   const [aviso, setAviso] = useState<string | null>(null)
   const [pendiente, setPendiente] = useState<{ lectura: LecturaExtracto; nombre: string } | null>(null)
   const [leyendo, setLeyendo] = useState(false)
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   const fileRef = useRef<HTMLInputElement>(null)
 
   const movs = useMemo(() => {
@@ -50,6 +53,31 @@ export function Bancos() {
     if (soloNoConc) l = l.filter((m) => !m.conciliado)
     return l.sort((a, b) => b.fecha.localeCompare(a.fecha))
   }, [datos.movimientos, sel, soloNoConc])
+
+  /** Movimientos guardados con una fecha imposible (los dejó el parser N43 antiguo). */
+  const conFechaMala = useMemo(() => movs.filter((m) => !esFechaIsoValida(m.fecha)), [movs])
+
+  const alternarSeleccion = (id: string) => {
+    setSeleccion((s) => {
+      const n = new Set(s)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
+
+  const anularSeleccionados = () => {
+    const ids = [...seleccion]
+    if (ids.length === 0) return
+    const ok = window.confirm(
+      `Se van a anular ${ids.length} movimiento${ids.length > 1 ? 's' : ''}.\n\n` +
+        'Dejan de contar en el saldo y desaparecen de la lista, pero quedan marcados como anulados (no se borra el rastro).\n\n¿Continuar?',
+    )
+    if (!ok) return
+    const n = anularMovimientos(ids)
+    setSeleccion(new Set())
+    setAviso(`Anulados ${n} movimientos.`)
+  }
 
   const saldo = sel ? saldoCuenta(sel, datos.movimientos) : 0
   const noConciliados = sel ? datos.movimientos.filter((m) => m.cuentaId === sel.id && !m.anuladoEn && !m.conciliado).length : 0
@@ -101,7 +129,7 @@ export function Bancos() {
       clase: 'OTRO',
       conciliado: false,
     }))
-    const insertados = importarMovimientos(nuevos)
+    const insertados = importarMovimientos(nuevos, pendiente.nombre)
     const omitidos = nuevos.length - insertados
     setAviso(
       `Importados ${insertados} movimientos${omitidos > 0 ? ` · ${omitidos} ya estaban` : ''}` +
@@ -178,9 +206,36 @@ export function Bancos() {
             </Tarjeta>
           )}
 
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{movs.length} movimientos</span>
-            <div className="w-48"><Toggle etiqueta="Solo no conciliados" valor={soloNoConc} onChange={setSoloNoConc} /></div>
+          {conFechaMala.length > 0 && (
+            <div className="rounded-xl p-3 mb-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(255,159,10,.12)', border: '1px solid var(--warn)' }}>
+              <p className="text-sm">
+                Hay <strong>{conFechaMala.length} movimientos con una fecha imposible</strong> (importados con la versión
+                anterior, que leía mal el Norma 43). Conviene anularlos y volver a importar el extracto.
+              </p>
+              <Boton variante="secundario" onClick={() => setSeleccion(new Set(conFechaMala.map((m) => m.id)))}>
+                Seleccionarlos
+              </Boton>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {movs.length} movimientos
+              {seleccion.size > 0 && ` · ${seleccion.size} seleccionados`}
+            </span>
+            <div className="flex items-center gap-3">
+              {seleccion.size > 0 && (
+                <>
+                  <button className="text-sm underline" style={{ color: 'var(--text-muted)' }} onClick={() => setSeleccion(new Set())}>
+                    Quitar selección
+                  </button>
+                  <Boton variante="secundario" onClick={anularSeleccionados}>
+                    Anular {seleccion.size}
+                  </Boton>
+                </>
+              )}
+              <div className="w-48"><Toggle etiqueta="Solo no conciliados" valor={soloNoConc} onChange={setSoloNoConc} /></div>
+            </div>
           </div>
 
           <Tarjeta className="!p-0 overflow-hidden">
@@ -188,11 +243,16 @@ export function Bancos() {
               <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin movimientos. Importa el extracto del banco (Norma 43, Excel, CSV o PDF) o añádelos a mano.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
+                <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="pl-4 py-2.5 font-medium w-8"><input type="checkbox" aria-label="Seleccionar todos" checked={movs.length > 0 && seleccion.size === movs.length} onChange={(e) => setSeleccion(e.target.checked ? new Set(movs.map((m) => m.id)) : new Set())} /></th><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
                 <tbody>
                   {movs.map((m) => (
                     <tr key={m.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
-                      <td className="px-4 py-2.5 tabular">{formatearFecha(m.fecha)}</td>
+                      <td className="pl-4 py-2.5">
+                        <input type="checkbox" aria-label={`Seleccionar ${m.concepto}`} checked={seleccion.has(m.id)} onChange={() => alternarSeleccion(m.id)} />
+                      </td>
+                      <td className="px-4 py-2.5 tabular" style={{ color: esFechaIsoValida(m.fecha) ? undefined : 'var(--neg)' }}>
+                        {esFechaIsoValida(m.fecha) ? formatearFecha(m.fecha) : `${m.fecha} (no válida)`}
+                      </td>
                       <td className="px-4 py-2.5">{m.concepto}{m.referencia && <span className="ml-2 text-xs tabular" style={{ color: 'var(--text-muted)' }}>{m.referencia}</span>}</td>
                       <td className="px-4 py-2.5 text-right"><ImporteEuro valor={m.importe} color /></td>
                       <td className="px-4 py-2.5 text-center">
