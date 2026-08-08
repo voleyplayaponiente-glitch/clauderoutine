@@ -31,7 +31,9 @@ export function categoriasDe(categorias: CategoriaGasto[], ambito: 'COMPRAS' | '
 }
 
 /** Qué hace en el presupuesto. Sin indicar, es gasto. */
-export function efectoPresupuestoDe(cat: CategoriaGasto | undefined): 'GASTO' | 'FINANCIACION' | 'NINGUNO' {
+export type EfectoPresupuesto = 'GASTO' | 'INVERSION' | 'FINANCIACION' | 'NINGUNO'
+
+export function efectoPresupuestoDe(cat: CategoriaGasto | undefined): EfectoPresupuesto {
   return cat?.efectoPresupuesto ?? 'GASTO'
 }
 
@@ -242,8 +244,8 @@ export function cuotasDeudaPorMes(deudas: Deuda[], ejercicio: number): LineaDeud
 export interface LineaGastoBancario {
   categoriaId: ID | 'sin-clasificar'
   categoria: string
-  /** Tipo con el que entra en el presupuesto. */
-  efecto: 'GASTO' | 'FINANCIACION'
+  /** Tipo de línea con el que entra en el presupuesto. */
+  efecto: 'GASTO' | 'INVERSION' | 'FINANCIACION'
   meses: number[]
   totalAnual: number
 }
@@ -253,8 +255,8 @@ export interface LineaGastoCuenta {
   categoria: string
   /** Nace en el propio banco (comisiones, mantenimiento, intereses). */
   esBancaria: boolean
-  /** Qué hace en el presupuesto: gasto, financiación o nada (ya contado). */
-  efecto: 'GASTO' | 'FINANCIACION' | 'NINGUNO'
+  /** Qué hace en el presupuesto: gasto, inversión, financiación o nada. */
+  efecto: EfectoPresupuesto
   total: number
   numMovimientos: number
 }
@@ -269,6 +271,8 @@ export interface DesgloseGastosCuenta {
   totalGasto: number
   /** Tributos, Seguridad Social y demás pagos de deuda ya devengada. */
   totalFinanciacion: number
+  /** Dinero que no se consume: se cambia por un activo. */
+  totalInversion: number
   /** Ya contado en otro sitio (facturas, cuotas de préstamo, traspasos). */
   totalYaContabilizado: number
   /** Salidas todavía sin concepto asignado. */
@@ -322,6 +326,7 @@ export function gastosCuentaPorCategoria(
     totalBancario: sumar((l) => l.esBancaria),
     totalGasto: sumar((l) => l.efecto === 'GASTO'),
     totalFinanciacion: sumar((l) => l.efecto === 'FINANCIACION'),
+    totalInversion: sumar((l) => l.efecto === 'INVERSION'),
     totalYaContabilizado: sumar((l) => l.efecto === 'NINGUNO'),
     totalSinClasificar: sinClasificar?.total ?? 0,
     numSinClasificar: sinClasificar?.numMovimientos ?? 0,
@@ -338,7 +343,9 @@ export function gastosCuentaPorCategoria(
  * Contarlas aquí sería presupuestar dos veces lo mismo.
  *
  * Los tributos y la Seguridad Social entran como FINANCIACIÓN: sale dinero,
- * pero se salda una deuda ya devengada, no se genera gasto nuevo.
+ * pero se salda una deuda ya devengada, no se genera gasto nuevo. Las compras
+ * de participaciones y de inversiones financieras entran como INVERSIÓN: el
+ * dinero no se consume, se cambia por un activo.
  */
 export function gastosBancariosPorMes(
   movimientos: { fecha: string; importe: number; categoriaId?: ID; clase: string; anuladoEn?: string }[],
@@ -372,7 +379,7 @@ export function gastosBancariosPorMes(
       return {
         categoriaId,
         categoria: cat?.nombre ?? 'Gastos bancarios sin clasificar',
-        efecto: (efecto === 'FINANCIACION' ? 'FINANCIACION' : 'GASTO') as 'GASTO' | 'FINANCIACION',
+        efecto: (efecto === 'NINGUNO' ? 'GASTO' : efecto) as 'GASTO' | 'INVERSION' | 'FINANCIACION',
         meses,
         totalAnual: aEuros(meses.reduce((s, m) => s + aCentimos(m), 0)),
       }

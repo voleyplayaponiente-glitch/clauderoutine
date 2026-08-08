@@ -89,6 +89,8 @@ describe('la naturaleza del gasto es de Compras; el banco tiene su propia lista'
 
   it('el banco ofrece lo que no lleva factura', () => {
     for (const n of [
+      'Inversiones en empresas del grupo',
+      'Inversiones financieras',
       'Comisiones de TPV',
       'Gastos de mantenimiento',
       'Seguro de responsabilidad civil',
@@ -112,6 +114,18 @@ describe('la naturaleza del gasto es de Compras; el banco tiene su propia lista'
     for (const id of ['cat-bco-tributos-trimestre', 'cat-bco-tributos-aplazamiento', 'cat-bco-seg-social']) {
       expect(efectoPresupuestoDe(CATS.find((c) => c.id === id))).toBe('FINANCIACION')
     }
+  })
+
+  it('comprar participaciones o inversiones financieras es inversión, no gasto', () => {
+    // El dinero no se consume: se cambia por un activo. No resta del resultado.
+    for (const id of ['cat-bco-inv-grupo', 'cat-bco-inv-financiera']) {
+      const c = CATS.find((x) => x.id === id)!
+      expect(efectoPresupuestoDe(c)).toBe('INVERSION')
+      expect(c.deduciblePorDefecto).toBe(false) // no llevan IVA que deducir
+    }
+    // Participaciones en partes vinculadas (2403) frente al resto (250).
+    expect(CATS.find((c) => c.id === 'cat-bco-inv-grupo')!.cuentaPGC).toBe('2403')
+    expect(CATS.find((c) => c.id === 'cat-bco-inv-financiera')!.cuentaPGC).toBe('250')
   })
 
   it('las categorías guardadas antes de la separación no se pierden', () => {
@@ -341,14 +355,19 @@ describe('gastos bancarios por mes', () => {
     expect(l).toEqual([])
   })
 
-  it('los tributos entran como financiación y las comisiones como gasto', () => {
+  it('cada concepto entra en el presupuesto con su tipo de línea', () => {
     const l = gastosBancariosPorMes(
-      [mov('2026-04-20', -4200, 'cat-bco-tributos-trimestre'), mov('2026-04-30', -12, 'cat-banco-comision')],
+      [
+        mov('2026-04-20', -4200, 'cat-bco-tributos-trimestre'),
+        mov('2026-04-30', -12, 'cat-banco-comision'),
+        mov('2026-05-02', -50000, 'cat-bco-inv-grupo'),
+      ],
       cats,
       2026,
     )
     expect(l.find((x) => x.categoriaId === 'cat-bco-tributos-trimestre')!.efecto).toBe('FINANCIACION')
     expect(l.find((x) => x.categoriaId === 'cat-banco-comision')!.efecto).toBe('GASTO')
+    expect(l.find((x) => x.categoriaId === 'cat-bco-inv-grupo')!.efecto).toBe('INVERSION')
   })
 
   it('los anulados no cuentan', () => {
@@ -381,6 +400,15 @@ describe('desglose de gastos de una cuenta bancaria', () => {
     expect(d.lineas.find((l) => l.categoria === 'Alquileres')!.esBancaria).toBe(false)
     expect(d.lineas[0].categoria).toBe('Alquileres') // ordenado por importe
     expect(d.lineas.find((l) => l.categoria === 'Gastos de mantenimiento')!.numMovimientos).toBe(2)
+  })
+
+  it('la inversión se separa del gasto en el resumen', () => {
+    const d = gastosCuentaPorCategoria(
+      [mov('2026-05-02', -50000, 'cat-bco-inv-grupo'), mov('2026-06-01', -8000, 'cat-bco-inv-financiera'), mov('2026-01-31', -30, 'cat-banco-comision')],
+      cats,
+    )
+    expect(d.totalInversion).toBe(58000)
+    expect(d.totalGasto).toBe(30)
   })
 
   it('lo que no está clasificado se ve, no se esconde', () => {
@@ -419,6 +447,7 @@ describe('desglose de gastos de una cuenta bancaria', () => {
       totalBancario: 0,
       totalGasto: 0,
       totalFinanciacion: 0,
+      totalInversion: 0,
       totalYaContabilizado: 0,
       totalSinClasificar: 0,
       numSinClasificar: 0,
@@ -438,6 +467,7 @@ describe('desglose de gastos de una cuenta bancaria', () => {
     expect(d.total).toBe(6530)
     expect(d.totalGasto).toBe(30)
     expect(d.totalFinanciacion).toBe(4200)
+    expect(d.totalInversion).toBe(0)
     // Factura + cuota de préstamo: ya contados en Compras y en Deudas.
     expect(d.totalYaContabilizado).toBe(2300)
   })

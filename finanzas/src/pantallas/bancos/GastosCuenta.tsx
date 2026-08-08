@@ -4,14 +4,14 @@
  * Responde a la pregunta práctica: «este mes el banco me ha quitado X, ¿por
  * qué?». Los conceptos del banco son los que **no llevan factura** (comisiones,
  * seguros, tributos); la naturaleza del gasto de las facturas vive en Compras.
- * Cada concepto dice qué hace en el presupuesto: gasto, pago de impuestos o
- * deuda, o nada porque ya está contado en Compras o en Deudas. Lo que aún no
- * está clasificado se enseña en rojo: sin clasificar no hay control.
+ * Cada concepto dice qué hace en el presupuesto: gasto, inversión, pago de
+ * impuestos o deuda, o nada porque ya está contado en Compras o en Deudas. Lo
+ * que aún no está clasificado se enseña en rojo: sin clasificar no hay control.
  */
 import { useMemo, useState } from 'react'
 import { Tarjeta, Boton, ImporteEuro, formatearEuro } from '../../componentes/ui'
 import { Select } from '../../componentes/formularios'
-import { gastosCuentaPorCategoria } from '../../dominio/resumen-compras'
+import { gastosCuentaPorCategoria, type EfectoPresupuesto } from '../../dominio/resumen-compras'
 import { exportarCSV } from '../../lib/exportar'
 import type { MovimientoTesoreria, CategoriaGasto } from '../../dominio/tipos'
 
@@ -25,8 +25,9 @@ function rango(ejercicio: number, mes: string): { desde: string; hasta: string }
 }
 
 /** Qué hace cada concepto cuando se lleva al presupuesto. */
-const ETIQUETA_EFECTO: Record<'GASTO' | 'FINANCIACION' | 'NINGUNO', string> = {
+const ETIQUETA_EFECTO: Record<EfectoPresupuesto, string> = {
   GASTO: 'Gasto',
+  INVERSION: 'Inversión (no es gasto)',
   FINANCIACION: 'Pago de impuestos o deuda',
   NINGUNO: 'Ya contado en Compras o Deudas',
 }
@@ -76,8 +77,9 @@ export function GastosCuenta({
         <div>
           <h3 className="font-semibold">Cargos de la cuenta: de dónde vienen</h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Aquí van los conceptos que <strong>no llevan factura</strong>: comisiones, seguros, tributos. La naturaleza del gasto
-            de las facturas está en Compras. Lo que va al presupuesto entra con «Traer deuda y gastos del banco».
+            Aquí van los conceptos que <strong>no llevan factura</strong>: comisiones, seguros, tributos, inversiones. La
+            naturaleza del gasto de las facturas está en Compras. Lo que va al presupuesto entra con «Traer deuda y gastos del
+            banco».
           </p>
         </div>
         <div className="flex items-end gap-2">
@@ -100,13 +102,21 @@ export function GastosCuenta({
         <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>No hay salidas registradas en este periodo.</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
             <Metrica etiqueta="Total salidas" valor={d.total} destacado />
             <Metrica etiqueta="Gasto" valor={d.totalGasto} />
+            <Metrica etiqueta="Inversión" valor={d.totalInversion} />
             <Metrica etiqueta="Impuestos y deuda" valor={d.totalFinanciacion} />
             <Metrica etiqueta="Ya contado" valor={d.totalYaContabilizado} />
             <Metrica etiqueta="Sin clasificar" valor={d.totalSinClasificar} alerta={d.totalSinClasificar > 0} />
           </div>
+
+          {d.totalInversion > 0 && (
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              La inversión no resta del resultado: el dinero se cambia por un activo. Clasificar aquí el cargo <strong>no</strong>{' '}
+              da de alta la inversión — regístrala en <em>Inversiones</em>, que es donde se lleva el coste, el valor y su asiento.
+            </p>
+          )}
 
           {d.numSinClasificar > 0 && (
             <p className="text-xs mt-2" style={{ color: 'var(--warn)' }}>
