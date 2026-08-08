@@ -75,9 +75,54 @@ export function generateGroups(
     const candidates = groups
       .filter((g) => g.teamIds.length < capacity && !conflicts(team.id, g))
       .sort((a, b) => a.teamIds.length - b.teamIds.length)
-    const target = candidates[0] ?? groups.filter((g) => g.teamIds.length < capacity)[0]
-    if (target) target.teamIds.push(team.id)
+    if (candidates[0]) {
+      candidates[0].teamIds.push(team.id)
+      continue
+    }
+
+    // Every group with room clashes with this team. Rather than silently
+    // breaking the keep-apart rule, free up a slot: move an already placed
+    // team out of a non-clashing group into one that has room.
+    if (placeBySwap(groups, team.id, capacity, conflicts)) continue
+
+    // Constraints are unsatisfiable (e.g. more mutually-apart teams than
+    // groups). Place the team so the draw still completes.
+    const fallback = groups.find((g) => g.teamIds.length < capacity)
+    if (fallback) fallback.teamIds.push(team.id)
   }
 
   return groups
+}
+
+/**
+ * Last resort before breaking a keep-apart rule: swap a placed team out of the
+ * way. Looks for a group `host` that this team could join, holding a team
+ * `movable` that can be relocated to a group with room.
+ *
+ * Returns true when the swap succeeded and the team is placed.
+ */
+function placeBySwap(
+  groups: Group[],
+  teamId: string,
+  capacity: number,
+  conflicts: (teamId: string, group: Group) => boolean,
+): boolean {
+  const withRoom = groups.filter((g) => g.teamIds.length < capacity)
+  if (withRoom.length === 0) return false
+
+  for (const host of groups) {
+    // The team must be able to live in `host` once `movable` leaves it.
+    for (const movable of host.teamIds) {
+      const hostWithout: Group = { ...host, teamIds: host.teamIds.filter((id) => id !== movable) }
+      if (conflicts(teamId, hostWithout)) continue
+
+      const destination = withRoom.find((g) => g !== host && !conflicts(movable, g))
+      if (!destination) continue
+
+      host.teamIds = [...hostWithout.teamIds, teamId]
+      destination.teamIds.push(movable)
+      return true
+    }
+  }
+  return false
 }
