@@ -76,7 +76,9 @@ interface Estado {
   guardarCuentaTesoreria: (c: CuentaTesoreria) => void
   guardarMovimiento: (m: MovimientoTesoreria) => void
   anularMovimiento: (id: string) => void
-  importarMovimientos: (ms: MovimientoTesoreria[]) => number
+  anularMovimientos: (ids: string[]) => number
+  /** Importa movimientos y, si se indica el fichero, deja una tanda deshacible. */
+  importarMovimientos: (ms: MovimientoTesoreria[], nombreFichero?: string) => number
   conciliarMovimiento: (id: string, conciliado: boolean) => void
   guardarArqueo: (a: ArqueoCaja) => void
   // Stock
@@ -396,14 +398,42 @@ export const useStore = create<Estado>((set, get) => ({
     set({ datos })
     persistirDatos(datos)
   },
-  importarMovimientos: (ms) => {
+  anularMovimientos: (ids) => {
+    const aAnular = new Set(ids)
+    if (aAnular.size === 0) return 0
+    const sello = new Date().toISOString()
+    let n = 0
+    const movimientos = get().datos.movimientos.map((m) => {
+      if (!aAnular.has(m.id) || m.anuladoEn) return m
+      n++
+      return { ...m, anuladoEn: sello }
+    })
+    if (n === 0) return 0
+    const datos = { ...get().datos, movimientos }
+    set({ datos })
+    persistirDatos(datos)
+    return n
+  },
+  importarMovimientos: (ms, nombreFichero) => {
     // Idempotencia: no duplica por (cuenta, fecha, importe, referencia).
     const existentes = new Set(
       get().datos.movimientos.map((m) => `${m.cuentaId}|${m.fecha}|${m.importe}|${m.referencia ?? ''}`),
     )
     const nuevos = ms.filter((m) => !existentes.has(`${m.cuentaId}|${m.fecha}|${m.importe}|${m.referencia ?? ''}`))
     if (nuevos.length === 0) return 0
-    const datos = { ...get().datos, movimientos: [...get().datos.movimientos, ...nuevos] }
+    const importaciones = nombreFichero
+      ? [
+          ...get().datos.importaciones,
+          {
+            id: nuevoId(),
+            fecha: new Date().toISOString(),
+            destinoId: 'movimientos-banco',
+            nombreFichero,
+            ids: nuevos.map((m) => m.id),
+          },
+        ]
+      : get().datos.importaciones
+    const datos = { ...get().datos, movimientos: [...get().datos.movimientos, ...nuevos], importaciones }
     set({ datos })
     persistirDatos(datos)
     return nuevos.length

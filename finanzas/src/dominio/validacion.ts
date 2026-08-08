@@ -58,3 +58,22 @@ export function validarNifCif(entrada: string): ResultadoValidacion {
   if (/^[A-Z]/.test(v)) return { valido: validarCif(v), tipo: 'CIF' }
   return { valido: false, tipo: 'DESCONOCIDO' }
 }
+
+
+/**
+ * ¿Una cadena es una fecha ISO real (aaaa-mm-dd con mes y día existentes)?
+ *
+ * Sirve para detectar los movimientos que quedaron guardados con una fecha
+ * imposible —del tipo `2016-32-26`— por el fallo de posiciones del parser
+ * Norma 43, y poder retirarlos sin tener que ir uno a uno.
+ */
+export function esFechaIsoValida(iso: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((iso ?? '').trim())
+  if (!m) return false
+  const [, a, mes, dia] = m
+  const nMes = Number(mes)
+  const nDia = Number(dia)
+  if (nMes < 1 || nMes > 12 || nDia < 1 || nDia > 31) return false
+  const d = new Date(`${a}-${mes}-${dia}T00:00:00Z`)
+  return d.getUTCFullYear() === Number(a) && d.getUTCMonth() + 1 === nMes && d.getUTCDate() === nDia
+}

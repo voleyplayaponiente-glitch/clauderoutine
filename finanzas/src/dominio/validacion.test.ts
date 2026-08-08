@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validarNifCif } from './validacion'
+import { validarNifCif, esFechaIsoValida } from './validacion'
 
 describe('validación de identificadores fiscales', () => {
   it('valida DNI correctos y rechaza la letra errónea', () => {
@@ -20,5 +20,24 @@ describe('validación de identificadores fiscales', () => {
   it('vacío o basura no es válido', () => {
     expect(validarNifCif('')).toEqual({ valido: false, tipo: 'DESCONOCIDO' })
     expect(validarNifCif('???').valido).toBe(false)
+  })
+})
+
+
+describe('fecha ISO válida', () => {
+  it('acepta fechas reales', () => {
+    expect(esFechaIsoValida('2026-01-15')).toBe(true)
+    expect(esFechaIsoValida('2024-02-29')).toBe(true) // bisiesto
+  })
+  it('rechaza las fechas imposibles que dejó el parser antiguo', () => {
+    expect(esFechaIsoValida('2016-32-26')).toBe(false)
+    expect(esFechaIsoValida('2026-13-01')).toBe(false)
+    expect(esFechaIsoValida('2026-02-30')).toBe(false)
+    expect(esFechaIsoValida('2025-02-29')).toBe(false)
+  })
+  it('rechaza lo que no tiene forma de fecha', () => {
+    expect(esFechaIsoValida('')).toBe(false)
+    expect(esFechaIsoValida('15/01/2026')).toBe(false)
+    expect(esFechaIsoValida('2026-1-5')).toBe(false)
   })
 })
