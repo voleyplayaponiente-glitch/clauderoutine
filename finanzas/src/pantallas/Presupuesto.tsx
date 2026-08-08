@@ -46,14 +46,19 @@ export function Presupuesto() {
     const banco = gastosBancariosPorMes(datos.movimientos, config.categoriasGasto, ejercicio)
     if (deuda.length === 0 && banco.length === 0) {
       window.alert(
-        'No hay nada que traer todavía.\n\n· Las cuotas salen de las deudas registradas en la pantalla de Deudas.\n· Los gastos bancarios salen de los movimientos marcados con una categoría bancaria en Bancos.',
+        'No hay nada que traer todavía.\n\n' +
+          '· Las cuotas salen de las deudas registradas en la pantalla de Deudas.\n' +
+          '· Los gastos del banco salen de los movimientos con concepto asignado en Bancos.\n\n' +
+          'No se traen las facturas de proveedores ni las cuotas de préstamo: ya están contadas en Compras y en Deudas.',
       )
       return
     }
 
     const nuevas = [
       ...deuda.map((d) => ({ concepto: `Deuda: ${d.concepto}`, tipo: 'FINANCIACION' as const, meses: d.meses })),
-      ...banco.map((b) => ({ concepto: `Banco: ${b.categoria}`, tipo: 'GASTO' as const, meses: b.meses })),
+      // Cada concepto bancario entra con su efecto: las comisiones y los seguros
+      // son gasto; los tributos y la Seguridad Social saldan deuda ya devengada.
+      ...banco.map((b) => ({ concepto: `Banco: ${b.categoria}`, tipo: b.efecto, meses: b.meses })),
     ]
 
     let lineas = [...presupuesto.lineas]

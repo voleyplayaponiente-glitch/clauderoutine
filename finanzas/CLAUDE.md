@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 348 tests (Vitest) del motor
+npm test         # 356 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -145,15 +145,29 @@ Cuatro reglas del PGC que **no se negocian**:
   avisa de que se confirme con la asesoría.
 
 ## Naturaleza del gasto, factura en PDF y paso al presupuesto
-- **Las categorías de gasto son las que pidió el usuario y ese es el catálogo oficial**
-  (`CATEGORIAS_GASTO_DEFECTO` en `dominio/defaults.ts`, campo `orden` para el orden de la lista):
-  Stock nacional · Stock internacional · Alquileres · Gastos de ventas · Gasolina deducible ·
-  Gasolina NO deducible · Gastos de oficina · Alarma · Teléfono · Wifi · Luz · Mantenimiento ·
-  Marketing y publicidad · Gestoría · Renting de vehículos · Mantenimiento NO deducible ·
-  Gastos IA · Gastos TPV · Gastos varios tiendas · Gastos generales. Más 4 categorías bancarias
-  (`esBancaria`): Comisiones (626) · Mantenimiento de cuenta (626) · Seguros del banco (625) ·
-  Intereses y gastos financieros (662). **No renombrarlas ni reordenarlas sin pedirlo.**
-  Banderas: `esStock`, `esInternacional`, `esBancaria`, `deduciblePorDefecto`.
+- **DOS LISTAS SEPARADAS, y es una decisión del usuario, no un detalle:**
+  · **Compras (`ambito: 'COMPRAS'`) = «naturaleza del gasto»**, porque es donde están las
+    facturas. Son estas 20 y ese es el catálogo oficial: Stock nacional · Stock internacional ·
+    Alquileres · Gastos de ventas · Gasolina deducible · Gasolina NO deducible · Gastos de
+    oficina · Alarma · Teléfono · Wifi · Luz · Mantenimiento · Mantenimiento NO deducible ·
+    Marketing y publicidad · Gestoría · Renting de vehículos · Gastos de IA · Gastos de TPV ·
+    Gastos varios de tiendas · Gastos generales. **No renombrarlas ni reordenarlas sin pedirlo.**
+  · **Bancos (`ambito: 'BANCO'`) = «concepto del cargo»**, para lo que **no lleva factura**:
+    Facturas de proveedores (ya en Compras) · Comisiones de TPV · Comisiones bancarias · Gastos
+    de mantenimiento · Intereses y gastos financieros · Seguro de RC · Seguro de vida · Seguro
+    de salud · Tributos: trimestre corriente · Tributos: cuota de aplazamiento · Seguridad
+    Social · Cuota de préstamo (ya en Deudas) · Traspaso entre cuentas propias · Otros gastos
+    sin factura.
+  · `ambitoDe`/`categoriasDe`/`efectoPresupuestoDe` (en `resumen-compras.ts`) son los que
+    filtran. Las categorías guardadas antes de la separación **no traen `ambito`**: se deduce de
+    `esBancaria`, así que los datos viejos siguen funcionando.
+- **`efectoPresupuesto` evita presupuestar dos veces lo mismo** (la regla que sostiene todo esto):
+  · `NINGUNO` — facturas de proveedores (el gasto ya está en Compras), cuotas de préstamo (ya
+    salen del cuadro de deuda) y traspasos entre cuentas propias. **No se llevan al presupuesto.**
+  · `FINANCIACION` — tributos del trimestre, cuotas de aplazamiento y Seguridad Social: sale
+    dinero pero se salda una deuda ya devengada, no es gasto de P&G.
+  · `GASTO` — comisiones, mantenimiento, seguros, intereses. Sin indicar, se trata como gasto.
+  Banderas restantes: `esStock`, `esInternacional`, `esBancaria`, `deduciblePorDefecto`.
 - `fusionarCategorias` (store) añade a los datos ya guardados las categorías nuevas del catálogo
   sin tocar las que el usuario haya editado o creado.
 - **La categoría manda en Compras**: al elegirla se fijan naturaleza, cuenta PGC y deducibilidad.
@@ -176,10 +190,10 @@ Cuatro reglas del PGC que **no se negocian**:
     gasto de P&G). **Ojo: la primera cuota vence un periodo DESPUÉS de `fechaInicio`.**
   · `gastosBancariosPorMes` lleva a líneas `Banco: …` de tipo GASTO lo que cobra el banco.
   · Es **idempotente**: se empareja por concepto, pulsarlo dos veces actualiza, no duplica.
-- **Bancos**: cada salida tiene su selector de «Naturaleza del gasto» y el panel
-  **«Gastos de la cuenta: de dónde vienen»** (`gastosCuentaPorCategoria`) agrupa las salidas del
-  año/mes distinguiendo *lo cobra el banco* de *pagado por el banco*, con lo **sin clasificar en
-  rojo** (sin clasificar no entra en el presupuesto).
+- **Bancos**: cada salida tiene su selector de «Concepto del cargo» (lista del banco) y el panel
+  **«Cargos de la cuenta: de dónde vienen»** (`gastosCuentaPorCategoria`) agrupa las salidas del
+  año/mes en *Gasto* · *Impuestos y deuda* · *Ya contado* · *Sin clasificar*, esto último en rojo
+  (sin clasificar no entra en el presupuesto).
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
@@ -194,7 +208,7 @@ Cuatro reglas del PGC que **no se negocian**:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (348 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (356 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

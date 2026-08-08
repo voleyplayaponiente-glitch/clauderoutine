@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { resumirCompras, cuotasDeudaPorMes, gastosBancariosPorMes, gastosCuentaPorCategoria, familiaDeuda, ETIQUETA_FAMILIA_DEUDA } from './resumen-compras'
+import {
+  resumirCompras,
+  cuotasDeudaPorMes,
+  gastosBancariosPorMes,
+  gastosCuentaPorCategoria,
+  familiaDeuda,
+  ambitoDe,
+  categoriasDe,
+  efectoPresupuestoDe,
+  ETIQUETA_FAMILIA_DEUDA,
+} from './resumen-compras'
 import { CATEGORIAS_GASTO_DEFECTO } from './defaults'
 import type { Compra, Deuda, CategoriaGasto } from './tipos'
 
@@ -59,10 +69,57 @@ describe('categorías de gasto por defecto', () => {
     expect(CATS.find((c) => c.id === 'cat-gasolina')!.deduciblePorDefecto).toBe(true)
   })
 
-  it('las categorías bancarias están marcadas', () => {
+  it('las que cobra el propio banco están marcadas', () => {
     const bancarias = CATS.filter((c) => c.esBancaria).map((c) => c.nombre)
     expect(bancarias).toContain('Comisiones bancarias')
-    expect(bancarias).toContain('Seguros del banco')
+    expect(bancarias).toContain('Comisiones de TPV')
+  })
+})
+
+describe('la naturaleza del gasto es de Compras; el banco tiene su propia lista', () => {
+  const compras = categoriasDe(CATS, 'COMPRAS').map((c) => c.nombre)
+  const banco = categoriasDe(CATS, 'BANCO').map((c) => c.nombre)
+
+  it('las 20 naturalezas del gasto solo salen en Compras', () => {
+    expect(compras).toHaveLength(20)
+    expect(compras[0]).toBe('Stock nacional')
+    expect(compras).toContain('Alquileres')
+    expect(banco).not.toContain('Alquileres')
+  })
+
+  it('el banco ofrece lo que no lleva factura', () => {
+    for (const n of [
+      'Comisiones de TPV',
+      'Gastos de mantenimiento',
+      'Seguro de responsabilidad civil',
+      'Seguro de vida',
+      'Seguro de salud',
+      'Tributos: trimestre corriente (303, 111, 115…)',
+      'Tributos: cuota de aplazamiento',
+    ]) {
+      expect(banco).toContain(n)
+    }
+  })
+
+  it('deja una línea para las facturas de proveedores, pero no se presupuesta', () => {
+    const facturas = CATS.find((c) => c.id === 'cat-bco-facturas')!
+    expect(banco).toContain(facturas.nombre)
+    // El gasto ya está en la factura: contarlo aquí sería contarlo dos veces.
+    expect(efectoPresupuestoDe(facturas)).toBe('NINGUNO')
+  })
+
+  it('los tributos y la Seguridad Social son financiación, no gasto de P&G', () => {
+    for (const id of ['cat-bco-tributos-trimestre', 'cat-bco-tributos-aplazamiento', 'cat-bco-seg-social']) {
+      expect(efectoPresupuestoDe(CATS.find((c) => c.id === id))).toBe('FINANCIACION')
+    }
+  })
+
+  it('las categorías guardadas antes de la separación no se pierden', () => {
+    // Sin `ambito`: si era bancaria va al banco, si no a compras.
+    expect(ambitoDe({ id: 'x', nombre: 'Vieja', cuentaPGC: '629', deduciblePorDefecto: true })).toBe('COMPRAS')
+    expect(ambitoDe({ id: 'y', nombre: 'Vieja banco', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true })).toBe('BANCO')
+    // Y sin `efectoPresupuesto` se tratan como gasto, que es lo que eran.
+    expect(efectoPresupuestoDe({ id: 'x', nombre: 'Vieja', cuentaPGC: '629', deduciblePorDefecto: true })).toBe('GASTO')
   })
 })
 
@@ -242,7 +299,7 @@ describe('gastos bancarios por mes', () => {
     expect(comisiones.meses[0]).toBe(12)
     expect(comisiones.meses[1]).toBe(12)
     expect(comisiones.totalAnual).toBe(24)
-    expect(lineas.find((l) => l.categoria === 'Mantenimiento de cuenta')!.totalAnual).toBe(60)
+    expect(lineas.find((l) => l.categoria === 'Gastos de mantenimiento')!.totalAnual).toBe(60)
   })
 
   it('los importes se presupuestan en positivo aunque sean salidas', () => {
@@ -267,6 +324,31 @@ describe('gastos bancarios por mes', () => {
       2026,
     )
     expect(l).toEqual([])
+  })
+
+  it('no trae al presupuesto lo que ya está contado en otro sitio', () => {
+    // Una factura pagada por el banco ya es gasto en Compras; la cuota del
+    // préstamo ya viene del cuadro de deuda. Traerlas sería contar dos veces.
+    const l = gastosBancariosPorMes(
+      [
+        mov('2026-01-10', -1500, 'cat-bco-facturas'),
+        mov('2026-01-05', -800, 'cat-bco-cuota-prestamo'),
+        mov('2026-01-03', -2000, 'cat-bco-traspaso'),
+      ],
+      cats,
+      2026,
+    )
+    expect(l).toEqual([])
+  })
+
+  it('los tributos entran como financiación y las comisiones como gasto', () => {
+    const l = gastosBancariosPorMes(
+      [mov('2026-04-20', -4200, 'cat-bco-tributos-trimestre'), mov('2026-04-30', -12, 'cat-banco-comision')],
+      cats,
+      2026,
+    )
+    expect(l.find((x) => x.categoriaId === 'cat-bco-tributos-trimestre')!.efecto).toBe('FINANCIACION')
+    expect(l.find((x) => x.categoriaId === 'cat-banco-comision')!.efecto).toBe('GASTO')
   })
 
   it('los anulados no cuentan', () => {
@@ -298,7 +380,7 @@ describe('desglose de gastos de una cuenta bancaria', () => {
     // El alquiler se paga POR el banco, pero no lo cobra el banco.
     expect(d.lineas.find((l) => l.categoria === 'Alquileres')!.esBancaria).toBe(false)
     expect(d.lineas[0].categoria).toBe('Alquileres') // ordenado por importe
-    expect(d.lineas.find((l) => l.categoria === 'Mantenimiento de cuenta')!.numMovimientos).toBe(2)
+    expect(d.lineas.find((l) => l.categoria === 'Gastos de mantenimiento')!.numMovimientos).toBe(2)
   })
 
   it('lo que no está clasificado se ve, no se esconde', () => {
@@ -331,6 +413,32 @@ describe('desglose de gastos de una cuenta bancaria', () => {
 
   it('sin salidas devuelve todo a cero', () => {
     const d = gastosCuentaPorCategoria([], cats)
-    expect(d).toEqual({ lineas: [], total: 0, totalBancario: 0, totalSinClasificar: 0, numSinClasificar: 0 })
+    expect(d).toEqual({
+      lineas: [],
+      total: 0,
+      totalBancario: 0,
+      totalGasto: 0,
+      totalFinanciacion: 0,
+      totalYaContabilizado: 0,
+      totalSinClasificar: 0,
+      numSinClasificar: 0,
+    })
+  })
+
+  it('separa el gasto, el pago de impuestos y lo que ya está contado', () => {
+    const d = gastosCuentaPorCategoria(
+      [
+        mov('2026-01-31', -30, 'cat-banco-mantenimiento'),
+        mov('2026-01-20', -4200, 'cat-bco-tributos-trimestre'),
+        mov('2026-01-10', -1500, 'cat-bco-facturas'),
+        mov('2026-01-05', -800, 'cat-bco-cuota-prestamo'),
+      ],
+      cats,
+    )
+    expect(d.total).toBe(6530)
+    expect(d.totalGasto).toBe(30)
+    expect(d.totalFinanciacion).toBe(4200)
+    // Factura + cuota de préstamo: ya contados en Compras y en Deudas.
+    expect(d.totalYaContabilizado).toBe(2300)
   })
 })
