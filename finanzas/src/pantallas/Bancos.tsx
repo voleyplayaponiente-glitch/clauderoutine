@@ -10,6 +10,7 @@ import { saldoCuenta } from '../dominio/tesoreria'
 import { esFechaIsoValida } from '../dominio/validacion'
 import { leerExtracto, type LecturaExtracto } from '../lib/extracto'
 import { ModalImportarExtracto } from './bancos/ModalImportarExtracto'
+import { GastosCuenta } from './bancos/GastosCuenta'
 import { sugerencias, type Emparejable } from '../dominio/conciliacion'
 import type { CuentaTesoreria, MovimientoTesoreria, TipoCuentaTesoreria } from '../dominio/tipos'
 
@@ -30,6 +31,7 @@ const TIPOS: { valor: TipoCuentaTesoreria; texto: string }[] = [
 
 export function Bancos() {
   const datos = useStore((s) => s.datos)
+  const config = useStore((s) => s.config)
   const guardarCuenta = useStore((s) => s.guardarCuentaTesoreria)
   const guardarMovimiento = useStore((s) => s.guardarMovimiento)
   const importarMovimientos = useStore((s) => s.importarMovimientos)
@@ -48,6 +50,12 @@ export function Bancos() {
   const [leyendo, setLeyendo] = useState(false)
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   const fileRef = useRef<HTMLInputElement>(null)
+
+  /** Todos los movimientos vivos de la cuenta, sin el filtro de la tabla. */
+  const movsCuenta = useMemo(
+    () => datos.movimientos.filter((m) => sel && m.cuentaId === sel.id && !m.anuladoEn),
+    [datos.movimientos, sel],
+  )
 
   const movs = useMemo(() => {
     let l = datos.movimientos.filter((m) => sel && m.cuentaId === sel.id && !m.anuladoEn)
@@ -207,6 +215,8 @@ export function Bancos() {
             </Tarjeta>
           )}
 
+          <GastosCuenta movimientos={movsCuenta} categorias={config.categoriasGasto} nombreCuenta={sel.nombre} />
+
           {conFechaMala.length > 0 && (
             <div className="rounded-xl p-3 mb-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(255,159,10,.12)', border: '1px solid var(--warn)' }}>
               <p className="text-sm">
@@ -264,7 +274,7 @@ export function Bancos() {
               <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin movimientos. Importa el extracto del banco (Norma 43, Excel, CSV o PDF) o añádelos a mano.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="pl-4 py-2.5 font-medium w-8"><input type="checkbox" aria-label="Seleccionar todos" checked={movs.length > 0 && seleccion.size === movs.length} onChange={(e) => setSeleccion(e.target.checked ? new Set(movs.map((m) => m.id)) : new Set())} /></th><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
+                <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="pl-4 py-2.5 font-medium w-8"><input type="checkbox" aria-label="Seleccionar todos" checked={movs.length > 0 && seleccion.size === movs.length} onChange={(e) => setSeleccion(e.target.checked ? new Set(movs.map((m) => m.id)) : new Set())} /></th><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium">Naturaleza del gasto</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
                 <tbody>
                   {movs.map((m) => (
                     <tr key={m.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
@@ -276,6 +286,26 @@ export function Bancos() {
                       </td>
                       <td className="px-4 py-2.5">{m.concepto}{m.referencia && <span className="ml-2 text-xs tabular" style={{ color: 'var(--text-muted)' }}>{m.referencia}</span>}</td>
                       <td className="px-4 py-2.5 text-right"><ImporteEuro valor={m.importe} color /></td>
+                      <td className="px-4 py-2.5">
+                        {m.importe < 0 ? (
+                          <select
+                            value={m.categoriaId ?? ''}
+                            onChange={(e) => guardarMovimiento({ ...m, categoriaId: e.target.value || undefined })}
+                            className="w-full rounded-lg px-2 py-1 text-xs"
+                            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: m.categoriaId ? 'var(--text)' : 'var(--text-muted)' }}
+                            title="Clasifica el gasto para que llegue al presupuesto"
+                          >
+                            <option value="">— sin clasificar —</option>
+                            {[...config.categoriasGasto]
+                              .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                              ))}
+                          </select>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-center">
                         <button
                           onClick={() => conciliar(m.id, !m.conciliado)}

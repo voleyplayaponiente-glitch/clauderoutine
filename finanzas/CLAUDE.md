@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 298 tests (Vitest) del motor
+npm test         # 348 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -144,6 +144,43 @@ Cuatro reglas del PGC que **no se negocian**:
   inversión, o existencias si el negocio es comprar y vender): la cuenta es editable y la app
   avisa de que se confirme con la asesoría.
 
+## Naturaleza del gasto, factura en PDF y paso al presupuesto
+- **Las categorías de gasto son las que pidió el usuario y ese es el catálogo oficial**
+  (`CATEGORIAS_GASTO_DEFECTO` en `dominio/defaults.ts`, campo `orden` para el orden de la lista):
+  Stock nacional · Stock internacional · Alquileres · Gastos de ventas · Gasolina deducible ·
+  Gasolina NO deducible · Gastos de oficina · Alarma · Teléfono · Wifi · Luz · Mantenimiento ·
+  Marketing y publicidad · Gestoría · Renting de vehículos · Mantenimiento NO deducible ·
+  Gastos IA · Gastos TPV · Gastos varios tiendas · Gastos generales. Más 4 categorías bancarias
+  (`esBancaria`): Comisiones (626) · Mantenimiento de cuenta (626) · Seguros del banco (625) ·
+  Intereses y gastos financieros (662). **No renombrarlas ni reordenarlas sin pedirlo.**
+  Banderas: `esStock`, `esInternacional`, `esBancaria`, `deduciblePorDefecto`.
+- `fusionarCategorias` (store) añade a los datos ya guardados las categorías nuevas del catálogo
+  sin tocar las que el usuario haya editado o creado.
+- **La categoría manda en Compras**: al elegirla se fijan naturaleza, cuenta PGC y deducibilidad.
+  «Stock internacional» abre el campo **Impuesto especial soportado** (`Compra.impuestoEspecial`);
+  las NO deducibles exigen motivo.
+- **`dominio/resumen-compras.ts`** (puro): `resumirCompras` calcula el **coste real** = base +
+  IVA no deducible + impuesto especial (el IVA que no se deduce **es más gasto**, no desaparece),
+  y separa `costeStock` de `costeEstructura`. El resumen mensual de Compras sale de aquí.
+- **`dominio/factura-pdf.ts`**: lectura **asistida** de la factura en PDF. Propone, no decide.
+  · **El cuadre manda**: si base + cuota no da el total leído (>2 cts), **no se rellena ningún
+    importe** y se explica por qué. Antes que rellenar mal, no se rellena.
+  · El nº de factura se saca por **tokens** tras el rótulo, descartando lo que parezca un importe:
+    con la regex antigua «TOTAL FACTURA 2.238,50» colaba como número de factura «2.238».
+  · Se descarta el CIF propio para no confundir emisor con receptor; NIF con letra mal → fuera.
+  · PDF escaneado (sin capa de texto) → se dice claramente que se meta a mano.
+- **Deuda aplazada y gastos del banco → presupuesto**: botón «Traer deuda y gastos del banco».
+  · `cuotasDeudaPorMes` reparte por meses las cuotas que salen del **cuadro de amortización real**
+    (nada estimado), agrupadas por familia: bancaria · socios · Hacienda · Seguridad Social ·
+    comercial · otra. Se crean líneas `Deuda: …` de tipo FINANCIACIÓN (devolver principal no es
+    gasto de P&G). **Ojo: la primera cuota vence un periodo DESPUÉS de `fechaInicio`.**
+  · `gastosBancariosPorMes` lleva a líneas `Banco: …` de tipo GASTO lo que cobra el banco.
+  · Es **idempotente**: se empareja por concepto, pulsarlo dos veces actualiza, no duplica.
+- **Bancos**: cada salida tiene su selector de «Naturaleza del gasto» y el panel
+  **«Gastos de la cuenta: de dónde vienen»** (`gastosCuentaPorCategoria`) agrupa las salidas del
+  año/mes distinguiendo *lo cobra el banco* de *pagado por el banco*, con lo **sin clasificar en
+  rojo** (sin clasificar no entra en el presupuesto).
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -157,7 +194,7 @@ Cuatro reglas del PGC que **no se negocian**:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones (298 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (348 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

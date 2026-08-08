@@ -645,6 +645,21 @@ export const useStore = create<Estado>((set, get) => ({
   },
 }))
 
+/**
+ * Une las categorías guardadas con las de fábrica: respeta lo que el usuario
+ * haya cambiado o creado (manda su versión) y añade las nuevas que aún no
+ * tenga. Así una lista ampliada llega a quien ya tenía datos sin pisar nada.
+ */
+function fusionarCategorias(
+  guardadas: Configuracion['categoriasGasto'] | undefined,
+  defecto: Configuracion['categoriasGasto'],
+): Configuracion['categoriasGasto'] {
+  if (!guardadas || guardadas.length === 0) return defecto
+  const porId = new Map(guardadas.map((c) => [c.id, c]))
+  const nuevas = defecto.filter((c) => !porId.has(c.id))
+  return [...guardadas, ...nuevas].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+}
+
 /** Rellena los campos que no existían en versiones anteriores del grupo guardado. */
 function migrarGrupo(g: Grupo | undefined): Grupo | undefined {
   if (!g) return undefined
@@ -685,7 +700,7 @@ function migrarConfig(c: Partial<Configuracion>): Configuracion {
     tiposIva: c.tiposIva ?? base.tiposIva,
     impuestosEspeciales: c.impuestosEspeciales ?? base.impuestosEspeciales,
     obligacionesFiscales: c.obligacionesFiscales ?? base.obligacionesFiscales,
-    categoriasGasto: c.categoriasGasto ?? base.categoriasGasto,
+    categoriasGasto: fusionarCategorias(c.categoriasGasto, base.categoriasGasto),
     umbrales: { ...base.umbrales, ...c.umbrales },
     apariencia: { ...base.apariencia, ...c.apariencia },
     plantillasImportacion: c.plantillasImportacion ?? base.plantillasImportacion,

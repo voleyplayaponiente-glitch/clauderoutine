@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/store'
 import { CabeceraPantalla } from './Pantalla'
 import { Proveedores, terceroNuevo } from './Proveedores'
@@ -8,6 +8,10 @@ import { EditorLineasIva } from '../componentes/EditorLineasIva'
 import { hoyISO, formatearFecha, mesDe, nombreMes, sumarDias } from '../lib/fechas'
 import { nuevoId } from '../dominio/id'
 import { totalesCompra } from '../dominio/compras'
+import { resumirCompras } from '../dominio/resumen-compras'
+import { extraerDatosFactura, type DatosFactura } from '../dominio/factura-pdf'
+import { lineasDePdf } from '../lib/extracto'
+import { ResumenMensual } from './compras/ResumenMensual'
 import { formatearEuro } from '../dominio/dinero'
 import type { Compra, Tercero, NaturalezaCompra, FormaPago, EstadoPago, LineaIva } from '../dominio/tipos'
 
@@ -60,6 +64,9 @@ function ListaCompras() {
   const guardarTercero = useStore((s) => s.guardarTercero)
 
   const [editando, setEditando] = useState<Compra | null>(null)
+  const [lectura, setLectura] = useState<DatosFactura | null>(null)
+  const [leyendoPdf, setLeyendoPdf] = useState(false)
+  const pdfRef = useRef<HTMLInputElement>(null)
   const [provNuevo, setProvNuevo] = useState<Tercero | null>(null)
 
   const nombreProv = (id: string) => terceros.find((t) => t.id === id)?.nombre ?? '—'
@@ -84,6 +91,27 @@ function ListaCompras() {
     if (!editando) return
     setEditando({ ...editando, naturaleza: n, cuentaGasto: n === 'MERCADERIA' ? '600' : editando.cuentaGasto ?? '629' })
   }
+  /**
+   * La categoría es ahora el campo que manda: de ella salen la naturaleza
+   * (stock o gasto), la cuenta contable y si es deducible.
+   */
+  const esInternacional =
+    config.categoriasGasto.find((c) => c.id === editando?.categoriaGastoId)?.esInternacional === true
+
+  const setCategoriaUnica = (categoriaGastoId: string) => {
+    if (!editando) return
+    const cat = config.categoriasGasto.find((x) => x.id === categoriaGastoId)
+    setEditando({
+      ...editando,
+      categoriaGastoId: categoriaGastoId || undefined,
+      naturaleza: cat?.esStock ? 'MERCADERIA' : 'SERVICIO',
+      cuentaGasto: cat?.cuentaPGC ?? editando.cuentaGasto,
+      deducible: cat?.deduciblePorDefecto ?? editando.deducible,
+      // El impuesto especial solo tiene sentido en compra internacional.
+      impuestoEspecial: cat?.esInternacional ? (editando.impuestoEspecial ?? 0) : undefined,
+    })
+  }
+
   const setCategoria = (categoriaGastoId: string) => {
     if (!editando) return
     const cat = config.categoriasGasto.find((x) => x.id === categoriaGastoId)
@@ -96,6 +124,45 @@ function ListaCompras() {
     setEditando({ ...editando, terceroId, fechaVencimiento: venc })
   }
 
+  /**
+   * Lee una factura en PDF y precarga lo que ha encontrado. NO guarda nada:
+   * los campos quedan en el formulario para revisarlos.
+   */
+  const onFacturaPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setLeyendoPdf(true)
+    setLectura(null)
+    try {
+      const lineas = await lineasDePdf(await f.arrayBuffer())
+      const d = extraerDatosFactura(lineas, config.empresa.cif)
+      setLectura(d)
+
+      const base = editando ?? compraNueva()
+      const tipoIva = d.tipoIva ?? base.lineasIva[0]?.tipo ?? 21
+      const tIva = config.tiposIva.find((t) => t.tipo === tipoIva) ?? config.tiposIva.find((t) => t.porDefecto)
+      // Solo se tocan los campos realmente leídos: lo demás se respeta.
+      const prov = d.cif ? terceros.find((t) => t.cif.toUpperCase().replace(/[\s-]/g, '') === d.cif) : undefined
+      setEditando({
+        ...base,
+        origen: 'PDF',
+        adjuntoNombre: f.name,
+        terceroId: prov?.id ?? base.terceroId,
+        numFactura: d.numFactura ?? base.numFactura,
+        fechaFactura: d.fecha ?? base.fechaFactura,
+        lineasIva:
+          d.base !== undefined && tIva
+            ? [{ base: d.base, tipoIvaId: tIva.id, tipo: tIva.tipo, regimen: tIva.regimen, cuota: d.cuota ?? 0 }]
+            : base.lineasIva,
+      })
+    } catch (err) {
+      setLectura({ avisos: [`No se ha podido leer el PDF: ${err instanceof Error ? err.message : 'error'}`], encontrados: [] })
+    } finally {
+      setLeyendoPdf(false)
+      if (pdfRef.current) pdfRef.current.value = ''
+    }
+  }
+
   const guardar = () => {
     if (!editando || !editando.terceroId || !editando.numFactura.trim()) return
     guardarCompra(editando)
@@ -106,9 +173,15 @@ function ListaCompras() {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-wrap justify-end gap-2 mb-4">
+        <Boton variante="secundario" onClick={() => pdfRef.current?.click()}>
+          {leyendoPdf ? 'Leyendo la factura…' : 'Subir factura en PDF'}
+        </Boton>
+        <input ref={pdfRef} type="file" accept=".pdf" className="hidden" onChange={onFacturaPdf} />
         <Boton onClick={abrirNueva}>+ Registrar compra</Boton>
       </div>
+
+      <ResumenMensual compras={compras} categorias={config.categoriasGasto} />
 
       {compras.length === 0 ? (
         <Tarjeta><EstadoVacio icono="compras" titulo="Aún no hay compras registradas" descripcion="Registra facturas de mercadería y de servicios con su IVA, retención, vencimiento y deducibilidad." accion={<Boton onClick={abrirNueva}>Registrar la primera</Boton>} /></Tarjeta>
@@ -166,10 +239,34 @@ function ListaCompras() {
       )}
 
       {editando && totales && (
-        <Modal titulo="Registrar compra" onCerrar={() => setEditando(null)}>
+        <Modal titulo="Registrar compra" onCerrar={() => { setEditando(null); setLectura(null) }}>
           <div className="space-y-4">
+            {lectura && (
+              <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: 'var(--surface-2)' }}>
+                <p className="font-medium">
+                  Leído del PDF: {lectura.encontrados.length > 0 ? lectura.encontrados.join(', ') : 'nada aprovechable'}.
+                  {' '}Revísalo antes de guardar.
+                </p>
+                {lectura.proveedor && !editando.terceroId && (
+                  <p style={{ color: 'var(--text-muted)' }}>Proveedor detectado: «{lectura.proveedor}» — no está dado de alta, créalo o elígelo.</p>
+                )}
+                {lectura.avisos.map((a) => (
+                  <p key={a} style={{ color: 'var(--warn)' }}>· {a}</p>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
-              <Select etiqueta="Naturaleza" valor={editando.naturaleza} onChange={setNaturaleza} opciones={[{ valor: 'MERCADERIA', texto: 'Mercadería (stock)' }, { valor: 'SERVICIO', texto: 'Servicio / gasto' }]} />
+              <Select
+                etiqueta="Naturaleza del gasto"
+                valor={editando.categoriaGastoId ?? ''}
+                onChange={setCategoriaUnica}
+                opciones={[
+                  { valor: '', texto: '— Sin clasificar —' },
+                  ...[...config.categoriasGasto]
+                    .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+                    .map((c) => ({ valor: c.id, texto: c.nombre })),
+                ]}
+              />
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium">Proveedor</span>
@@ -193,14 +290,21 @@ function ListaCompras() {
 
             <div className="grid grid-cols-2 gap-4">
               <CampoNumero etiqueta="Retención (111/115)" valor={editando.retencion} onChange={(v) => setEditando({ ...editando, retencion: v })} sufijo="€" />
-              {editando.naturaleza === 'SERVICIO' ? (
-                <Select etiqueta="Categoría de gasto" valor={editando.categoriaGastoId ?? ''} onChange={setCategoria}
-                  opciones={[{ valor: '', texto: '— Sin categoría —' }, ...config.categoriasGasto.map((c) => ({ valor: c.id, texto: c.nombre }))]} />
-              ) : (
-                <Select etiqueta="Centro de coste" valor={editando.centroCosteId ?? ''} onChange={(v) => setEditando({ ...editando, centroCosteId: v || undefined })}
-                  opciones={[{ valor: '', texto: '— Estructura —' }, ...puntos.map((p) => ({ valor: p.id, texto: p.nombre }))]} />
-              )}
+              <Select etiqueta="Centro de coste" valor={editando.centroCosteId ?? ''} onChange={(v) => setEditando({ ...editando, centroCosteId: v || undefined })}
+                opciones={[{ valor: '', texto: '— Estructura —' }, ...puntos.map((p) => ({ valor: p.id, texto: p.nombre }))]} />
             </div>
+
+            {esInternacional && (
+              <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
+                <CampoNumero
+                  etiqueta="Impuesto especial soportado"
+                  sufijo="€"
+                  valor={editando.impuestoEspecial ?? 0}
+                  onChange={(v) => setEditando({ ...editando, impuestoEspecial: v })}
+                  ayuda="Compra internacional: el impuesto especial de vapeo (modelo 573) suma al coste de la mercancía y se declara aparte."
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <Select etiqueta="Forma de pago" valor={editando.formaPago} onChange={(v) => setEditando({ ...editando, formaPago: v })} opciones={FORMAS_PAGO} />
