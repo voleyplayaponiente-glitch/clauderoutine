@@ -660,6 +660,20 @@ function fusionarCategorias(
   return [...guardadas, ...nuevas].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
 }
 
+/**
+ * Igual que con las categorías: manda lo que el usuario haya cambiado (nombre,
+ * tipo, fecha de cierre) y se añaden los puntos de venta de fábrica que aún no
+ * tenga. Los ids de los de fábrica son fijos, así que esto no duplica nada.
+ */
+function fusionarCentros(
+  guardados: Configuracion['centrosCoste'] | undefined,
+  defecto: Configuracion['centrosCoste'],
+): Configuracion['centrosCoste'] {
+  if (!guardados || guardados.length === 0) return defecto
+  const porId = new Set(guardados.map((c) => c.id))
+  return [...guardados, ...defecto.filter((c) => !porId.has(c.id))]
+}
+
 /** Rellena los campos que no existían en versiones anteriores del grupo guardado. */
 function migrarGrupo(g: Grupo | undefined): Grupo | undefined {
   if (!g) return undefined
@@ -695,7 +709,7 @@ function migrarConfig(c: Partial<Configuracion>): Configuracion {
   const base = configuracionInicial()
   return {
     empresa: { ...base.empresa, ...c.empresa },
-    centrosCoste: c.centrosCoste ?? base.centrosCoste,
+    centrosCoste: fusionarCentros(c.centrosCoste, base.centrosCoste),
     planContable: c.planContable ?? base.planContable,
     tiposIva: c.tiposIva ?? base.tiposIva,
     impuestosEspeciales: c.impuestosEspeciales ?? base.impuestosEspeciales,

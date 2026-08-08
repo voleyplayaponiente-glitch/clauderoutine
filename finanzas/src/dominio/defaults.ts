@@ -13,6 +13,7 @@ import type {
   ImpuestoEspecial,
   ObligacionFiscal,
   CategoriaGasto,
+  CentroCoste,
   Umbrales,
 } from './tipos'
 
@@ -91,6 +92,24 @@ export const OBLIGACIONES_FISCALES_DEFECTO: ObligacionFiscal[] = [
   { id: 'm202', modelo: '202', periodicidad: 'TRIMESTRAL', descripcion: 'Pago fraccionado Sociedades' },
   { id: 'm347', modelo: '347', periodicidad: 'ANUAL', descripcion: 'Operaciones con terceros' },
   { id: 'm573', modelo: '573', periodicidad: 'TRIMESTRAL', descripcion: 'Impuesto sobre líquidos para cigarrillos electrónicos' },
+]
+
+/**
+ * Puntos de venta del grupo. Se precargan para no tener que teclearlos, pero
+ * son **datos de configuración editables**: se les cambia el nombre, el tipo o
+ * el código, y se pueden cerrar (`activoHasta`) o añadir otros nuevos.
+ * El tipo de cada uno es una suposición razonable por el nombre; confírmalo.
+ */
+// Los ids son FIJOS a propósito: una compra o una venta guardan el id del
+// centro, así que no pueden cambiar entre recargas.
+const SELLO = { creadoEn: '2025-01-01T00:00:00.000Z', creadoPor: 'sistema', origen: 'MANUAL' } as const
+
+export const CENTROS_COSTE_DEFECTO: CentroCoste[] = [
+  { ...SELLO, id: 'cc-gv-alicante', codigo: 'GVA', nombre: 'VAPESSENCE GV ALICANTE', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'STAND', activoDesde: '2025-01-01' },
+  { ...SELLO, id: 'cc-san-juan', codigo: 'SJU', nombre: 'VAPESPACE SAN JUAN', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'TIENDA', activoDesde: '2025-01-01' },
+  { ...SELLO, id: 'cc-alfafar', codigo: 'ALF', nombre: 'VAPESSENCE ALFAFAR', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'TIENDA', activoDesde: '2025-01-01' },
+  { ...SELLO, id: 'cc-gv-hortaleza', codigo: 'GVH', nombre: 'VAPESSENCE GV HORTALEZA', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'STAND', activoDesde: '2025-01-01' },
+  { ...SELLO, id: 'cc-vapespace-es', codigo: 'WEB', nombre: 'VAPESPACE.ES', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'WEB', activoDesde: '2025-01-01' },
 ]
 
 export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
@@ -195,7 +214,7 @@ export function configuracionInicial(): Configuracion {
       ejercicioActual: 2026,
       esFilial: false,
     },
-    centrosCoste: [],
+    centrosCoste: [...CENTROS_COSTE_DEFECTO],
     planContable: [...PLAN_CONTABLE_DEFECTO],
     tiposIva: [...TIPOS_IVA_DEFECTO],
     impuestosEspeciales: [...IMPUESTOS_ESPECIALES_DEFECTO],
