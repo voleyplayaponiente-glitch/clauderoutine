@@ -10,7 +10,9 @@ y venta online. Estética estilo Apple, modo claro/oscuro, responsive.
 - **App en producción:** https://voleyplayaponiente-glitch.github.io/clauderoutine/finanzas/
 - **Repo:** voleyplayaponiente-glitch/clauderoutine · vive en la carpeta `finanzas/`
 - **Rama de desarrollo (finanzas):** `claude/preparar-aplicacion-c947u8`
+- **Rama de publicación:** `claude/tournament-bracket-manager-gvrcdt` (ver «Despliegue»).
 - **Convive con** la app de vóley (raíz del repo) y una de gestión laboral; **no se tocan**.
+- **Último despliegue verificado:** `8ed73b2` (08/08/2026) — 384 tests, build y Pages en verde.
 
 ## Decisión de arquitectura (deliberada)
 **Client-first** como la app de vóley: Vite + React 19 + TypeScript + Tailwind v4 + Zustand +
@@ -191,11 +193,27 @@ Cuatro reglas del PGC que **no se negocian**:
   IVA no deducible + impuesto especial (el IVA que no se deduce **es más gasto**, no desaparece),
   y separa `costeStock` de `costeEstructura`. El resumen mensual de Compras sale de aquí.
 - **`dominio/factura-pdf.ts`**: lectura **asistida** de la factura en PDF. Propone, no decide.
-  · **El cuadre manda**: si base + cuota no da el total leído (>2 cts), **no se rellena ningún
-    importe** y se explica por qué. Antes que rellenar mal, no se rellena.
+  · **El cuadre manda**: si base + IVA **− retención** no da el total leído (>2 cts), **no se
+    rellena ningún importe** y se explica por qué. Antes que rellenar mal, no se rellena.
+  · **LA RETENCIÓN DE IRPF NO ES OPCIONAL AL CUADRAR.** Un alquiler o un profesional la llevan y
+    base + IVA NO da el total. Sin leerla el cuadre fallaba, se descartaban los tres importes y
+    se desglosaba el total al 21 %: una factura real de 1.942,14 € (base 1.904,06 + IVA 399,85 −
+    retención 361,77) salía con base 1.605,07 €. `factura-real.test.ts` es la regresión, escrita
+    con el texto exacto del PDF del proveedor.
+  · **«SUBTOTAL» es una etiqueta de base normal**: no filtrarla por contener «total», que es
+    justo lo que dejaba la base sin leer.
+  · Fechas en letra («1 de agosto de 2026») y con puntos (`08.08.2026`). Se prefiere la línea con
+    «fecha» **evitando la de vencimiento**.
+  · NIF con prefijo intracomunitario y guiones (`NIF:ESH-53314811`): se compactan puntos y
+    guiones antes de validar, respetando los espacios para no fabricar un NIF inexistente.
+  · **El proveedor se toma de las líneas que hay encima de su NIF**, no de la primera línea con
+    letras: esa suele ser el logotipo del membrete (daba «Centro Comercial» en vez de «Comunidad
+    de Propietarios Centro Comercial Gran Via»). Si no está de alta, el panel ofrece «Crear con
+    estos datos» con nombre y CIF ya rellenos.
   · El nº de factura se saca por **tokens** tras el rótulo, descartando lo que parezca un importe:
     con la regex antigua «TOTAL FACTURA 2.238,50» colaba como número de factura «2.238».
   · Se descarta el CIF propio para no confundir emisor con receptor; NIF con letra mal → fuera.
+  · La retención leída se precarga en `Compra.retencion`.
   · PDF escaneado (sin capa de texto) → se dice claramente que se meta a mano.
 - **Deuda aplazada y gastos del banco → presupuesto**: botón «Traer deuda y gastos del banco».
   · `cuotasDeudaPorMes` reparte por meses las cuotas que salen del **cuadro de amortización real**
@@ -215,15 +233,15 @@ Cuatro reglas del PGC que **no se negocian**:
 
 ## Centros de coste (puntos de venta del grupo)
 `CENTROS_COSTE_DEFECTO` en `dominio/defaults.ts` precarga los cinco del grupo: **VAPESSENCE GV
-ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** (tienda) ·
+ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** (stand) ·
 **VAPESSENCE GV HORTALEZA** (stand) · **VAPESPACE.ES** (web).
 - **Los ids son FIJOS** (`cc-gv-alicante`, `cc-san-juan`, `cc-alfafar`, `cc-gv-hortaleza`,
   `cc-vapespace-es`): cada compra y cada venta guardan el id del centro, así que cambiarlos
   dejaría los movimientos apuntando a un centro inexistente. No regenerarlos con `nuevoId()`.
 - `fusionarCentros` (store) los añade a las configuraciones ya guardadas sin pisar lo que el
   usuario haya editado (nombre, tipo, `activoHasta`), igual que `fusionarCategorias`.
-- Tipos: los tres «GV/Alfafar» son **stands** en centro comercial, San Juan es **tienda** y
-  VAPESPACE.ES es la **web**. Editables en Configuración → Centros de coste.
+- Tipos confirmados por el usuario: GV Alicante, Alfafar y GV Hortaleza son **stands** en centro
+  comercial; San Juan es **tienda**; VAPESPACE.ES es la **web**. Editables en Configuración.
 
 ## Tarjetas de empresa
 `TARJETAS_DEFECTO`: Bankinter · BBVA · Sabadell · CaixaBank (ids `tar-<banco>`, editables).
@@ -263,12 +281,17 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (384 tests en verde)
-Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
-Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
-tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
-PDF ejecutivo) · Copias de seguridad (JSON+Excel, checksum, restauración) · Pulido
-(accesibilidad, densidad, iconos PWA) · **Conectores** (Fase 11).
+## Estado (384 tests en verde, desplegado)
+Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
+inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
+facturas en PDF + centros de coste + tarjetas + archivo de documentos.
+
+Configuración · Ventas · Compras (lectura de factura en PDF, resumen mensual, archivo de
+documentos, carpeta para la gestoría) · Caja/arqueos · Bancos (N43/Excel/CSV/PDF, conciliación,
+cargos y abonos por concepto) · Stock · Importación (Excel/CSV, 4 pasos) · Deudas/Deudores ·
+Inversiones · Presupuesto+Cash flow (con deuda y banco) · Previsión de tesorería · Dashboard ·
+Informes (IVA/303/347, balance, P&G, PDF ejecutivo) · Copias de seguridad · Grupo de empresas y
+accionariado · **Conectores** (Fase 11).
 
 ## Despliegue (importante)
 - El workflow `.github/workflows/deploy.yml` (raíz del repo) compila **el vóley en la raíz**
@@ -286,7 +309,8 @@ PDF ejecutivo) · Copias de seguridad (JSON+Excel, checksum, restauración) · P
   `git push origin despliegue:claude/tournament-bracket-manager-gvrcdt`.
 - Base en Pages: `/clauderoutine/finanzas/` (con `GITHUB_PAGES=true`). Router por hash (sin 404).
 - Datos en el dispositivo (IndexedDB). Para pasar de un equipo a otro: Copias → Descargar JSON
-  → Restaurar. «Borrar datos del sitio» los pierde.
+  → Restaurar. «Borrar datos del sitio» los pierde. **Los PDF archivados NO van en ese JSON**:
+  se llevan con el ZIP mensual de Compras (y por tanto el archivo es por dispositivo).
 
 ## Conectores (Fase 11) y servidor Umbrel
 - Arquitectura enchufable: interfaz común probar/sincronizar/**previsualizar antes de aplicar**/
@@ -324,9 +348,36 @@ Invariantes que **no** se deben romper al tocar el código:
 - Nunca inventar un dato que no se puede leer (PDF de factura → a mano). Nunca borrado físico
   sin rastro (borrado lógico `anuladoEn`). Tipos fiscales siempre editables en Configuración.
 - Verificado en cada fase con build limpio, tests en verde y captura en navegador (Playwright).
+- **Cómo verificar en navegador** (recetas que ya han funcionado): `npm run build` + `npm run
+  preview -- --port 41xx`, y un script suelto con `playwright-core`
+  (`executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'`). Para sembrar datos,
+  escribir directamente en IndexedDB (`keyval-store`): ojo, en un navegador limpio la clave
+  `finanzas:datos:<id>` **aún no existe** —el store solo la escribe al primer cambio— así que hay
+  que partir de `{}`; el store completa el resto con `datosIniciales()`. Borrar el script después.
+- **Nunca `pkill -f "vite preview"`**: la propia línea de comando contiene ese texto y el shell se
+  mata a sí mismo (exit 144), dejando a medias lo que viniera detrás.
+
+## Decisiones abiertas (esperan respuesta del usuario, NO decidir por él)
+- **Tributos y Seguridad Social como FINANCIACIÓN, no como gasto** en el presupuesto (pagar el
+  303 salda IVA ya recaudado). Se le planteó; si prefiere verlos como gasto, es un cambio de
+  `efectoPresupuesto` en `defaults.ts`.
+- **Las entradas se presupuestan en negativo** en las líneas que restan (inversión y
+  financiación). Alternativa si no le convence: vista de cash flow con entradas y salidas en
+  columnas separadas.
+- **Los PDF no van en el backup JSON.** Alternativas ofrecidas: incluirlos aunque pese mucho, o
+  sincronizar con un servidor propio. Sin respuesta.
+- **La cuota de deuda entra completa (principal + intereses)** en la línea de financiación. Se
+  ofreció separar los intereses como gasto.
+- **App de vóley**: se tocó `src/engine/groups.ts` sin que lo pidiera, para corregir un fallo de
+  sorteo que violaba el keep-apart en el 2,4 % de los casos y ponía el CI en rojo de forma
+  intermitente. Está desplegado y **sigue sin decir si lo deja o lo revierte**.
 
 ## Ampliable / pendiente
 - Roles por tienda y auditoría inmutable → requieren backend.
 - Facturación electrónica verificable (estructura preparada, sin certificar en v1).
 - Más adaptadores de conector en el servidor (banco PSD2, Stripe, Shopify…).
 - Siembra de mejores terceros, drag-and-drop, sincronización PostgreSQL.
+- **Más formatos de factura**: cada PDF real que falle debe convertirse en un test como
+  `factura-real.test.ts`. Nunca ajustar el lector «a ojo» sin el fichero delante.
+- El archivo de documentos es **por dispositivo**: si sube facturas desde el ordenador no las
+  verá en el iPhone. Pendiente decidir si se sincroniza o basta con el ZIP mensual.
