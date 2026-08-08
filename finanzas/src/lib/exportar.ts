@@ -14,6 +14,14 @@ function descargar(blob: Blob, nombre: string) {
 }
 
 /** CSV con separador `;` (compatible con Excel en España) y BOM UTF-8. */
+/**
+ * Número para un CSV que se va a abrir en Excel español: coma decimal. Con
+ * punto, Excel en español lo trata como texto y la gestoría no puede sumar.
+ */
+export function numeroCsv(n: number, decimales = 2): string {
+  return n.toFixed(decimales).replace('.', ',')
+}
+
 export function exportarCSV(nombre: string, cabeceras: string[], filas: Celda[][]): void {
   const esc = (v: Celda) => {
     const s = String(v)

@@ -52,7 +52,12 @@ export function Copias() {
       <div className="grid md:grid-cols-2 gap-4">
         <Tarjeta>
           <h3 className="font-semibold mb-1">Copia manual</h3>
-          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Descarga todos tus datos en formato abierto. El JSON incluye un checksum de integridad.</p>
+          <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Descarga todos tus datos en formato abierto. El JSON incluye un checksum de integridad.</p>
+          {/* Decirlo claro: es la diferencia entre creerse a salvo y estarlo. */}
+          <p className="text-xs mb-4" style={{ color: 'var(--warn)' }}>
+            Los PDF de las facturas <strong>no van dentro del JSON</strong> (lo harían enorme). Para llevarte también los
+            documentos, descarga la «Carpeta para la gestoría» de cada mes desde Compras.
+          </p>
           <div className="flex gap-2">
             <Boton onClick={() => descargarBackupJson(config, datos, hoy, grupo)}>Descargar JSON</Boton>
             <Boton variante="secundario" onClick={() => void descargarBackupExcel(datos, hoy)}>Descargar Excel</Boton>

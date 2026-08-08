@@ -13,6 +13,7 @@ import { extraerDatosFactura, type DatosFactura } from '../dominio/factura-pdf'
 import { lineasDePdf } from '../lib/extracto'
 import { ResumenMensual } from './compras/ResumenMensual'
 import { formatearEuro } from '../dominio/dinero'
+import { guardarAdjunto, leerAdjunto, abrirAdjunto } from '../lib/adjuntos'
 import type { Compra, Tercero, NaturalezaCompra, FormaPago, EstadoPago, LineaIva } from '../dominio/tipos'
 
 const FORMAS_PAGO: { valor: FormaPago; texto: string }[] = [
@@ -62,6 +63,7 @@ function ListaCompras() {
   const guardarCompra = useStore((s) => s.guardarCompra)
   const anularCompra = useStore((s) => s.anularCompra)
   const guardarTercero = useStore((s) => s.guardarTercero)
+  const empresaId = useStore((s) => s.grupo.empresaActivaId)
 
   const [editando, setEditando] = useState<Compra | null>(null)
   const [lectura, setLectura] = useState<DatosFactura | null>(null)
@@ -71,6 +73,26 @@ function ListaCompras() {
 
   const nombreProv = (id: string) => terceros.find((t) => t.id === id)?.nombre ?? '—'
   const puntos = config.centrosCoste.filter((c) => !c.activoHasta)
+  const tarjetas = config.tarjetas.filter((t) => t.activa)
+  const nombreTarjeta = (id?: string) => config.tarjetas.find((t) => t.id === id)?.nombre
+
+  /**
+   * Archiva el documento en el espacio de la empresa activa y deja en la compra
+   * solo su id: el contenido no viaja en cada escritura de datos.
+   */
+  const adjuntar = async (f: File, compra?: Compra) => {
+    const base = compra ?? editando
+    if (!base) return
+    const adjuntoId = nuevoId()
+    await guardarAdjunto(empresaId, adjuntoId, { nombre: f.name, tipo: f.type || 'application/pdf', datos: await f.arrayBuffer() })
+    setEditando({ ...base, adjuntoId, adjuntoNombre: f.name, adjuntoTipo: f.type || 'application/pdf', adjuntoTamano: f.size })
+  }
+
+  const verAdjunto = async (c: Compra) => {
+    if (!c.adjuntoId) return
+    const a = await leerAdjunto(empresaId, c.adjuntoId)
+    if (a) abrirAdjunto(a)
+  }
 
   const porMes = useMemo(() => {
     const mapa = new Map<string, Compra[]>()
@@ -139,6 +161,10 @@ function ListaCompras() {
       setLectura(d)
 
       const base = editando ?? compraNueva()
+      // La factura que se acaba de leer se guarda en el archivo: es el
+      // documento de esa compra y luego hay que dárselo a la gestoría.
+      const adjuntoId = nuevoId()
+      await guardarAdjunto(empresaId, adjuntoId, { nombre: f.name, tipo: f.type || 'application/pdf', datos: await f.arrayBuffer() })
       const tipoIva = d.tipoIva ?? base.lineasIva[0]?.tipo ?? 21
       const tIva = config.tiposIva.find((t) => t.tipo === tipoIva) ?? config.tiposIva.find((t) => t.porDefecto)
       // Solo se tocan los campos realmente leídos: lo demás se respeta.
@@ -146,7 +172,10 @@ function ListaCompras() {
       setEditando({
         ...base,
         origen: 'PDF',
+        adjuntoId,
         adjuntoNombre: f.name,
+        adjuntoTipo: f.type || 'application/pdf',
+        adjuntoTamano: f.size,
         terceroId: prov?.id ?? base.terceroId,
         numFactura: d.numFactura ?? base.numFactura,
         fechaFactura: d.fecha ?? base.fechaFactura,
@@ -182,7 +211,7 @@ function ListaCompras() {
         <Boton onClick={abrirNueva}>+ Registrar compra</Boton>
       </div>
 
-      <ResumenMensual compras={compras} categorias={config.categoriasGasto} />
+      <ResumenMensual compras={compras} categorias={config.categoriasGasto} terceros={terceros} empresaId={empresaId} />
 
       {compras.length === 0 ? (
         <Tarjeta><EstadoVacio icono="compras" titulo="Aún no hay compras registradas" descripcion="Registra facturas de mercadería y de servicios con su IVA, retención, vencimiento y deducibilidad." accion={<Boton onClick={abrirNueva}>Registrar la primera</Boton>} /></Tarjeta>
@@ -218,7 +247,23 @@ function ListaCompras() {
                               {nombreProv(c.terceroId)}
                               {!c.deducible && <span className="ml-2 text-xs" style={{ color: 'var(--warn)' }}>· no deducible</span>}
                             </td>
-                            <td className="px-4 py-2.5 tabular hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>{c.numFactura}</td>
+                            <td className="px-4 py-2.5 tabular hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>
+                              {c.numFactura}
+                              {c.adjuntoId && (
+                                <>
+                                  {' '}
+                                  <button type="button" className="underline not-tabular" style={{ color: 'var(--color-brand-500)' }} onClick={() => void verAdjunto(c)} title={c.adjuntoNombre}>
+                                    PDF
+                                  </button>
+                                </>
+                              )}
+                              {c.formaPago === 'TARJETA' && nombreTarjeta(c.tarjetaId) && (
+                                <span className="block text-xs">{nombreTarjeta(c.tarjetaId)}</span>
+                              )}
+                              {c.formaPago === 'TARJETA' && !c.tarjetaId && (
+                                <span className="block text-xs" style={{ color: 'var(--warn)' }}>tarjeta sin indicar</span>
+                              )}
+                            </td>
                             <td className="px-4 py-2.5 text-right"><ImporteEuro valor={t.total} /></td>
                             <td className="px-4 py-2.5 text-center">
                               <Semaforo estado={c.estadoPago === 'PAGADA' ? 'positivo' : c.estadoPago === 'PARCIAL' ? 'atencion' : 'neutro'} texto={ESTADOS.find((e) => e.valor === c.estadoPago)!.texto} />
@@ -319,9 +364,28 @@ function ListaCompras() {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <Select etiqueta="Forma de pago" valor={editando.formaPago} onChange={(v) => setEditando({ ...editando, formaPago: v })} opciones={FORMAS_PAGO} />
+              <Select
+                etiqueta="Forma de pago"
+                valor={editando.formaPago}
+                onChange={(v) => setEditando({ ...editando, formaPago: v, tarjetaId: v === 'TARJETA' ? editando.tarjetaId : undefined })}
+                opciones={FORMAS_PAGO}
+              />
               <Select etiqueta="Estado" valor={editando.estadoPago} onChange={(v) => setEditando({ ...editando, estadoPago: v })} opciones={ESTADOS} />
             </div>
+
+            {/* Con qué tarjeta: sin esto el cargo no se puede cuadrar con el
+                extracto del banco que la emite. */}
+            {editando.formaPago === 'TARJETA' && (
+              <Select
+                etiqueta="¿Con qué tarjeta?"
+                valor={editando.tarjetaId ?? ''}
+                onChange={(v) => setEditando({ ...editando, tarjetaId: v || undefined })}
+                opciones={[
+                  { valor: '', texto: '— Indica la tarjeta —' },
+                  ...tarjetas.map((t) => ({ valor: t.id, texto: t.ultimos4 ? `${t.nombre} ···${t.ultimos4}` : t.nombre })),
+                ]}
+              />
+            )}
 
             <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
               <Toggle etiqueta="Gasto deducible" valor={editando.deducible} onChange={(v) => setEditando({ ...editando, deducible: v })} />
@@ -334,8 +398,17 @@ function ListaCompras() {
 
             <label className="block">
               <span className="block text-sm font-medium mb-1.5">Documento adjunto</span>
-              <input type="file" onChange={(e) => setEditando({ ...editando, adjuntoNombre: e.target.files?.[0]?.name })} className="text-sm" />
-              {editando.adjuntoNombre && <span className="block text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{editando.adjuntoNombre}</span>}
+              <input type="file" onChange={(e) => { const f = e.target.files?.[0]; if (f) void adjuntar(f) }} className="text-sm" />
+              {editando.adjuntoNombre && (
+                <span className="block text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {editando.adjuntoNombre}
+                  {editando.adjuntoId ? (
+                    <> · <button type="button" className="underline" style={{ color: 'var(--color-brand-500)' }} onClick={() => void verAdjunto(editando)}>ver</button> · guardado en el archivo</>
+                  ) : (
+                    <> · <span style={{ color: 'var(--warn)' }}>solo se guarda el nombre; vuelve a seleccionarlo para archivarlo</span></>
+                  )}
+                </span>
+              )}
             </label>
 
             <div className="flex items-center justify-between rounded-xl p-3 text-sm" style={{ background: 'var(--surface-2)' }}>
