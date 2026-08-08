@@ -111,6 +111,8 @@ export interface CategoriaGasto {
   /**
    * Qué hace en el presupuesto:
    *  · GASTO — gasto de explotación (comisiones, seguros, mantenimiento).
+   *  · INVERSION — el dinero no se consume, se cambia por un activo
+   *    (participaciones en empresas del grupo, fondos, acciones).
    *  · FINANCIACION — sale dinero pero no es gasto de P&G (impuestos del
    *    trimestre, aplazamientos: se salda una deuda ya devengada).
    *  · NINGUNO — no se presupuesta desde aquí porque ya viene por otro sitio
@@ -118,7 +120,7 @@ export interface CategoriaGasto {
    *    o porque no es un gasto (traspasos entre cuentas propias).
    * Si falta, se trata como GASTO.
    */
-  efectoPresupuesto?: 'GASTO' | 'FINANCIACION' | 'NINGUNO'
+  efectoPresupuesto?: 'GASTO' | 'INVERSION' | 'FINANCIACION' | 'NINGUNO'
   orden?: number
 }
 

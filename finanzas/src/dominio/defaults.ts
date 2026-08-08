@@ -137,11 +137,17 @@ export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
   { id: 'cat-bco-tributos-trimestre', nombre: 'Tributos: trimestre corriente (303, 111, 115…)', cuentaPGC: '475', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 29 },
   { id: 'cat-bco-tributos-aplazamiento', nombre: 'Tributos: cuota de aplazamiento', cuentaPGC: '475', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 30 },
   { id: 'cat-bco-seg-social', nombre: 'Seguridad Social', cuentaPGC: '476', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 31 },
+  // Inversión: el dinero no se consume, se cambia por un activo. No es gasto y
+  // no resta del resultado; en el presupuesto va como INVERSIÓN.
+  // Ojo: clasificar el cargo aquí NO da de alta la inversión — eso se hace en
+  // la pantalla de Inversiones, que es la que lleva coste, valor y asientos.
+  { id: 'cat-bco-inv-grupo', nombre: 'Inversiones en empresas del grupo', cuentaPGC: '2403', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 32 },
+  { id: 'cat-bco-inv-financiera', nombre: 'Inversiones financieras', cuentaPGC: '250', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 33 },
   // La cuota del préstamo ya entra en el presupuesto por el cuadro de deuda:
   // si además se contase aquí, se presupuestaría dos veces.
-  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 32 },
-  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 33 },
-  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 34 },
+  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 34 },
+  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 35 },
+  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 36 },
 ]
 
 /**
