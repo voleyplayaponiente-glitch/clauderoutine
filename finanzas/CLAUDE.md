@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 236 tests (Vitest) del motor
+npm test         # 260 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -93,6 +93,18 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
   saldo inicial − debe + haber = saldo final; si no cuadra, se avisa.
 - **`dominio/texto.ts`**: los extractos españoles vienen en Windows-1252. Se prueba UTF-8 y, si
   aparece «�», se redecodifica. Sin esto salía «Aportaci�n de capital».
+- **CONVENCIÓN NUMÉRICA: no se supone, se deduce del fichero.** CaixaBank exporta el Excel de
+  una cuenta en anglosajón (`3,000.00`) y el PDF de ESA MISMA cuenta en español (`3.000,00`).
+  Aplicar la heurística española al Excel convertía 3.000 € en 3 €. `detectarConvencionNumerica`
+  mira los valores con los DOS separadores (ahí el de la derecha es el decimal sin ambigüedad) y
+  `parsearImporte` la aplica. `parsearNumeroEs` se mantiene intacto para el resto de la app.
+- Fechas con **mes en letra** (`1 Jul 2026`, `24 de abril de 2026`) en `parsearFechaFlexible`.
+- **PDF de banca digital**: cada celda se dibuja DOS VECES en la misma coordenada (capa visible +
+  accesibilidad) → se deduplica por `(x, y, texto)`. Y la fecha va 1-2 puntos por encima del resto
+  de la fila, así que las filas se agrupan **por cercanía vertical** (tolerancia 4), no por
+  redondeo fijo, que las separaba. Los importes admiten el signo suelto (`- 30,00 €`).
+- La columna «Más datos» se añade al concepto: sin ella, `L0431-L0422/2026` no dice nada.
+- `extracto-caixabank.test.ts` es la regresión con los DOS ficheros reales del banco.
 - **`dominio/extracto.ts`**: hojas de banca electrónica (detecta la fila de cabeceras aunque
   haya rótulos encima, columnas fecha/concepto/importe o cargo/abono) y líneas de PDF
   (fecha al principio + importe; con dos importes el último es el saldo, se coge el penúltimo).
@@ -121,7 +133,7 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos (236 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos (260 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

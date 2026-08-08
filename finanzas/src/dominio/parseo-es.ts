@@ -72,3 +72,94 @@ export function exigirNumeroEs(entrada: string | number, contexto = 'valor'): nu
   if (n === null) throw new Error(`No se pudo leer ${contexto}: "${entrada}"`)
   return n
 }
+
+// ─────────────────── Importes de ficheros bancarios ───────────────────
+
+/**
+ * Convención de separadores de un fichero. Los bancos españoles no se ponen de
+ * acuerdo: CaixaBank exporta el Excel en anglosajón (`3,000.00`) y el PDF de la
+ * misma cuenta en español (`3.000,00`). Suponer una de las dos convierte tres
+ * mil euros en tres, así que hay que deducirla del propio fichero.
+ */
+export type ConvencionNumerica = 'ES' | 'EN' | 'AUTO'
+
+/** Quita €, espacios y el signo, dejando solo dígitos y separadores. */
+function nucleoNumerico(entrada: string): { cuerpo: string; signo: number } | null {
+  let s = (entrada ?? '').trim()
+  if (s === '') return null
+  s = s.replace(/€/g, '').replace(/\s/g, '')
+
+  let signo = 1
+  if (/^-/.test(s)) {
+    signo = -1
+    s = s.slice(1)
+  } else if (/^\+/.test(s)) {
+    s = s.slice(1)
+  }
+  if (/^\(.*\)$/.test(s)) {
+    signo = -1
+    s = s.slice(1, -1)
+  }
+  if (!/^[0-9.,]+$/.test(s) || !/[0-9]/.test(s)) return null
+  return { cuerpo: s, signo }
+}
+
+/**
+ * Deduce la convención mirando los valores que traen los DOS separadores: en
+ * ellos el que va más a la derecha es el decimal, sin ambigüedad posible.
+ * Devuelve 'AUTO' si el fichero no da ninguna pista.
+ */
+export function detectarConvencionNumerica(valores: (string | number | null | undefined)[]): ConvencionNumerica {
+  let es = 0
+  let en = 0
+  for (const v of valores) {
+    if (typeof v !== 'string') continue
+    const n = nucleoNumerico(v)
+    if (!n) continue
+    const ultimaComa = n.cuerpo.lastIndexOf(',')
+    const ultimoPunto = n.cuerpo.lastIndexOf('.')
+    if (ultimaComa === -1 || ultimoPunto === -1) continue
+    if (ultimaComa > ultimoPunto) es++
+    else en++
+  }
+  if (es === 0 && en === 0) return 'AUTO'
+  return es >= en ? 'ES' : 'EN'
+}
+
+/**
+ * Parsea un importe de extracto bancario. Admite el signo separado del número
+ * (`- 30,00 €`), paréntesis contables y el símbolo del euro.
+ *
+ * Con los dos separadores presentes no hay duda: manda el de más a la derecha.
+ * Con uno solo se aplica la convención indicada y, si no se conoce, la
+ * heurística española de `parsearNumeroEs`.
+ */
+export function parsearImporte(entrada: string | number | null | undefined, convencion: ConvencionNumerica = 'AUTO'): number | null {
+  if (entrada == null) return null
+  if (typeof entrada === 'number') return Number.isFinite(entrada) ? entrada : null
+
+  const n = nucleoNumerico(entrada)
+  if (!n) return null
+  const { cuerpo, signo } = n
+
+  const ultimaComa = cuerpo.lastIndexOf(',')
+  const ultimoPunto = cuerpo.lastIndexOf('.')
+
+  let normalizado: string
+  if (ultimaComa !== -1 && ultimoPunto !== -1) {
+    // Los dos: el de la derecha es el decimal.
+    const decimal = ultimaComa > ultimoPunto ? ',' : '.'
+    const millar = decimal === ',' ? '.' : ','
+    normalizado = cuerpo.split(millar).join('').replace(decimal, '.')
+  } else if (convencion === 'EN') {
+    // El punto es decimal y la coma de millar.
+    normalizado = cuerpo.split(',').join('')
+  } else if (convencion === 'ES') {
+    normalizado = cuerpo.split('.').join('').replace(',', '.')
+  } else {
+    return parsearNumeroEs(entrada)
+  }
+
+  const valor = Number(normalizado)
+  return Number.isFinite(valor) ? signo * valor : null
+}

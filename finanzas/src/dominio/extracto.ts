@@ -6,7 +6,7 @@
  * una fila no se entiende, se marca con su motivo y el usuario decide; jamás se
  * rellena por aproximación. Todo lo leído se previsualiza antes de aplicarse.
  */
-import { parsearNumeroEs } from './parseo-es'
+import { parsearImporte, detectarConvencionNumerica, type ConvencionNumerica } from './parseo-es'
 import { parsearFechaFlexible } from './importacion'
 
 export interface MovimientoExtracto {
@@ -32,6 +32,8 @@ export interface MapeoColumnas {
   importe: number
   debe: number
   haber: number
+  /** Columna con el detalle añadido («Más datos», beneficiario…). −1 si no hay. */
+  extra: number
   /** Fila donde empiezan los datos (la siguiente a la de cabeceras). */
   primeraFila: number
 }
@@ -52,6 +54,7 @@ const SINONIMOS = {
   importe: ['importe', 'importe eur', 'importe (eur)', 'cantidad', 'amount', 'importe movimiento'],
   debe: ['debe', 'cargo', 'cargos', 'salida', 'pagos', 'debito'],
   haber: ['haber', 'abono', 'abonos', 'entrada', 'ingresos', 'credito'],
+  extra: ['mas datos', 'datos adicionales', 'beneficiario', 'ordenante', 'concepto ampliado', 'ampliacion'],
 }
 
 function buscarColumna(cabecera: string[], claves: string[]): number {
@@ -83,9 +86,10 @@ export function detectarColumnas(filas: string[][]): MapeoColumnas | undefined {
     const importe = buscarColumna(fila, SINONIMOS.importe)
     const debe = buscarColumna(fila, SINONIMOS.debe)
     const haber = buscarColumna(fila, SINONIMOS.haber)
+    const extra = buscarColumna(fila, SINONIMOS.extra)
     const hayImporte = importe !== -1 || (debe !== -1 && haber !== -1)
     if (fecha !== -1 && hayImporte) {
-      return { fecha, concepto, importe, debe, haber, primeraFila: i + 1 }
+      return { fecha, concepto, importe, debe, haber, extra, primeraFila: i + 1 }
     }
   }
   return undefined
@@ -95,6 +99,16 @@ export function detectarColumnas(filas: string[][]): MapeoColumnas | undefined {
 export function filasAMovimientos(filas: string[][], mapeo: MapeoColumnas): ResultadoExtracto {
   const movimientos: MovimientoExtracto[] = []
   const descartadas: { origen: string; motivo: string }[] = []
+
+  // Los bancos exportan unas veces en español (3.000,00) y otras en anglosajón
+  // (3,000.00). Se deduce del propio fichero antes de convertir nada: dar por
+  // supuesta una convención convierte tres mil euros en tres.
+  const columnasImporte = [mapeo.importe, mapeo.debe, mapeo.haber].filter((c) => c !== -1)
+  const muestras: string[] = []
+  for (let i = mapeo.primeraFila; i < filas.length; i++) {
+    for (const c of columnasImporte) muestras.push((filas[i]?.[c] ?? '').toString())
+  }
+  const convencion: ConvencionNumerica = detectarConvencionNumerica(muestras)
 
   for (let i = mapeo.primeraFila; i < filas.length; i++) {
     const fila = filas[i] ?? []
@@ -113,10 +127,10 @@ export function filasAMovimientos(filas: string[][], mapeo: MapeoColumnas): Resu
 
     let importe: number | null = null
     if (mapeo.importe !== -1) {
-      importe = parsearNumeroEs((fila[mapeo.importe] ?? '').toString())
+      importe = parsearImporte((fila[mapeo.importe] ?? '').toString(), convencion)
     } else {
-      const debe = parsearNumeroEs((fila[mapeo.debe] ?? '').toString()) ?? 0
-      const haber = parsearNumeroEs((fila[mapeo.haber] ?? '').toString()) ?? 0
+      const debe = parsearImporte((fila[mapeo.debe] ?? '').toString(), convencion) ?? 0
+      const haber = parsearImporte((fila[mapeo.haber] ?? '').toString(), convencion) ?? 0
       // El debe sale de la cuenta: negativo. Se toma el valor absoluto por si el
       // banco ya lo trae con signo.
       if (debe === 0 && haber === 0) importe = null
@@ -128,7 +142,11 @@ export function filasAMovimientos(filas: string[][], mapeo: MapeoColumnas): Resu
       continue
     }
 
-    const concepto = mapeo.concepto !== -1 ? (fila[mapeo.concepto] ?? '').toString().trim() : ''
+    const base = mapeo.concepto !== -1 ? (fila[mapeo.concepto] ?? '').toString().trim() : ''
+    const detalle = mapeo.extra !== -1 ? (fila[mapeo.extra] ?? '').toString().trim() : ''
+    // «Más datos» suele llevar el beneficiario o el ordenante: sin él, muchos
+    // apuntes quedan como un código sin significado.
+    const concepto = [base, detalle].filter((x) => x !== '').join(' · ')
     movimientos.push({
       fecha,
       concepto: concepto || 'Movimiento bancario',
@@ -149,10 +167,18 @@ export function leerHoja(filas: string[][]): { mapeo: MapeoColumnas; resultado: 
 
 // ─────────────────────────────── PDF (líneas de texto) ───────────────────────────────
 
-/** Fecha al principio de la línea: dd/mm/aaaa, dd-mm-aa, aaaa-mm-dd. */
-const RE_FECHA_INICIO = /^\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\s+/
-/** Importe en formato español al final de la línea, con signo opcional. */
-const RE_IMPORTES = /(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*€)?/g
+/**
+ * Fecha al principio de la línea. Además de los formatos numéricos admite el
+ * mes en letra («1 Jul 2026»), que es como lo imprime la banca digital.
+ */
+const RE_FECHA_INICIO =
+  /^\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóú]{3,10}\.?\s+\d{2,4})\s+/
+
+/**
+ * Importe dentro de la línea. Acepta las dos convenciones (1.234,56 y 1,234.56)
+ * y el signo separado del número, como en «- 30,00 €» o «+ 3.908,50 €».
+ */
+const RE_IMPORTES = /([+-]\s*)?(\d{1,3}(?:[.,]\d{3})*[.,]\d{2}|\d+[.,]\d{2})(?:\s*€)?/g
 
 /**
  * Interpreta las líneas de texto de un PDF de extracto. Se queda con las líneas
@@ -165,6 +191,11 @@ const RE_IMPORTES = /(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*€)?/g
 export function lineasAMovimientos(lineas: string[]): ResultadoExtracto {
   const movimientos: MovimientoExtracto[] = []
   const descartadas: { origen: string; motivo: string }[] = []
+
+  // Igual que en las hojas: la convención se deduce del documento entero.
+  const muestras: string[] = []
+  for (const l of lineas) for (const m of l.matchAll(RE_IMPORTES)) muestras.push(m[2])
+  const convencion: ConvencionNumerica = detectarConvencionNumerica(muestras)
 
   for (const bruta of lineas) {
     const linea = bruta.replace(/\s+/g, ' ').trim()
@@ -179,23 +210,27 @@ export function lineasAMovimientos(lineas: string[]): ResultadoExtracto {
       continue
     }
 
-    const importes = [...linea.matchAll(RE_IMPORTES)].map((m) => m[1])
+    const importes = [...linea.matchAll(RE_IMPORTES)].map((m) => ({
+      texto: m[0],
+      valor: `${(m[1] ?? '').replace(/\s/g, '')}${m[2]}`,
+      indice: m.index ?? 0,
+    }))
     if (importes.length === 0) {
       descartadas.push({ origen: linea, motivo: 'La línea empieza por fecha pero no tiene ningún importe' })
       continue
     }
 
     // Con dos o más importes el último suele ser el saldo acumulado.
-    const textoImporte = importes.length >= 2 ? importes[importes.length - 2] : importes[0]
-    const importe = parsearNumeroEs(textoImporte)
+    const elegido = importes.length >= 2 ? importes[importes.length - 2] : importes[0]
+    const importe = parsearImporte(elegido.valor, convencion)
     if (importe === null) {
-      descartadas.push({ origen: linea, motivo: `Importe no reconocido: "${textoImporte}"` })
+      descartadas.push({ origen: linea, motivo: `Importe no reconocido: "${elegido.texto}"` })
       continue
     }
 
     // El concepto es lo que queda entre la fecha y el primer importe.
     const desde = mFecha[0].length
-    const posImporte = linea.indexOf(textoImporte, desde)
+    const posImporte = importes[0].indice
     let concepto = (posImporte > desde ? linea.slice(desde, posImporte) : linea.slice(desde)).trim()
     // Muchos extractos repiten la fecha valor justo después de la de operación.
     concepto = concepto.replace(RE_FECHA_INICIO, '').trim()

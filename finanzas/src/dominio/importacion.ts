@@ -103,7 +103,22 @@ export function sugerirMapeo(cabeceras: string[], def: DefinicionDestino): Recor
   return mapeo
 }
 
-/** dd/mm/aaaa o aaaa-mm-dd (con - o /) → ISO; null si no es fecha. */
+/** Meses en español, abreviados o completos, como los imprimen los bancos. */
+const MESES_ES: Record<string, number> = {
+  ene: 1, enero: 1, feb: 2, febrero: 2, mar: 3, marzo: 3, abr: 4, abril: 4,
+  may: 5, mayo: 5, jun: 6, junio: 6, jul: 7, julio: 7, ago: 8, agosto: 8,
+  sep: 9, set: 9, sept: 9, septiembre: 9, oct: 10, octubre: 10,
+  nov: 11, noviembre: 11, dic: 12, diciembre: 12,
+}
+
+function sinTildes(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+/**
+ * dd/mm/aaaa, aaaa-mm-dd o «24 Abr 2026» / «24 de abril de 2026» → ISO.
+ * Devuelve null si no es una fecha (nunca la inventa).
+ */
 export function parsearFechaFlexible(entrada: string): string | null {
   const s = (entrada || '').trim()
   if (s === '') return null
@@ -113,6 +128,15 @@ export function parsearFechaFlexible(entrada: string): string | null {
   if (m) {
     const a = m[3].length === 2 ? `20${m[3]}` : m[3]
     return `${a}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  }
+  // Mes en letra: «1 Jul 2026», «24 de abril de 2026», «15-dic-2025».
+  m = /^(\d{1,2})\s*(?:de\s+)?[-\s/]?\s*([A-Za-zÁÉÍÓÚáéíóú.]+)\s*(?:de\s+)?[-\s/]?\s*(\d{2,4})$/.exec(s)
+  if (m) {
+    const mes = MESES_ES[sinTildes(m[2]).toLowerCase().replace(/\.$/, '')]
+    if (mes) {
+      const a = m[3].length === 2 ? `20${m[3]}` : m[3]
+      return `${a}-${String(mes).padStart(2, '0')}-${m[1].padStart(2, '0')}`
+    }
   }
   return null
 }

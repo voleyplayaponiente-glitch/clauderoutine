@@ -132,33 +132,57 @@ export async function lineasDePdf(buffer: ArrayBuffer): Promise<string[]> {
   const doc = await tarea.promise
   const lineas: string[] = []
 
+  /** Dos fragmentos pertenecen a la misma fila si su Y no difiere más que esto. */
+  const TOLERANCIA_Y = 4
+
   for (let p = 1; p <= doc.numPages; p++) {
     const pagina = await doc.getPage(p)
     const contenido = await pagina.getTextContent()
-    const porFila = new Map<number, { x: number; texto: string }[]>()
 
+    // Muchos PDF de banca dibujan cada celda DOS VECES en la misma posición
+    // (una capa visible y otra de accesibilidad). Sin quitar los repetidos, el
+    // importe aparecía duplicado y la línea quedaba ilegible.
+    const vistos = new Set<string>()
+    const trozos: { x: number; y: number; texto: string }[] = []
     for (const item of contenido.items as { str: string; transform: number[] }[]) {
       if (!item.str || item.str.trim() === '') continue
       const x = item.transform[4]
       const y = item.transform[5]
-      // Se redondea la Y para que los fragmentos de la misma línea caigan juntos.
-      const fila = Math.round(y / 3) * 3
-      const lista = porFila.get(fila) ?? []
-      lista.push({ x, texto: item.str })
-      porFila.set(fila, lista)
+      const huella = `${Math.round(x)}|${Math.round(y)}|${item.str}`
+      if (vistos.has(huella)) continue
+      vistos.add(huella)
+      trozos.push({ x, y, texto: item.str })
     }
 
-    // De arriba abajo (la Y del PDF crece hacia arriba) y de izquierda a derecha.
-    const filasOrdenadas = [...porFila.entries()].sort((a, b) => b[0] - a[0])
-    for (const [, trozos] of filasOrdenadas) {
-      const texto = trozos
+    // Agrupación por cercanía vertical: la fecha y el resto de la fila pueden
+    // ir a uno o dos puntos de distancia, y un redondeo fijo las separaba.
+    trozos.sort((a, b) => b.y - a.y || a.x - b.x)
+    let grupo: typeof trozos = []
+    let yGrupo = Number.NaN
+
+    const cerrarGrupo = () => {
+      if (grupo.length === 0) return
+      const texto = grupo
         .sort((a, b) => a.x - b.x)
         .map((t) => t.texto)
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim()
       if (texto !== '') lineas.push(texto)
+      grupo = []
     }
+
+    for (const t of trozos) {
+      if (grupo.length === 0 || Math.abs(t.y - yGrupo) <= TOLERANCIA_Y) {
+        if (grupo.length === 0) yGrupo = t.y
+        grupo.push(t)
+      } else {
+        cerrarGrupo()
+        yGrupo = t.y
+        grupo.push(t)
+      }
+    }
+    cerrarGrupo()
   }
   await tarea.destroy()
   return lineas
