@@ -17,7 +17,7 @@ export const MODULOS: Modulo[] = [
   { id: 'ventas', ruta: '/ventas', titulo: 'Ventas diarias', grupo: 'Operativa', icono: 'ventas', resumen: 'Registro diario de ingresos por punto de venta, canal y forma de cobro.', fase: 2 },
   { id: 'compras', ruta: '/compras', titulo: 'Compras', grupo: 'Operativa', icono: 'compras', resumen: 'Compras de mercadería y de servicios, con IVA, deducibilidad y vencimientos.', fase: 2 },
   { id: 'caja', ruta: '/caja', titulo: 'Caja y arqueos', grupo: 'Tesorería', icono: 'caja', resumen: 'Una caja por punto de venta, arqueos por denominación y control de descuadres.', fase: 3 },
-  { id: 'bancos', ruta: '/bancos', titulo: 'Bancos', grupo: 'Tesorería', icono: 'banco', resumen: 'Cuentas, movimientos y conciliación semiautomática con importación N43.', fase: 3 },
+  { id: 'bancos', ruta: '/bancos', titulo: 'Bancos', grupo: 'Tesorería', icono: 'banco', resumen: 'Cuentas, movimientos y conciliación con importación de extractos en N43, Excel, CSV y PDF.', fase: 3 },
   { id: 'stock', ruta: '/stock', titulo: 'Stock', grupo: 'Operativa', icono: 'stock', resumen: 'Maestro de artículos, multi-almacén, valoración a coste medio e inventario.', fase: 4 },
   { id: 'importacion', ruta: '/importacion', titulo: 'Importación', grupo: 'Sistema', icono: 'importar', resumen: 'Carga de Excel, CSV y PDF con mapeo de columnas y previsualización validada.', fase: 5 },
   { id: 'deudas', ruta: '/deudas', titulo: 'Deudas', grupo: 'Tesorería', icono: 'deuda', resumen: 'Préstamos, leasing y acreedores con cuadro de amortización y vencimientos.', fase: 6 },

@@ -7,9 +7,19 @@ import { hoyISO, formatearFecha } from '../lib/fechas'
 import { nuevoId } from '../dominio/id'
 import { formatearEuro } from '../dominio/dinero'
 import { saldoCuenta } from '../dominio/tesoreria'
-import { parsearN43 } from '../dominio/n43'
+import { leerExtracto, type LecturaExtracto } from '../lib/extracto'
+import { ModalImportarExtracto } from './bancos/ModalImportarExtracto'
 import { sugerencias, type Emparejable } from '../dominio/conciliacion'
 import type { CuentaTesoreria, MovimientoTesoreria, TipoCuentaTesoreria } from '../dominio/tipos'
+
+/** Procedencia que se guarda en el movimiento según el formato del fichero leído. */
+const ORIGEN_POR_FORMATO: Record<string, MovimientoTesoreria['origen']> = {
+  N43: 'API',
+  EXCEL: 'EXCEL',
+  CSV: 'CSV',
+  PDF: 'PDF',
+  DESCONOCIDO: 'MANUAL',
+}
 
 const TIPOS: { valor: TipoCuentaTesoreria; texto: string }[] = [
   { valor: 'BANCO', texto: 'Cuenta corriente' },
@@ -31,6 +41,8 @@ export function Bancos() {
   const [mov, setMov] = useState<MovimientoTesoreria | null>(null)
   const [soloNoConc, setSoloNoConc] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [pendiente, setPendiente] = useState<{ lectura: LecturaExtracto; nombre: string } | null>(null)
+  const [leyendo, setLeyendo] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const movs = useMemo(() => {
@@ -57,20 +69,45 @@ export function Bancos() {
   const crear = () => setNueva({ id: nuevoId(), creadoEn: new Date().toISOString(), creadoPor: 'admin', origen: 'MANUAL', nombre: '', tipo: 'BANCO', saldoInicial: 0, cuentaPGC: '572' })
   const abrirMov = () => sel && setMov({ id: nuevoId(), creadoEn: new Date().toISOString(), creadoPor: 'admin', origen: 'MANUAL', cuentaId: sel.id, fecha: hoyISO(), concepto: '', importe: 0, clase: 'OTRO', conciliado: false })
 
-  const onImportarN43 = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  /** Lee el fichero y abre la previsualización. No toca los datos todavía. */
+  const onElegirFichero = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f || !sel) return
-    const texto = await f.text()
-    const r = parsearN43(texto)
-    const nuevos: MovimientoTesoreria[] = []
-    for (const cta of r.cuentas) {
-      for (const m of cta.movimientos) {
-        nuevos.push({ id: nuevoId(), creadoEn: new Date().toISOString(), creadoPor: 'sistema', origen: 'API', cuentaId: sel.id, fecha: m.fechaOperacion, concepto: m.concepto || 'Movimiento N43', importe: m.importe, clase: 'OTRO', conciliado: false, referencia: m.referencia })
-      }
+    setLeyendo(true)
+    setAviso(null)
+    try {
+      const lectura = await leerExtracto(f)
+      setPendiente({ lectura, nombre: f.name })
+    } catch (err) {
+      setAviso(`No se pudo leer el fichero: ${err instanceof Error ? err.message : 'error desconocido'}`)
+    } finally {
+      setLeyendo(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
+  }
+
+  /** Aplica lo previsualizado. La deduplicación la hace el store por fecha+concepto+importe. */
+  const aplicarImportacion = () => {
+    if (!pendiente || !sel) return
+    const nuevos: MovimientoTesoreria[] = pendiente.lectura.movimientos.map((m) => ({
+      id: nuevoId(),
+      creadoEn: new Date().toISOString(),
+      creadoPor: 'sistema',
+      origen: ORIGEN_POR_FORMATO[pendiente.lectura.formato],
+      cuentaId: sel.id,
+      fecha: m.fecha,
+      concepto: m.concepto,
+      importe: m.importe,
+      clase: 'OTRO',
+      conciliado: false,
+    }))
     const insertados = importarMovimientos(nuevos)
-    setAviso(`Importadas ${insertados} líneas nuevas de ${nuevos.length} leídas${r.errores.length ? ` · ${r.errores.length} con avisos` : ''}.`)
-    if (fileRef.current) fileRef.current.value = ''
+    const omitidos = nuevos.length - insertados
+    setAviso(
+      `Importados ${insertados} movimientos${omitidos > 0 ? ` · ${omitidos} ya estaban` : ''}` +
+        `${pendiente.lectura.descartadas.length > 0 ? ` · ${pendiente.lectura.descartadas.length} líneas descartadas` : ''}.`,
+    )
+    setPendiente(null)
   }
 
   if (cuentas.length === 0) {
@@ -80,7 +117,7 @@ export function Bancos() {
           <CabeceraPantalla titulo="Bancos" descripcion="Cuentas, movimientos y conciliación con importación N43." />
           <Boton onClick={crear}>+ Nueva cuenta</Boton>
         </div>
-        <Tarjeta><EstadoVacio icono="banco" titulo="Aún no hay cuentas bancarias" descripcion="Da de alta tus cuentas corrientes, TPV liquidadores y pasarelas. Podrás importar el extracto (Norma 43) y conciliarlo con un clic." accion={<Boton onClick={crear}>Crear la primera</Boton>} /></Tarjeta>
+        <Tarjeta><EstadoVacio icono="banco" titulo="Aún no hay cuentas bancarias" descripcion="Da de alta tus cuentas corrientes, TPV liquidadores y pasarelas. Podrás importar el extracto en Norma 43, Excel, CSV o PDF y conciliarlo con un clic." accion={<Boton onClick={crear}>Crear la primera</Boton>} /></Tarjeta>
         {nueva && <ModalCuenta cuenta={nueva} setCuenta={setNueva} onGuardar={(c) => { guardarCuenta(c); setSelId(c.id); setNueva(null) }} />}
       </>
     )
@@ -89,7 +126,7 @@ export function Bancos() {
   return (
     <>
       <div className="flex items-start justify-between gap-4 mb-6">
-        <CabeceraPantalla titulo="Bancos" descripcion="Movimientos, importación Norma 43 y conciliación semiautomática." />
+        <CabeceraPantalla titulo="Bancos" descripcion="Movimientos, importación de extractos (Norma 43, Excel, CSV y PDF) y conciliación semiautomática." />
         <Boton onClick={crear}>+ Nueva cuenta</Boton>
       </div>
 
@@ -107,8 +144,16 @@ export function Bancos() {
             <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Saldo</div><div className="text-xl font-semibold"><ImporteEuro valor={saldo} color /></div>{sel.iban && <div className="text-xs mt-1 tabular" style={{ color: 'var(--text-muted)' }}>{sel.iban}</div>}</Tarjeta>
             <Tarjeta className="!p-4 flex items-center"><Boton onClick={abrirMov}>+ Movimiento</Boton></Tarjeta>
             <Tarjeta className="!p-4 flex items-center">
-              <Boton variante="secundario" onClick={() => fileRef.current?.click()}>Importar N43</Boton>
-              <input ref={fileRef} type="file" accept=".n43,.txt,.q43,text/plain" className="hidden" onChange={onImportarN43} />
+              <Boton variante="secundario" onClick={() => fileRef.current?.click()}>
+                {leyendo ? 'Leyendo…' : 'Importar extracto'}
+              </Boton>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".n43,.q43,.c43,.aeb,.txt,.csv,.tsv,.xlsx,.xls,.xlsm,.pdf"
+                className="hidden"
+                onChange={onElegirFichero}
+              />
             </Tarjeta>
             <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>No conciliados</div><div className="text-xl font-semibold tabular">{noConciliados}</div></Tarjeta>
           </div>
@@ -140,7 +185,7 @@ export function Bancos() {
 
           <Tarjeta className="!p-0 overflow-hidden">
             {movs.length === 0 ? (
-              <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin movimientos. Importa el extracto N43 o añádelos a mano.</div>
+              <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin movimientos. Importa el extracto del banco (Norma 43, Excel, CSV o PDF) o añádelos a mano.</div>
             ) : (
               <table className="w-full text-sm">
                 <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
@@ -166,6 +211,15 @@ export function Bancos() {
 
       {nueva && <ModalCuenta cuenta={nueva} setCuenta={setNueva} onGuardar={(c) => { guardarCuenta(c); setSelId(c.id); setNueva(null) }} />}
       {mov && <ModalMovBanco mov={mov} setMov={setMov} onGuardar={(m) => { guardarMovimiento(m); setMov(null) }} />}
+      {pendiente && sel && (
+        <ModalImportarExtracto
+          lectura={pendiente.lectura}
+          nombreFichero={pendiente.nombre}
+          nombreCuenta={sel.nombre}
+          onCerrar={() => setPendiente(null)}
+          onAplicar={aplicarImportacion}
+        />
+      )}
     </>
   )
 }
