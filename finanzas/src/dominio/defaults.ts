@@ -94,14 +94,33 @@ export const OBLIGACIONES_FISCALES_DEFECTO: ObligacionFiscal[] = [
 ]
 
 export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
-  { id: 'cat-alquiler', nombre: 'Alquileres', cuentaPGC: '621', deduciblePorDefecto: true },
-  { id: 'cat-suministros', nombre: 'Suministros (luz, agua, internet)', cuentaPGC: '628', deduciblePorDefecto: true },
-  { id: 'cat-transporte', nombre: 'Transportes', cuentaPGC: '624', deduciblePorDefecto: true },
-  { id: 'cat-seguros', nombre: 'Seguros', cuentaPGC: '625', deduciblePorDefecto: true },
-  { id: 'cat-asesoria', nombre: 'Asesoría y profesionales', cuentaPGC: '623', deduciblePorDefecto: true },
-  { id: 'cat-publicidad', nombre: 'Publicidad', cuentaPGC: '627', deduciblePorDefecto: true },
-  { id: 'cat-mantenimiento', nombre: 'Mantenimiento y reparaciones', cuentaPGC: '622', deduciblePorDefecto: true },
-  { id: 'cat-otros', nombre: 'Otros servicios', cuentaPGC: '629', deduciblePorDefecto: true },
+  // Compras de mercadería. El stock internacional puede traer impuesto especial.
+  { id: 'cat-stock-nac', nombre: 'Stock nacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, orden: 1 },
+  { id: 'cat-stock-int', nombre: 'Stock internacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, esInternacional: true, orden: 2 },
+  // Estructura.
+  { id: 'cat-alquiler', nombre: 'Alquileres', cuentaPGC: '621', deduciblePorDefecto: true, orden: 3 },
+  { id: 'cat-gastos-ventas', nombre: 'Gastos de ventas', cuentaPGC: '624', deduciblePorDefecto: true, orden: 4 },
+  { id: 'cat-gasolina', nombre: 'Gasolina deducible', cuentaPGC: '628', deduciblePorDefecto: true, orden: 5 },
+  { id: 'cat-gasolina-nd', nombre: 'Gasolina NO deducible', cuentaPGC: '628', deduciblePorDefecto: false, orden: 6 },
+  { id: 'cat-oficina', nombre: 'Gastos de oficina', cuentaPGC: '629', deduciblePorDefecto: true, orden: 7 },
+  { id: 'cat-alarma', nombre: 'Alarma', cuentaPGC: '629', deduciblePorDefecto: true, orden: 8 },
+  { id: 'cat-telefono', nombre: 'Teléfono', cuentaPGC: '629', deduciblePorDefecto: true, orden: 9 },
+  { id: 'cat-wifi', nombre: 'Wifi', cuentaPGC: '629', deduciblePorDefecto: true, orden: 10 },
+  { id: 'cat-luz', nombre: 'Luz', cuentaPGC: '628', deduciblePorDefecto: true, orden: 11 },
+  { id: 'cat-mantenimiento', nombre: 'Mantenimiento', cuentaPGC: '622', deduciblePorDefecto: true, orden: 12 },
+  { id: 'cat-mantenimiento-nd', nombre: 'Mantenimiento NO deducible', cuentaPGC: '622', deduciblePorDefecto: false, orden: 13 },
+  { id: 'cat-marketing', nombre: 'Marketing y publicidad', cuentaPGC: '627', deduciblePorDefecto: true, orden: 14 },
+  { id: 'cat-gestoria', nombre: 'Gestoría', cuentaPGC: '623', deduciblePorDefecto: true, orden: 15 },
+  { id: 'cat-renting', nombre: 'Renting de vehículos', cuentaPGC: '621', deduciblePorDefecto: true, orden: 16 },
+  { id: 'cat-ia', nombre: 'Gastos de IA', cuentaPGC: '629', deduciblePorDefecto: true, orden: 17 },
+  { id: 'cat-tpv', nombre: 'Gastos de TPV', cuentaPGC: '626', deduciblePorDefecto: true, orden: 18 },
+  { id: 'cat-varios-tiendas', nombre: 'Gastos varios de tiendas', cuentaPGC: '629', deduciblePorDefecto: true, orden: 19 },
+  { id: 'cat-generales', nombre: 'Gastos generales', cuentaPGC: '629', deduciblePorDefecto: true, orden: 20 },
+  // Gastos que nacen en la propia cuenta bancaria.
+  { id: 'cat-banco-comision', nombre: 'Comisiones bancarias', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, orden: 21 },
+  { id: 'cat-banco-mantenimiento', nombre: 'Mantenimiento de cuenta', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, orden: 22 },
+  { id: 'cat-banco-seguro', nombre: 'Seguros del banco', cuentaPGC: '625', deduciblePorDefecto: true, esBancaria: true, orden: 23 },
+  { id: 'cat-banco-intereses', nombre: 'Intereses y gastos financieros', cuentaPGC: '662', deduciblePorDefecto: true, esBancaria: true, orden: 24 },
 ]
 
 /**

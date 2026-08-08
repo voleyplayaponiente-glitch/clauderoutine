@@ -4,6 +4,7 @@ import { CabeceraPantalla } from './Pantalla'
 import { Tarjeta, Boton, EstadoVacio, ImporteEuro } from '../componentes/ui'
 import { Campo, CampoNumero, Select, Modal } from '../componentes/formularios'
 import { nuevoId } from '../dominio/id'
+import { cuotasDeudaPorMes, gastosBancariosPorMes } from '../dominio/resumen-compras'
 import { aCentimos, aEuros, formatearEuro } from '../dominio/dinero'
 import { brutoVenta } from '../dominio/ventas'
 import { totalesCompra } from '../dominio/compras'
@@ -32,6 +33,37 @@ export function Presupuesto() {
   const [nuevaLinea, setNuevaLinea] = useState<{ concepto: string; tipo: TipoLineaPresupuesto } | null>(null)
 
   const presupuesto = datos.presupuestos.find((p) => p.ejercicio === ejercicio)
+
+  /**
+   * Trae al presupuesto lo que ya está registrado en la app: las cuotas de la
+   * deuda aplazada (del cuadro de amortización de cada préstamo o aplazamiento)
+   * y los gastos que nacen en las cuentas bancarias. No se estima nada; si una
+   * línea ya existe se actualizan sus importes en vez de duplicarla.
+   */
+  const traerDeudaYBanco = () => {
+    if (!presupuesto) return
+    const deuda = cuotasDeudaPorMes(datos.deudas, ejercicio)
+    const banco = gastosBancariosPorMes(datos.movimientos, config.categoriasGasto, ejercicio)
+    if (deuda.length === 0 && banco.length === 0) {
+      window.alert(
+        'No hay nada que traer todavía.\n\n· Las cuotas salen de las deudas registradas en la pantalla de Deudas.\n· Los gastos bancarios salen de los movimientos marcados con una categoría bancaria en Bancos.',
+      )
+      return
+    }
+
+    const nuevas = [
+      ...deuda.map((d) => ({ concepto: `Deuda: ${d.concepto}`, tipo: 'FINANCIACION' as const, meses: d.meses })),
+      ...banco.map((b) => ({ concepto: `Banco: ${b.categoria}`, tipo: 'GASTO' as const, meses: b.meses })),
+    ]
+
+    let lineas = [...presupuesto.lineas]
+    for (const n of nuevas) {
+      const i = lineas.findIndex((l) => l.concepto === n.concepto)
+      if (i === -1) lineas = [...lineas, { id: nuevoId(), concepto: n.concepto, tipo: n.tipo, meses: n.meses }]
+      else lineas[i] = { ...lineas[i], meses: n.meses }
+    }
+    guardar({ ...presupuesto, lineas })
+  }
 
   // Real por mes y tipo (del ejercicio seleccionado).
   const real = useMemo(() => {
@@ -133,6 +165,7 @@ export function Presupuesto() {
             <div className="flex items-center gap-2">
               <div className="w-28"><CampoNumero etiqueta="" valor={presupuesto.factorCrecimiento} onChange={(v) => guardar({ ...presupuesto, factorCrecimiento: v })} sufijo="% crec." /></div>
               <Boton variante="secundario" onClick={generarDesdeHistorico}>Generar desde histórico</Boton>
+              <Boton variante="secundario" onClick={traerDeudaYBanco}>Traer deuda y gastos del banco</Boton>
               <Boton onClick={() => setNuevaLinea({ concepto: '', tipo: 'GASTO' })}>+ Línea</Boton>
             </div>
           </div>

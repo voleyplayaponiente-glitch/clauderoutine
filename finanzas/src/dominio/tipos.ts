@@ -96,6 +96,13 @@ export interface CategoriaGasto {
   nombre: string
   cuentaPGC: string
   deduciblePorDefecto: boolean
+  /** Compra de mercadería (va a existencias), no un gasto de estructura. */
+  esStock?: boolean
+  /** Adquisición intracomunitaria o importación: puede llevar impuesto especial. */
+  esInternacional?: boolean
+  /** Categoría de gasto bancario (comisiones, seguros del banco…). */
+  esBancaria?: boolean
+  orden?: number
 }
 
 export interface Umbrales {
@@ -171,6 +178,8 @@ export interface Compra extends Trazable {
   centroCosteId?: ID // centro de coste o estructura
   categoriaGastoId?: ID
   cuentaGasto?: string // cuenta PGC de gasto (600/62x)
+  /** Impuesto especial soportado (vapeo) en compras internacionales. */
+  impuestoEspecial?: number
   deducible: boolean
   motivoNoDeducible?: string
   adjuntoNombre?: string
