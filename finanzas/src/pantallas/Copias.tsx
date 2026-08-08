@@ -5,7 +5,7 @@ import { Tarjeta, Boton, Semaforo } from '../componentes/ui'
 import { Modal } from '../componentes/formularios'
 import { hoyISO, formatearFecha } from '../lib/fechas'
 import { descargarBackupJson, descargarBackupExcel, leerBackup, listarSnapshots } from '../lib/copias'
-import { resumenBackup } from '../dominio/backup'
+import { resumenBackup, mismaEmpresa } from '../dominio/backup'
 import type { Backup } from '../dominio/backup'
 
 export function Copias() {
@@ -90,8 +90,22 @@ export function Copias() {
         <Modal titulo="Confirmar restauración" onCerrar={() => setCandidato(null)}>
           <div className="space-y-4">
             <div className="rounded-xl p-3" style={{ background: 'rgba(255,159,10,.12)', border: '1px solid var(--warn)' }}>
-              <p className="text-sm" style={{ color: 'var(--text)' }}>Vas a <strong>sobrescribir todos los datos actuales</strong> con «{candidato.origen}». Se descargará antes un backup previo de seguridad.</p>
+              <p className="text-sm" style={{ color: 'var(--text)' }}>Vas a <strong>sobrescribir los datos de «{config.empresa.razonSocial || 'la empresa activa'}»</strong> con «{candidato.origen}». Se descargará antes un backup previo de seguridad.</p>
             </div>
+            {!mismaEmpresa(
+              { cif: candidato.backup.config?.empresa?.cif, razonSocial: candidato.backup.config?.empresa?.razonSocial },
+              { cif: config.empresa.cif, razonSocial: config.empresa.razonSocial },
+            ) && (
+              <div className="rounded-xl p-3" style={{ background: 'rgba(255,69,58,.12)', border: '1px solid var(--neg)' }}>
+                <p className="text-sm" style={{ color: 'var(--text)' }}>
+                  <strong>Atención: el backup es de otra sociedad.</strong> Contiene «{candidato.backup.config?.empresa?.razonSocial || 'sin nombre'}»
+                  {candidato.backup.config?.empresa?.cif ? ` (${candidato.backup.config.empresa.cif})` : ''} y la empresa activa es
+                  «{config.empresa.razonSocial || 'sin nombre'}»{config.empresa.cif ? ` (${config.empresa.cif})` : ''}.
+                  Si continúas, la contabilidad de la empresa activa quedará reemplazada por la de otra entidad jurídica.
+                  Cambia antes de empresa en la cabecera si no es lo que quieres.
+                </p>
+              </div>
+            )}
             <div>
               <div className="text-sm font-medium mb-2">Contenido del backup</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">

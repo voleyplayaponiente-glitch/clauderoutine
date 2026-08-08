@@ -26,6 +26,7 @@ export const MODULOS: Modulo[] = [
   { id: 'tesoreria', ruta: '/tesoreria', titulo: 'Previsión de tesorería', grupo: 'Planificación', icono: 'tesoreria', resumen: 'Saldo diario proyectado a 30/60/90 días con alerta de tensión de liquidez.', fase: 7 },
   { id: 'informes', ruta: '/informes', titulo: 'Listados e informes', grupo: 'Dirección', icono: 'informe', resumen: 'Libros de IVA, balance, P&G y el informe ejecutivo mensual en PDF.', fase: 9 },
   { id: 'copias', ruta: '/copias', titulo: 'Copias de seguridad', grupo: 'Sistema', icono: 'copia', resumen: 'Backup y restauración con exportación completa en formato abierto.', fase: 10 },
+  { id: 'grupo', ruta: '/grupo', titulo: 'Grupo de empresas', grupo: 'Sistema', icono: 'grupo', resumen: 'Alta de sociedades, organigrama de participaciones y cifras agregadas del grupo.', fase: 13 },
   { id: 'configuracion', ruta: '/configuracion', titulo: 'Configuración', grupo: 'Sistema', icono: 'ajustes', resumen: 'Empresa, centros de coste, plan contable, impuestos, umbrales y apariencia.', fase: 1 },
 ]
 

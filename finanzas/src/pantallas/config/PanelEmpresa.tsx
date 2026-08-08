@@ -84,7 +84,12 @@ export function PanelEmpresa() {
           </div>
         )}
         <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-          Marca la estructura de grupo para poder señalar operaciones vinculadas y dividendos intragrupo.
+          Usa estos campos solo si la matriz <strong>no</strong> se lleva en esta aplicación. Si el holding y las
+          participadas están aquí, defínelo en{' '}
+          <a href="#/grupo" className="underline" style={{ color: 'var(--color-brand-500)' }}>
+            Grupo de empresas
+          </a>
+          : ahí se registran las participaciones con su porcentaje y se calcula el control efectivo.
         </p>
       </Tarjeta>
 

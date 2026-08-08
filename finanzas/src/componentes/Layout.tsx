@@ -28,6 +28,36 @@ function NavItem({ m, activo }: { m: Modulo; activo: boolean }) {
   )
 }
 
+/**
+ * Selector de empresa activa. Va en la cabecera y siempre visible: en un grupo,
+ * saber en qué sociedad se está apuntando es lo primero que hay que ver antes
+ * de teclear nada. Con una sola empresa no estorba: no se pinta.
+ */
+function SelectorEmpresa() {
+  const grupo = useStore((s) => s.grupo)
+  const cambiarEmpresa = useStore((s) => s.cambiarEmpresa)
+  if (grupo.empresas.length < 2) return null
+
+  return (
+    <label className="shrink-0">
+      <span className="sr-only">Empresa activa</span>
+      <select
+        className="rounded-xl px-3 py-1.5 text-sm outline-none focus:ring-2 max-w-[42vw] md:max-w-xs"
+        style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+        value={grupo.empresaActivaId}
+        onChange={(e) => void cambiarEmpresa(e.target.value)}
+      >
+        {grupo.empresas.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.razonSocial || 'Sin nombre'}
+            {e.esHolding ? ' · holding' : ''}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const ruta = useRuta()
   const tema = useStore((s) => s.tema)
@@ -96,6 +126,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+          <SelectorEmpresa />
           <div className="flex-1 truncate">
             <div className="text-sm font-medium truncate">{empresa.razonSocial || 'Sin empresa configurada'}</div>
             {empresa.cif && <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{empresa.cif}</div>}

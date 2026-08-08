@@ -71,6 +71,29 @@ export function verificarIntegridad(b: unknown): { valido: boolean; motivo?: str
   return { valido: true }
 }
 
+/**
+ * ¿El backup pertenece a la misma sociedad que está activa? Con varias empresas
+ * en el grupo, restaurar en la equivocada machacaría la contabilidad de otra
+ * entidad jurídica, así que hay que avisar antes de sobrescribir.
+ *
+ * Manda el CIF (identifica a la sociedad); si alguno falta se compara la razón
+ * social normalizada. Si no hay ni CIF ni nombre en ninguno de los dos lados no
+ * se puede afirmar que difieran, y no se alarma sin motivo.
+ */
+export function mismaEmpresa(
+  backup: { cif?: string; razonSocial?: string },
+  activa: { cif?: string; razonSocial?: string },
+): boolean {
+  const norm = (s?: string) => (s ?? '').toUpperCase().replace(/[\s.,-]/g, '')
+  const cifA = norm(backup.cif)
+  const cifB = norm(activa.cif)
+  if (cifA !== '' && cifB !== '') return cifA === cifB
+  const nomA = norm(backup.razonSocial)
+  const nomB = norm(activa.razonSocial)
+  if (nomA !== '' && nomB !== '') return nomA === nomB
+  return true
+}
+
 /** Recuento de registros por colección, para mostrar antes de restaurar. */
 export function resumenBackup(datos: DatosOperativos): { clave: string; etiqueta: string; n: number }[] {
   const et: Record<string, string> = {
