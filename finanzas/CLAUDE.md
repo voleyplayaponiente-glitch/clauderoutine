@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 372 tests (Vitest) del motor
+npm test         # 375 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -213,6 +213,18 @@ Cuatro reglas del PGC que **no se negocian**:
   **entradas** se apuntan en NEGATIVO (`Banco (entra): …`) para que sumen a la caja sin contarse
   como beneficio. Los ingresos de verdad van en positivo. La pantalla lo explica al pie.
 
+## Centros de coste (puntos de venta del grupo)
+`CENTROS_COSTE_DEFECTO` en `dominio/defaults.ts` precarga los cinco del grupo: **VAPESSENCE GV
+ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** (tienda) ·
+**VAPESSENCE GV HORTALEZA** (stand) · **VAPESPACE.ES** (web).
+- **Los ids son FIJOS** (`cc-gv-alicante`, `cc-san-juan`, `cc-alfafar`, `cc-gv-hortaleza`,
+  `cc-vapespace-es`): cada compra y cada venta guardan el id del centro, así que cambiarlos
+  dejaría los movimientos apuntando a un centro inexistente. No regenerarlos con `nuevoId()`.
+- `fusionarCentros` (store) los añade a las configuraciones ya guardadas sin pisar lo que el
+  usuario haya editado (nombre, tipo, `activoHasta`), igual que `fusionarCategorias`.
+- El tipo de punto de venta de cada uno es una suposición por el nombre y es editable en
+  Configuración → Centros de coste.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -226,7 +238,7 @@ Cuatro reglas del PGC que **no se negocian**:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (372 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (375 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
