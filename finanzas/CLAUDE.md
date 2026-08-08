@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 187 tests (Vitest) del motor
+npm test         # 233 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -82,6 +82,26 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
   calcula sobre `{config,datos,grupo}` solo si hay grupo, así los backups antiguos siguen siendo
   válidos con la fórmula antigua.
 
+## Importación de extractos bancarios
+- **`dominio/n43.ts`**: las posiciones del registro 22 son las de la norma
+  (fecha op. 11-16, fecha valor 17-22, debe/haber 28, importe 29-42, doc. 43-52, ref. 53-64).
+  Un bug de 4 posiciones de desplazamiento daba fechas tipo «26/32/2016» e importes de miles
+  de millones. **Los tests construyen cada registro campo a campo y comprueban que mide 80**,
+  para que una prueba no pueda volver a validar un desplazamiento equivocado.
+- Se valida la fecha (mes 1-12, día real) y el importe: lo ilegible **se descarta con motivo**,
+  nunca se muestra una fecha inventada. Con el registro 33 se verifica el nº de apuntes y que
+  saldo inicial − debe + haber = saldo final; si no cuadra, se avisa.
+- **`dominio/texto.ts`**: los extractos españoles vienen en Windows-1252. Se prueba UTF-8 y, si
+  aparece «�», se redecodifica. Sin esto salía «Aportaci�n de capital».
+- **`dominio/extracto.ts`**: hojas de banca electrónica (detecta la fila de cabeceras aunque
+  haya rótulos encima, columnas fecha/concepto/importe o cargo/abono) y líneas de PDF
+  (fecha al principio + importe; con dos importes el último es el saldo, se coge el penúltimo).
+- **`lib/extracto.ts`**: N43 · Excel · CSV · PDF (pdf.js en carga diferida; el worker se sirve
+  del propio bundle porque la CSP prohíbe CDN). Un PDF escaneado **no se adivina**: se dice que
+  no tiene capa de texto y que se metan a mano.
+- La importación **siempre pasa por previsualización** (`ModalImportarExtracto`): se ven los
+  movimientos leídos, la suma y las líneas descartadas con su motivo antes de tocar nada.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -95,7 +115,7 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado (187 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos (233 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
