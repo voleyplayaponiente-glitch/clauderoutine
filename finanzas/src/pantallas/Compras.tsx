@@ -150,6 +150,7 @@ function ListaCompras() {
         terceroId: prov?.id ?? base.terceroId,
         numFactura: d.numFactura ?? base.numFactura,
         fechaFactura: d.fecha ?? base.fechaFactura,
+        retencion: d.retencion ?? base.retencion,
         lineasIva:
           d.base !== undefined && tIva
             ? [{ base: d.base, tipoIvaId: tIva.id, tipo: tIva.tipo, regimen: tIva.regimen, cuota: d.cuota ?? 0 }]
@@ -247,8 +248,21 @@ function ListaCompras() {
                   Leído del PDF: {lectura.encontrados.length > 0 ? lectura.encontrados.join(', ') : 'nada aprovechable'}.
                   {' '}Revísalo antes de guardar.
                 </p>
-                {lectura.proveedor && !editando.terceroId && (
-                  <p style={{ color: 'var(--text-muted)' }}>Proveedor detectado: «{lectura.proveedor}» — no está dado de alta, créalo o elígelo.</p>
+                {(lectura.proveedor || lectura.cif) && !editando.terceroId && (
+                  <p style={{ color: 'var(--text-muted)' }}>
+                    Proveedor detectado: «{lectura.proveedor ?? lectura.cif}»
+                    {lectura.cif && lectura.proveedor ? ` · ${lectura.cif}` : ''} — no está dado de alta.{' '}
+                    {/* Se abre el alta con lo leído; sigue habiendo que confirmarlo. */}
+                    <button
+                      type="button"
+                      className="underline"
+                      style={{ color: 'var(--color-brand-500)' }}
+                      onClick={() => setProvNuevo({ ...terceroNuevo(), nombre: lectura.proveedor ?? '', cif: lectura.cif ?? '' })}
+                    >
+                      Crear con estos datos
+                    </button>{' '}
+                    o elígelo de la lista.
+                  </p>
                 )}
                 {lectura.avisos.map((a) => (
                   <p key={a} style={{ color: 'var(--warn)' }}>· {a}</p>

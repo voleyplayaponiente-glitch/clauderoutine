@@ -22,6 +22,8 @@ export interface DatosFactura {
   base?: number
   tipoIva?: number
   cuota?: number
+  /** IRPF retenido (alquileres, profesionales). Resta del total a pagar. */
+  retencion?: number
   total?: number
   /** Qué no se ha podido leer o no cuadra. Se enseña siempre. */
   avisos: string[]
@@ -30,10 +32,42 @@ export interface DatosFactura {
 }
 
 const RE_IMPORTE = /(-?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}|-?\d+[.,]\d{2})/g
-const RE_NIF = /\b([A-HJ-NP-SUVWXYZ]\d{7}[0-9A-J]|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])\b/g
+/** Admite el prefijo intracomunitario `ES`, que va pegado al NIF del emisor. */
+const RE_NIF = /\b(?:ES)?([A-HJ-NP-SUVWXYZ]\d{7}[0-9A-J]|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])\b/g
+
+/**
+ * Los NIF se escriben con puntos y guiones («N.I.F.: B-56241854»,
+ * «NIF:ESH-53314811»). Se quitan antes de buscar; los espacios se respetan
+ * para no pegar palabras y fabricar un NIF que no existe.
+ */
+function compactarNif(s: string): string {
+  return s.replace(/[.‐-―-]/g, '')
+}
 
 function normalizar(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+/** Líneas que son dirección o contacto, no el nombre de nadie. */
+const RE_NO_ES_NOMBRE = /^(c\/|calle|avda|avenida|av\.|plaza|pza|pol[ií]gono|ctra|carretera|urbanizaci|apdo|apartado|tel|fax|www|https?:|correo|email|e-mail)/i
+
+/**
+ * Nombre del emisor: las líneas que van justo encima de su NIF. En una factura
+ * el NIF va debajo de la razón social, y eso acierta mucho más que coger la
+ * primera línea con letras, que suele ser el logotipo o el membrete.
+ */
+function nombreSobreLinea(limpias: string[], i: number): string | undefined {
+  const partes: string[] = []
+  for (let j = i - 1; j >= 0 && partes.length < 2; j--) {
+    const l = limpias[j]
+    if (!/[A-Za-zÁÉÍÓÚÑ]{3}/.test(l)) break
+    if (l.length > 60 || RE_NO_ES_NOMBRE.test(l)) break
+    if (/\d{4}/.test(l)) break // código postal, teléfono, importes
+    if (/@/.test(l)) break
+    partes.unshift(l)
+  }
+  const nombre = partes.join(' ').trim()
+  return nombre.length > 3 ? nombre : undefined
 }
 
 /** Todos los importes de una línea, ya convertidos con la convención del documento. */
@@ -91,17 +125,22 @@ export function extraerDatosFactura(lineas: string[], cifPropio?: string): Datos
   const datos: DatosFactura = { avisos, encontrados }
 
   // ── CIF del proveedor ──
-  const nifs: string[] = []
-  for (const m of texto.matchAll(RE_NIF)) {
-    const v = m[1].toUpperCase()
-    if (!validarNifCif(v).valido) continue
-    if (cifPropio && v === cifPropio.toUpperCase().replace(/[\s-]/g, '')) continue
-    if (!nifs.includes(v)) nifs.push(v)
-  }
+  // Se recorre línea a línea para saber DÓNDE está el NIF: el nombre del
+  // emisor es lo que hay justo encima.
+  const nifs: { valor: string; linea: number }[] = []
+  const propio = cifPropio ? compactarNif(cifPropio.toUpperCase()).replace(/\s/g, '') : undefined
+  limpias.forEach((linea, i) => {
+    for (const m of compactarNif(linea).matchAll(RE_NIF)) {
+      const v = m[1].toUpperCase()
+      if (!validarNifCif(v).valido) continue
+      if (propio && v === propio) continue
+      if (!nifs.some((n) => n.valor === v)) nifs.push({ valor: v, linea: i })
+    }
+  })
   if (nifs.length > 0) {
-    datos.cif = nifs[0]
+    datos.cif = nifs[0].valor
     encontrados.push('cif')
-    if (nifs.length > 1) avisos.push(`Hay ${nifs.length} NIF/CIF en el documento; se ha tomado el primero (${nifs[0]}). Compruébalo.`)
+    if (nifs.length > 1) avisos.push(`Hay ${nifs.length} NIF/CIF en el documento; se ha tomado el primero (${nifs[0].valor}). Compruébalo.`)
   } else {
     avisos.push('No se ha encontrado ningún NIF/CIF válido del proveedor.')
   }
@@ -133,11 +172,19 @@ export function extraerDatosFactura(lineas: string[], cifPropio?: string): Datos
   if (!datos.numFactura) avisos.push('No se ha localizado el número de factura.')
 
   // ── Fecha ──
-  const RE_FECHA = /(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóú]{3,10}\.?\s+\d{2,4})/
-  // Primero la que va junto a la palabra «fecha»; si no, la primera del documento.
-  const conEtiqueta = limpias.find((l) => normalizar(l).includes('fecha') && RE_FECHA.test(l))
+  // Admite 08/08/2026, 08.08.2026, 2026-08-08 y «1 de agosto de 2026», que es
+  // como la escriben muchas facturas españolas.
+  const RE_FECHA =
+    /(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:de\s+)?[A-Za-zÁÉÍÓÚáéíóú]{3,10}\.?\s+(?:de\s+)?\d{2,4})/i
+  // Primero la que va junto a «fecha» —evitando la de vencimiento, que es otra
+  // cosa— y si no, la primera del documento.
+  const conEtiqueta = limpias.find((l) => {
+    const n = normalizar(l)
+    return n.includes('fecha') && !n.includes('vencimiento') && !n.includes('venc.') && RE_FECHA.test(l)
+  })
   const cualquiera = limpias.find((l) => RE_FECHA.test(l))
-  const bruta = RE_FECHA.exec(conEtiqueta ?? cualquiera ?? '')?.[1]
+  let bruta = RE_FECHA.exec(conEtiqueta ?? cualquiera ?? '')?.[1]
+  if (bruta && /^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(bruta)) bruta = bruta.replace(/\./g, '/')
   const fecha = bruta ? parsearFechaFlexible(bruta) : null
   if (fecha) {
     datos.fecha = fecha
@@ -148,24 +195,35 @@ export function extraerDatosFactura(lineas: string[], cifPropio?: string): Datos
 
   // ── Importes ──
   const total = importePorEtiqueta(limpias, ['total factura', 'importe total', 'total a pagar', 'total'], convencion, ['subtotal'])
-  const base = importePorEtiqueta(limpias, ['base imponible', 'base'], convencion)
-  const cuota = importePorEtiqueta(limpias, ['cuota iva', 'i.v.a', 'iva'], convencion, ['base'])
+  // Sin excluir «total»: «subtotal» lo contiene, y es una etiqueta de base
+  // perfectamente válida. Filtrarla dejaba la base sin leer.
+  const base = importePorEtiqueta(limpias, ['base imponible', 'base impon', 'base', 'subtotal'], convencion)
+  const cuota = importePorEtiqueta(limpias, ['cuota iva', 'i.v.a', 'iva'], convencion, ['base', 'subtotal'])
+  // Retención de IRPF: en alquileres y profesionales resta del total a pagar.
+  // Sin leerla, base + IVA nunca cuadra con el total y se descartaba todo.
+  const retencion = importePorEtiqueta(limpias, ['retencion', 'retención', 'irpf'], convencion)
 
   const tipoMatch = /\b(?:iva|i\.v\.a\.?)\s*[:\s]*(\d{1,2})\s*%|\b(\d{1,2})\s*%\s*(?:de\s+)?iva/i.exec(texto)
   const tipoIva = tipoMatch ? Number(tipoMatch[1] ?? tipoMatch[2]) : undefined
 
-  // El cuadre manda: si base + cuota no da el total, no se rellena nada.
+  // El cuadre manda: si base + IVA − retención no da el total, no se rellena nada.
   if (base !== undefined && cuota !== undefined && total !== undefined) {
-    const suma = aEuros(aCentimos(base) + aCentimos(cuota))
+    const ret = retencion ?? 0
+    const suma = aEuros(aCentimos(base) + aCentimos(cuota) - aCentimos(ret))
     if (Math.abs(aCentimos(suma) - aCentimos(total)) > 2) {
       avisos.push(
-        `Los importes leídos no cuadran: base ${base} + IVA ${cuota} = ${suma}, pero el total dice ${total}. No se rellenan; revísalos a mano.`,
+        `Los importes leídos no cuadran: base ${base} + IVA ${cuota}${ret > 0 ? ` − retención ${ret}` : ''} = ${suma}, ` +
+          `pero el total dice ${total}. No se rellenan; revísalos a mano (¿hay retención, descuento o algún suplido?).`,
       )
     } else {
       datos.base = base
       datos.cuota = cuota
       datos.total = total
       encontrados.push('base', 'cuota', 'total')
+      if (ret > 0) {
+        datos.retencion = ret
+        encontrados.push('retencion')
+      }
     }
   } else if (base !== undefined && tipoIva !== undefined) {
     // Con base y tipo se puede deducir la cuota sin inventar nada.
@@ -192,15 +250,22 @@ export function extraerDatosFactura(lineas: string[], cifPropio?: string): Datos
     encontrados.push('tipoIva')
   }
 
-  // ── Proveedor: la primera línea con letra que no sea un rótulo ni un importe ──
-  const candidata = limpias.find(
-    (l) =>
-      l.length > 3 &&
-      l.length < 80 &&
-      /[A-Za-zÁÉÍÓÚÑ]{3}/.test(l) &&
-      !/factura|fecha|total|iva|base|n\.?º|cliente|pagina|página/i.test(normalizar(l)) &&
-      !RE_NIF.test(l),
-  )
+  // ── Proveedor ──
+  // Primero, lo que hay justo encima de su NIF: en una factura la razón social
+  // va pegada al NIF. Si no hay NIF, se cae a la primera línea con letras que
+  // no sea un rótulo, un importe ni una dirección.
+  const sobreNif = nifs.length > 0 ? nombreSobreLinea(limpias, nifs[0].linea) : undefined
+  const candidata =
+    sobreNif ??
+    limpias.find(
+      (l) =>
+        l.length > 3 &&
+        l.length < 80 &&
+        /[A-Za-zÁÉÍÓÚÑ]{3}/.test(l) &&
+        !/factura|fecha|total|iva|base|n\.?º|cliente|pagina|página/i.test(normalizar(l)) &&
+        !RE_NO_ES_NOMBRE.test(l) &&
+        !new RegExp(RE_NIF.source).test(compactarNif(l)),
+    )
   if (candidata) {
     datos.proveedor = candidata
     encontrados.push('proveedor')
