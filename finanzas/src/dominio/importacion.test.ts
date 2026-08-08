@@ -51,3 +51,26 @@ describe('fechas flexibles', () => {
     expect(parsearFechaFlexible('nada')).toBeNull()
   })
 })
+
+describe('fechas con el mes en letra (PDF de banca digital)', () => {
+  it('lee el formato «1 Jul 2026» de CaixaBank', () => {
+    expect(parsearFechaFlexible('1 Jul 2026')).toBe('2026-07-01')
+    expect(parsearFechaFlexible('24 Abr 2026')).toBe('2026-04-24')
+    expect(parsearFechaFlexible('15 Dic 2025')).toBe('2025-12-15')
+    expect(parsearFechaFlexible('10 Mar 2026')).toBe('2026-03-10')
+    expect(parsearFechaFlexible('1 Ene 2026')).toBe('2026-01-01')
+  })
+  it('admite el mes completo y con preposiciones', () => {
+    expect(parsearFechaFlexible('24 de abril de 2026')).toBe('2026-04-24')
+    expect(parsearFechaFlexible('15-dic-2025')).toBe('2025-12-15')
+    expect(parsearFechaFlexible('3 septiembre 2026')).toBe('2026-09-03')
+  })
+  it('sigue leyendo los formatos numéricos de siempre', () => {
+    expect(parsearFechaFlexible('01/07/2026')).toBe('2026-07-01')
+    expect(parsearFechaFlexible('2026-07-01')).toBe('2026-07-01')
+  })
+  it('no inventa una fecha con un mes que no existe', () => {
+    expect(parsearFechaFlexible('24 Xyz 2026')).toBeNull()
+    expect(parsearFechaFlexible('no es fecha')).toBeNull()
+  })
+})

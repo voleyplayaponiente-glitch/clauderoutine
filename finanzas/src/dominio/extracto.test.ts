@@ -4,7 +4,7 @@ import { detectarColumnas, filasAMovimientos, leerHoja, lineasAMovimientos, tota
 describe('detección de columnas en hojas de banca electrónica', () => {
   it('reconoce fecha, concepto e importe', () => {
     const m = detectarColumnas([['Fecha', 'Concepto', 'Importe']])
-    expect(m).toEqual({ fecha: 0, concepto: 1, importe: 2, debe: -1, haber: -1, primeraFila: 1 })
+    expect(m).toEqual({ fecha: 0, concepto: 1, importe: 2, debe: -1, haber: -1, extra: -1, primeraFila: 1 })
   })
 
   it('salta las filas de rótulos que los bancos ponen encima', () => {
@@ -105,7 +105,7 @@ describe('conversión de filas a movimientos', () => {
   it('un concepto vacío no deja el movimiento sin texto', () => {
     const r = filasAMovimientos(
       [['Fecha', 'Concepto', 'Importe'], ['15/01/2026', '', '10,00']],
-      { fecha: 0, concepto: 1, importe: 2, debe: -1, haber: -1, primeraFila: 1 },
+      { fecha: 0, concepto: 1, importe: 2, debe: -1, haber: -1, extra: -1, primeraFila: 1 },
     )
     expect(r.movimientos[0].concepto).toBe('Movimiento bancario')
   })
