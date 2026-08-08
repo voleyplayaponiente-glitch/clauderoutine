@@ -35,6 +35,7 @@ export function Bancos() {
   const importarMovimientos = useStore((s) => s.importarMovimientos)
   const anularMovimientos = useStore((s) => s.anularMovimientos)
   const conciliar = useStore((s) => s.conciliarMovimiento)
+  const conciliarVarios = useStore((s) => s.conciliarMovimientos)
 
   const cuentas = datos.cuentasTesoreria.filter((c) => c.tipo !== 'CAJA' && !c.anuladoEn)
   const [selId, setSelId] = useState<string | null>(cuentas[0]?.id ?? null)
@@ -183,7 +184,7 @@ export function Bancos() {
                 onChange={onElegirFichero}
               />
             </Tarjeta>
-            <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>No conciliados</div><div className="text-xl font-semibold tabular">{noConciliados}</div></Tarjeta>
+            <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>No conciliados</div><div className="text-xl font-semibold tabular">{noConciliados}</div><div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>pendientes de comprobar</div></Tarjeta>
           </div>
 
           {aviso && <div className="mb-4"><Semaforo estado="positivo" texto={aviso} /></div>}
@@ -229,6 +230,26 @@ export function Bancos() {
                   <button className="text-sm underline" style={{ color: 'var(--text-muted)' }} onClick={() => setSeleccion(new Set())}>
                     Quitar selección
                   </button>
+                  <Boton
+                    variante="secundario"
+                    onClick={() => {
+                      const n = conciliarVarios([...seleccion], true)
+                      setSeleccion(new Set())
+                      setAviso(`Conciliados ${n} movimientos.`)
+                    }}
+                  >
+                    Conciliar {seleccion.size}
+                  </Boton>
+                  <Boton
+                    variante="secundario"
+                    onClick={() => {
+                      const n = conciliarVarios([...seleccion], false)
+                      setSeleccion(new Set())
+                      setAviso(`Marcados ${n} como pendientes de conciliar.`)
+                    }}
+                  >
+                    Desconciliar
+                  </Boton>
                   <Boton variante="secundario" onClick={anularSeleccionados}>
                     Anular {seleccion.size}
                   </Boton>
@@ -256,7 +277,13 @@ export function Bancos() {
                       <td className="px-4 py-2.5">{m.concepto}{m.referencia && <span className="ml-2 text-xs tabular" style={{ color: 'var(--text-muted)' }}>{m.referencia}</span>}</td>
                       <td className="px-4 py-2.5 text-right"><ImporteEuro valor={m.importe} color /></td>
                       <td className="px-4 py-2.5 text-center">
-                        <button onClick={() => conciliar(m.id, !m.conciliado)} aria-label="Conciliar">
+                        <button
+                          onClick={() => conciliar(m.id, !m.conciliado)}
+                          className="cursor-pointer"
+                          aria-pressed={m.conciliado}
+                          title={m.conciliado ? 'Comprobado contra el extracto. Pulsa para volver a dejarlo pendiente.' : 'Pendiente de comprobar. Pulsa cuando lo hayas cotejado con el extracto.'}
+                          aria-label={m.conciliado ? 'Conciliado, pulsa para desconciliar' : 'Sin conciliar, pulsa para conciliar'}
+                        >
                           {m.conciliado ? <Semaforo estado="positivo" texto="Sí" /> : <Semaforo estado="neutro" texto="No" />}
                         </button>
                       </td>
