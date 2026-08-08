@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 import { Tarjeta, Boton, ImporteEuro, formatearEuro } from '../../componentes/ui'
 import { Select } from '../../componentes/formularios'
-import { gastosCuentaPorCategoria, type EfectoPresupuesto } from '../../dominio/resumen-compras'
+import { gastosCuentaPorCategoria, type EfectoPresupuesto, type Flujo } from '../../dominio/resumen-compras'
 import { exportarCSV } from '../../lib/exportar'
 import type { MovimientoTesoreria, CategoriaGasto } from '../../dominio/tipos'
 
@@ -25,11 +25,21 @@ function rango(ejercicio: number, mes: string): { desde: string; hasta: string }
 }
 
 /** Qué hace cada concepto cuando se lleva al presupuesto. */
-const ETIQUETA_EFECTO: Record<EfectoPresupuesto, string> = {
-  GASTO: 'Gasto',
-  INVERSION: 'Inversión (no es gasto)',
-  FINANCIACION: 'Pago de impuestos o deuda',
-  NINGUNO: 'Ya contado en Compras o Deudas',
+const ETIQUETA_EFECTO: Record<Flujo, Record<EfectoPresupuesto, string>> = {
+  SALIDA: {
+    INGRESO: 'Ingreso',
+    GASTO: 'Gasto',
+    INVERSION: 'Inversión (no es gasto)',
+    FINANCIACION: 'Pago de impuestos o deuda',
+    NINGUNO: 'Ya contado en Compras o Deudas',
+  },
+  ENTRADA: {
+    INGRESO: 'Ingreso',
+    GASTO: 'Ingreso',
+    INVERSION: 'Desinversión (no es ingreso)',
+    FINANCIACION: 'Capital o financiación (no es ingreso)',
+    NINGUNO: 'Ya contado en Ventas, o traspaso propio',
+  },
 }
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -46,6 +56,7 @@ export function GastosCuenta({
   const hoy = new Date()
   const [ejercicio, setEjercicio] = useState(hoy.getFullYear())
   const [mes, setMes] = useState('todo')
+  const [flujo, setFlujo] = useState<Flujo>('SALIDA')
   const [abierto, setAbierto] = useState(false)
 
   const anios = useMemo(() => {
@@ -56,16 +67,18 @@ export function GastosCuenta({
 
   const { desde, hasta } = rango(ejercicio, mes)
   const d = useMemo(
-    () => gastosCuentaPorCategoria(movimientos, categorias, desde, hasta),
-    [movimientos, categorias, desde, hasta],
+    () => gastosCuentaPorCategoria(movimientos, categorias, desde, hasta, flujo),
+    [movimientos, categorias, desde, hasta, flujo],
   )
+  const etiqueta = ETIQUETA_EFECTO[flujo]
+  const esSalida = flujo === 'SALIDA'
 
   const exportar = () => {
     exportarCSV(
-      `gastos-${nombreCuenta}-${ejercicio}${mes === 'todo' ? '' : `-${mes}`}`,
+      `${esSalida ? 'cargos' : 'abonos'}-${nombreCuenta}-${ejercicio}${mes === 'todo' ? '' : `-${mes}`}`,
       ['Concepto', 'En el presupuesto', 'Movimientos', 'Importe'],
       [
-        ...d.lineas.map((l) => [l.categoria, ETIQUETA_EFECTO[l.efecto], String(l.numMovimientos), l.total.toFixed(2)]),
+        ...d.lineas.map((l) => [l.categoria, etiqueta[l.efecto], String(l.numMovimientos), l.total.toFixed(2)]),
         ['TOTAL', '', '', d.total.toFixed(2)],
       ],
     )
@@ -75,11 +88,38 @@ export function GastosCuenta({
     <Tarjeta className="mb-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="font-semibold">Cargos de la cuenta: de dónde vienen</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="font-semibold">Movimientos de la cuenta: de dónde vienen</h3>
+            <div className="flex gap-1">
+              {(['SALIDA', 'ENTRADA'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFlujo(f)}
+                  className="rounded-lg px-2.5 py-1 text-xs"
+                  style={{
+                    background: flujo === f ? 'var(--color-brand-500)' : 'var(--surface-2)',
+                    color: flujo === f ? '#fff' : 'var(--text)',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {f === 'SALIDA' ? 'Cargos' : 'Abonos'}
+                </button>
+              ))}
+            </div>
+          </div>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Aquí van los conceptos que <strong>no llevan factura</strong>: comisiones, seguros, tributos, inversiones. La
-            naturaleza del gasto de las facturas está en Compras. Lo que va al presupuesto entra con «Traer deuda y gastos del
-            banco».
+            {esSalida ? (
+              <>
+                Conceptos que <strong>no llevan factura</strong>: comisiones, seguros, tributos, inversiones. La naturaleza del
+                gasto de las facturas está en Compras.
+              </>
+            ) : (
+              <>
+                De dónde viene el dinero que entra. <strong>No todo lo que entra es ingreso</strong>: una ampliación de capital o
+                la devolución de un préstamo engordan la cuenta sin ser beneficio.
+              </>
+            )}{' '}
+            Lo que va al presupuesto entra con «Traer deuda y gastos del banco».
           </p>
         </div>
         <div className="flex items-end gap-2">
@@ -99,22 +139,36 @@ export function GastosCuenta({
       </div>
 
       {d.lineas.length === 0 ? (
-        <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>No hay salidas registradas en este periodo.</p>
+        <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>
+          No hay {esSalida ? 'cargos' : 'abonos'} registrados en este periodo.
+        </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
-            <Metrica etiqueta="Total salidas" valor={d.total} destacado />
-            <Metrica etiqueta="Gasto" valor={d.totalGasto} />
-            <Metrica etiqueta="Inversión" valor={d.totalInversion} />
-            <Metrica etiqueta="Impuestos y deuda" valor={d.totalFinanciacion} />
-            <Metrica etiqueta="Ya contado" valor={d.totalYaContabilizado} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
+            <Metrica etiqueta={esSalida ? 'Total salidas' : 'Total entradas'} valor={d.total} destacado />
+            {esSalida ? (
+              <>
+                <Metrica etiqueta="Gasto" valor={d.totalGasto} />
+                <Metrica etiqueta="Inversión" valor={d.totalInversion} />
+                <Metrica etiqueta="Impuestos y deuda" valor={d.totalFinanciacion} />
+              </>
+            ) : (
+              <>
+                <Metrica etiqueta="Ingreso de verdad" valor={d.totalIngreso + d.totalGasto} />
+                <Metrica etiqueta="Desinversión" valor={d.totalInversion} />
+                <Metrica etiqueta="Capital y financiación" valor={d.totalFinanciacion} />
+              </>
+            )}
             <Metrica etiqueta="Sin clasificar" valor={d.totalSinClasificar} alerta={d.totalSinClasificar > 0} />
           </div>
 
           {d.totalInversion > 0 && (
             <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-              La inversión no resta del resultado: el dinero se cambia por un activo. Clasificar aquí el cargo <strong>no</strong>{' '}
-              da de alta la inversión — regístrala en <em>Inversiones</em>, que es donde se lleva el coste, el valor y su asiento.
+              {esSalida
+                ? 'La inversión no resta del resultado: el dinero se cambia por un activo.'
+                : 'La desinversión no suma al resultado: se recupera un activo que ya era tuyo.'}{' '}
+              Clasificar aquí el movimiento <strong>no</strong> da de alta ni de baja la inversión — eso se hace en{' '}
+              <em>Inversiones</em>, que es donde se lleva el coste, el valor y su asiento.
             </p>
           )}
 
@@ -147,7 +201,7 @@ export function GastosCuenta({
                         {l.categoria}
                       </td>
                       <td className="py-2 pr-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {ETIQUETA_EFECTO[l.efecto]}
+                        {etiqueta[l.efecto]}
                       </td>
                       <td className="py-2 pr-3 text-right tabular">{l.numMovimientos}</td>
                       <td className="py-2 text-right"><ImporteEuro valor={l.total} /></td>

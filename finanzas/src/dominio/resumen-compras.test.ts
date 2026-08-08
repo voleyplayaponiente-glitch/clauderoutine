@@ -4,6 +4,7 @@ import {
   cuotasDeudaPorMes,
   gastosBancariosPorMes,
   gastosCuentaPorCategoria,
+  ingresosBancariosPorMes,
   familiaDeuda,
   ambitoDe,
   categoriasDe,
@@ -380,6 +381,92 @@ describe('gastos bancarios por mes', () => {
   })
 })
 
+describe('abonos de la cuenta: de dónde viene el dinero', () => {
+  const cats: CategoriaGasto[] = CATS
+  const mov = (fecha: string, importe: number, categoriaId?: string, clase = 'OTRO') => ({ fecha, importe, categoriaId, clase })
+
+  it('las entradas tienen su propia lista, distinta de la de cargos', () => {
+    const entradas = categoriasDe(CATS, 'BANCO', 'ENTRADA').map((c) => c.nombre)
+    const salidas = categoriasDe(CATS, 'BANCO', 'SALIDA').map((c) => c.nombre)
+    for (const n of ['Dividendos recibidos', 'Retrocesión de comisiones bancarias', 'Devolución de préstamos concedidos', 'Aportación de capital de socios']) {
+      expect(entradas).toContain(n)
+      expect(salidas).not.toContain(n)
+    }
+    expect(entradas).not.toContain('Comisiones bancarias')
+  })
+
+  it('no todo lo que entra es ingreso', () => {
+    const tipo = (id: string) => efectoPresupuestoDe(CATS.find((c) => c.id === id))
+    expect(tipo('cat-bco-in-dividendos')).toBe('INGRESO')
+    expect(tipo('cat-bco-in-retrocesion')).toBe('INGRESO')
+    // Recuperar un préstamo concedido es desinversión, no beneficio.
+    expect(tipo('cat-bco-in-devol-prestamo')).toBe('INVERSION')
+    // El capital que meten los socios no es ingreso de la empresa.
+    expect(tipo('cat-bco-in-capital')).toBe('FINANCIACION')
+    // Los cobros de clientes ya están en Ventas.
+    expect(tipo('cat-bco-in-clientes')).toBe('NINGUNO')
+  })
+
+  it('reparte los abonos por mes con su tipo de línea', () => {
+    const l = ingresosBancariosPorMes(
+      [
+        mov('2026-03-31', 1200, 'cat-bco-in-dividendos'),
+        mov('2026-06-30', 800, 'cat-bco-in-dividendos'),
+        mov('2026-02-15', 45.3, 'cat-bco-in-retrocesion'),
+        mov('2026-05-10', 30000, 'cat-bco-in-capital'),
+      ],
+      cats,
+      2026,
+    )
+    const div = l.find((x) => x.categoriaId === 'cat-bco-in-dividendos')!
+    expect(div.meses[2]).toBe(1200)
+    expect(div.meses[5]).toBe(800)
+    expect(div.totalAnual).toBe(2000)
+    expect(div.efecto).toBe('INGRESO')
+    expect(l.find((x) => x.categoriaId === 'cat-bco-in-capital')!.efecto).toBe('FINANCIACION')
+    // Siempre en positivo: el signo lo pone quien presupuesta.
+    expect(l.every((x) => x.totalAnual > 0)).toBe(true)
+  })
+
+  it('deja fuera los cobros de clientes, los traspasos y las salidas', () => {
+    const l = ingresosBancariosPorMes(
+      [
+        mov('2026-01-10', 5000, 'cat-bco-in-clientes'),
+        mov('2026-01-11', 2000, 'cat-bco-in-traspaso'),
+        mov('2026-01-12', -30, 'cat-banco-comision'),
+        mov('2026-01-13', 900), // sin clasificar
+      ],
+      cats,
+      2026,
+    )
+    expect(l).toEqual([])
+  })
+
+  it('el desglose de abonos separa el ingreso real del capital', () => {
+    const d = gastosCuentaPorCategoria(
+      [mov('2026-03-31', 1200, 'cat-bco-in-dividendos'), mov('2026-05-10', 30000, 'cat-bco-in-capital'), mov('2026-01-31', -30, 'cat-banco-comision')],
+      cats,
+      undefined,
+      undefined,
+      'ENTRADA',
+    )
+    expect(d.total).toBe(31200) // la comisión es un cargo: fuera
+    expect(d.totalIngreso).toBe(1200)
+    expect(d.totalFinanciacion).toBe(30000)
+  })
+})
+
+describe('préstamos a socios', () => {
+  it('prestar a un socio es inversión, no gasto, y no se confunde con la deuda con socios', () => {
+    const c = CATS.find((x) => x.id === 'cat-bco-prestamo-socios')!
+    expect(efectoPresupuestoDe(c)).toBe('INVERSION')
+    expect(ambitoDe(c)).toBe('BANCO')
+    expect(c.nombre).toMatch(/a socios/)
+    // «Préstamos de socios» es una familia de DEUDA, no una categoría del banco.
+    expect(ETIQUETA_FAMILIA_DEUDA[familiaDeuda('SOCIOS')]).toBe('Préstamos de socios')
+  })
+})
+
 describe('desglose de gastos de una cuenta bancaria', () => {
   const cats: CategoriaGasto[] = CATS
   const mov = (fecha: string, importe: number, categoriaId?: string, clase = 'OTRO') => ({ fecha, importe, categoriaId, clase })
@@ -446,6 +533,7 @@ describe('desglose de gastos de una cuenta bancaria', () => {
       total: 0,
       totalBancario: 0,
       totalGasto: 0,
+      totalIngreso: 0,
       totalFinanciacion: 0,
       totalInversion: 0,
       totalYaContabilizado: 0,

@@ -109,7 +109,14 @@ export interface CategoriaGasto {
    */
   ambito?: 'COMPRAS' | 'BANCO'
   /**
+   * Solo en el ámbito BANCO: si el concepto es para cargos (SALIDA) o para
+   * abonos (ENTRADA). Un extracto tiene las dos cosas y no se clasifican con la
+   * misma lista. Si falta, es SALIDA.
+   */
+  flujo?: 'SALIDA' | 'ENTRADA'
+  /**
    * Qué hace en el presupuesto:
+   *  · INGRESO — entra dinero y además es ingreso (dividendos, retrocesiones).
    *  · GASTO — gasto de explotación (comisiones, seguros, mantenimiento).
    *  · INVERSION — el dinero no se consume, se cambia por un activo
    *    (participaciones en empresas del grupo, fondos, acciones).
@@ -120,7 +127,7 @@ export interface CategoriaGasto {
    *    o porque no es un gasto (traspasos entre cuentas propias).
    * Si falta, se trata como GASTO.
    */
-  efectoPresupuesto?: 'GASTO' | 'INVERSION' | 'FINANCIACION' | 'NINGUNO'
+  efectoPresupuesto?: 'INGRESO' | 'GASTO' | 'INVERSION' | 'FINANCIACION' | 'NINGUNO'
   orden?: number
 }
 

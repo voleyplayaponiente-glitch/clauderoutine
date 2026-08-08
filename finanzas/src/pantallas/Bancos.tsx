@@ -275,7 +275,7 @@ export function Bancos() {
               <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin movimientos. Importa el extracto del banco (Norma 43, Excel, CSV o PDF) o añádelos a mano.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="pl-4 py-2.5 font-medium w-8"><input type="checkbox" aria-label="Seleccionar todos" checked={movs.length > 0 && seleccion.size === movs.length} onChange={(e) => setSeleccion(e.target.checked ? new Set(movs.map((m) => m.id)) : new Set())} /></th><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium">Concepto del cargo</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
+                <thead><tr style={{ color: 'var(--text-muted)' }} className="text-left"><th className="pl-4 py-2.5 font-medium w-8"><input type="checkbox" aria-label="Seleccionar todos" checked={movs.length > 0 && seleccion.size === movs.length} onChange={(e) => setSeleccion(e.target.checked ? new Set(movs.map((m) => m.id)) : new Set())} /></th><th className="px-4 py-2.5 font-medium">Fecha</th><th className="px-4 py-2.5 font-medium">Concepto</th><th className="px-4 py-2.5 font-medium text-right">Importe</th><th className="px-4 py-2.5 font-medium">De dónde viene / a dónde va</th><th className="px-4 py-2.5 font-medium text-center">Conciliado</th></tr></thead>
                 <tbody>
                   {movs.map((m) => (
                     <tr key={m.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
@@ -288,22 +288,24 @@ export function Bancos() {
                       <td className="px-4 py-2.5">{m.concepto}{m.referencia && <span className="ml-2 text-xs tabular" style={{ color: 'var(--text-muted)' }}>{m.referencia}</span>}</td>
                       <td className="px-4 py-2.5 text-right"><ImporteEuro valor={m.importe} color /></td>
                       <td className="px-4 py-2.5">
-                        {m.importe < 0 ? (
-                          <select
-                            value={m.categoriaId ?? ''}
-                            onChange={(e) => guardarMovimiento({ ...m, categoriaId: e.target.value || undefined })}
-                            className="w-full rounded-lg px-2 py-1 text-xs"
-                            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: m.categoriaId ? 'var(--text)' : 'var(--text-muted)' }}
-                            title="Concepto del movimiento: lo que no lleva factura (comisiones, seguros, tributos)"
-                          >
-                            <option value="">— sin clasificar —</option>
-                            {categoriasDe(config.categoriasGasto, 'BANCO').map((c) => (
-                              <option key={c.id} value={c.id}>{c.nombre}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>—</span>
-                        )}
+                        {/* Cargos y abonos se clasifican con listas distintas: pagar una
+                            comisión y cobrar un dividendo no son la misma familia. */}
+                        <select
+                          value={m.categoriaId ?? ''}
+                          onChange={(e) => guardarMovimiento({ ...m, categoriaId: e.target.value || undefined })}
+                          className="w-full rounded-lg px-2 py-1 text-xs"
+                          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: m.categoriaId ? 'var(--text)' : 'var(--text-muted)' }}
+                          title={
+                            m.importe < 0
+                              ? 'De dónde sale: lo que no lleva factura (comisiones, seguros, tributos, inversiones)'
+                              : 'De dónde viene: dividendos, capital, retrocesiones, devoluciones'
+                          }
+                        >
+                          <option value="">— sin clasificar —</option>
+                          {categoriasDe(config.categoriasGasto, 'BANCO', m.importe < 0 ? 'SALIDA' : 'ENTRADA').map((c) => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         <button

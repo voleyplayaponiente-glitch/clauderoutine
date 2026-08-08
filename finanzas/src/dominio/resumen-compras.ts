@@ -26,12 +26,25 @@ export function ambitoDe(cat: CategoriaGasto): 'COMPRAS' | 'BANCO' {
   return cat.ambito ?? (cat.esBancaria ? 'BANCO' : 'COMPRAS')
 }
 
-export function categoriasDe(categorias: CategoriaGasto[], ambito: 'COMPRAS' | 'BANCO'): CategoriaGasto[] {
-  return categorias.filter((c) => ambitoDe(c) === ambito).sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+/** Cargo o abono. Un extracto tiene los dos y no se clasifican igual. */
+export type Flujo = 'SALIDA' | 'ENTRADA'
+
+export function flujoDe(cat: CategoriaGasto): Flujo {
+  return cat.flujo ?? 'SALIDA'
+}
+
+/**
+ * Categorías de un ámbito, en su orden. En el banco hay que decir además si se
+ * quieren las de cargos o las de abonos; en Compras el flujo no aplica.
+ */
+export function categoriasDe(categorias: CategoriaGasto[], ambito: 'COMPRAS' | 'BANCO', flujo: Flujo = 'SALIDA'): CategoriaGasto[] {
+  return categorias
+    .filter((c) => ambitoDe(c) === ambito && (ambito !== 'BANCO' || flujoDe(c) === flujo))
+    .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
 }
 
 /** Qué hace en el presupuesto. Sin indicar, es gasto. */
-export type EfectoPresupuesto = 'GASTO' | 'INVERSION' | 'FINANCIACION' | 'NINGUNO'
+export type EfectoPresupuesto = 'INGRESO' | 'GASTO' | 'INVERSION' | 'FINANCIACION' | 'NINGUNO'
 
 export function efectoPresupuestoDe(cat: CategoriaGasto | undefined): EfectoPresupuesto {
   return cat?.efectoPresupuesto ?? 'GASTO'
@@ -250,6 +263,16 @@ export interface LineaGastoBancario {
   totalAnual: number
 }
 
+export interface LineaIngresoBancario {
+  categoriaId: ID
+  categoria: string
+  /** Tipo de línea con el que entra en el presupuesto. */
+  efecto: 'INGRESO' | 'INVERSION' | 'FINANCIACION'
+  /** 12 importes en positivo: lo que ha entrado cada mes. */
+  meses: number[]
+  totalAnual: number
+}
+
 export interface LineaGastoCuenta {
   categoriaId: ID | 'sin-clasificar'
   categoria: string
@@ -269,6 +292,8 @@ export interface DesgloseGastosCuenta {
   totalBancario: number
   /** Gasto de explotación que se presupuesta desde aquí. */
   totalGasto: number
+  /** Entradas que además son ingreso (dividendos, retrocesiones, intereses). */
+  totalIngreso: number
   /** Tributos, Seguridad Social y demás pagos de deuda ya devengada. */
   totalFinanciacion: number
   /** Dinero que no se consume: se cambia por un activo. */
@@ -291,12 +316,14 @@ export function gastosCuentaPorCategoria(
   categorias: CategoriaGasto[],
   desde?: string,
   hasta?: string,
+  flujo: Flujo = 'SALIDA',
 ): DesgloseGastosCuenta {
   const indice = new Map(categorias.map((c) => [c.id, c]))
   const porCategoria = new Map<string, LineaGastoCuenta>()
 
   for (const m of movimientos) {
-    if (m.anuladoEn || m.importe >= 0) continue
+    if (m.anuladoEn) continue
+    if (flujo === 'SALIDA' ? m.importe >= 0 : m.importe <= 0) continue
     if (!enPeriodo(m.fecha, desde, hasta)) continue
     const cat = m.categoriaId ? indice.get(m.categoriaId) : undefined
     const clave = cat?.id ?? 'sin-clasificar'
@@ -325,6 +352,7 @@ export function gastosCuentaPorCategoria(
     total: sumar(() => true),
     totalBancario: sumar((l) => l.esBancaria),
     totalGasto: sumar((l) => l.efecto === 'GASTO'),
+    totalIngreso: sumar((l) => l.efecto === 'INGRESO'),
     totalFinanciacion: sumar((l) => l.efecto === 'FINANCIACION'),
     totalInversion: sumar((l) => l.efecto === 'INVERSION'),
     totalYaContabilizado: sumar((l) => l.efecto === 'NINGUNO'),
@@ -380,6 +408,59 @@ export function gastosBancariosPorMes(
         categoriaId,
         categoria: cat?.nombre ?? 'Gastos bancarios sin clasificar',
         efecto: (efecto === 'NINGUNO' ? 'GASTO' : efecto) as 'GASTO' | 'INVERSION' | 'FINANCIACION',
+        meses,
+        totalAnual: aEuros(meses.reduce((s, m) => s + aCentimos(m), 0)),
+      }
+    })
+    .sort((a, b) => b.totalAnual - a.totalAnual)
+}
+
+
+/**
+ * Lo mismo que `gastosBancariosPorMes` pero con los **abonos**: de dónde viene
+ * el dinero que entra. Y no todo lo que entra es ingreso — una ampliación de
+ * capital o la devolución de un préstamo concedido engordan la cuenta sin ser
+ * beneficio, así que cada línea lleva su tipo:
+ *  · INGRESO — dividendos, retrocesiones de comisiones, intereses a favor.
+ *  · INVERSION — devolución de préstamos concedidos, venta de inversiones
+ *    (se recupera un activo: desinversión).
+ *  · FINANCIACION — aportaciones de capital, préstamos recibidos, devoluciones
+ *    de Hacienda.
+ * Los cobros de clientes y los traspasos entre cuentas propias quedan fuera:
+ * los primeros ya están en Ventas y los segundos no son dinero nuevo.
+ *
+ * Los importes salen **en positivo**: es quien presupuesta el que decide el
+ * signo según el tipo de línea.
+ */
+export function ingresosBancariosPorMes(
+  movimientos: { fecha: string; importe: number; categoriaId?: ID; clase: string; anuladoEn?: string }[],
+  categorias: CategoriaGasto[],
+  ejercicio: number,
+): LineaIngresoBancario[] {
+  const indice = new Map(categorias.map((c) => [c.id, c]))
+  const porCategoria = new Map<string, number[]>()
+
+  for (const m of movimientos) {
+    if (m.anuladoEn || m.importe <= 0) continue
+    if (Number(m.fecha.slice(0, 4)) !== ejercicio) continue
+    const cat = m.categoriaId ? indice.get(m.categoriaId) : undefined
+    if (!cat || ambitoDe(cat) !== 'BANCO' || flujoDe(cat) !== 'ENTRADA') continue
+    if (efectoPresupuestoDe(cat) === 'NINGUNO') continue
+
+    const meses = porCategoria.get(cat.id) ?? Array(12).fill(0)
+    const mes = Number(m.fecha.slice(5, 7)) - 1
+    if (mes < 0 || mes > 11) continue
+    meses[mes] = aEuros(aCentimos(meses[mes]) + aCentimos(m.importe))
+    porCategoria.set(cat.id, meses)
+  }
+
+  return [...porCategoria.entries()]
+    .map(([categoriaId, meses]) => {
+      const efecto = efectoPresupuestoDe(indice.get(categoriaId))
+      return {
+        categoriaId,
+        categoria: indice.get(categoriaId)?.nombre ?? categoriaId,
+        efecto: (efecto === 'NINGUNO' || efecto === 'GASTO' ? 'INGRESO' : efecto) as 'INGRESO' | 'INVERSION' | 'FINANCIACION',
         meses,
         totalAnual: aEuros(meses.reduce((s, m) => s + aCentimos(m), 0)),
       }
