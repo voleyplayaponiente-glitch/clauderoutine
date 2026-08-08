@@ -1,11 +1,12 @@
 /**
- * De dónde vienen los gastos de una cuenta bancaria.
+ * De dónde vienen los cargos de una cuenta bancaria.
  *
  * Responde a la pregunta práctica: «este mes el banco me ha quitado X, ¿por
- * qué?». Separa lo que **cobra el banco** (comisiones, mantenimiento, seguros,
- * intereses) —que es lo que se lleva al presupuesto— de lo que simplemente se
- * **paga por el banco** (alquiler, proveedores…). Lo que aún no tiene
- * naturaleza asignada se enseña en rojo: sin clasificar no hay control.
+ * qué?». Los conceptos del banco son los que **no llevan factura** (comisiones,
+ * seguros, tributos); la naturaleza del gasto de las facturas vive en Compras.
+ * Cada concepto dice qué hace en el presupuesto: gasto, pago de impuestos o
+ * deuda, o nada porque ya está contado en Compras o en Deudas. Lo que aún no
+ * está clasificado se enseña en rojo: sin clasificar no hay control.
  */
 import { useMemo, useState } from 'react'
 import { Tarjeta, Boton, ImporteEuro, formatearEuro } from '../../componentes/ui'
@@ -21,6 +22,13 @@ function rango(ejercicio: number, mes: string): { desde: string; hasta: string }
   const ultimo = new Date(Date.UTC(ejercicio, m, 0)).getUTCDate()
   const mm = String(m).padStart(2, '0')
   return { desde: `${ejercicio}-${mm}-01`, hasta: `${ejercicio}-${mm}-${ultimo}` }
+}
+
+/** Qué hace cada concepto cuando se lleva al presupuesto. */
+const ETIQUETA_EFECTO: Record<'GASTO' | 'FINANCIACION' | 'NINGUNO', string> = {
+  GASTO: 'Gasto',
+  FINANCIACION: 'Pago de impuestos o deuda',
+  NINGUNO: 'Ya contado en Compras o Deudas',
 }
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -54,9 +62,9 @@ export function GastosCuenta({
   const exportar = () => {
     exportarCSV(
       `gastos-${nombreCuenta}-${ejercicio}${mes === 'todo' ? '' : `-${mes}`}`,
-      ['Naturaleza del gasto', 'Cobrado por el banco', 'Movimientos', 'Importe'],
+      ['Concepto', 'En el presupuesto', 'Movimientos', 'Importe'],
       [
-        ...d.lineas.map((l) => [l.categoria, l.esBancaria ? 'Sí' : 'No', String(l.numMovimientos), l.total.toFixed(2)]),
+        ...d.lineas.map((l) => [l.categoria, ETIQUETA_EFECTO[l.efecto], String(l.numMovimientos), l.total.toFixed(2)]),
         ['TOTAL', '', '', d.total.toFixed(2)],
       ],
     )
@@ -66,9 +74,10 @@ export function GastosCuenta({
     <Tarjeta className="mb-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="font-semibold">Gastos de la cuenta: de dónde vienen</h3>
+          <h3 className="font-semibold">Cargos de la cuenta: de dónde vienen</h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Salidas agrupadas por naturaleza. Lo que cobra el banco va al presupuesto con «Traer deuda y gastos del banco».
+            Aquí van los conceptos que <strong>no llevan factura</strong>: comisiones, seguros, tributos. La naturaleza del gasto
+            de las facturas está en Compras. Lo que va al presupuesto entra con «Traer deuda y gastos del banco».
           </p>
         </div>
         <div className="flex items-end gap-2">
@@ -91,21 +100,23 @@ export function GastosCuenta({
         <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>No hay salidas registradas en este periodo.</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
             <Metrica etiqueta="Total salidas" valor={d.total} destacado />
-            <Metrica etiqueta="Lo cobra el banco" valor={d.totalBancario} />
+            <Metrica etiqueta="Gasto" valor={d.totalGasto} />
+            <Metrica etiqueta="Impuestos y deuda" valor={d.totalFinanciacion} />
+            <Metrica etiqueta="Ya contado" valor={d.totalYaContabilizado} />
             <Metrica etiqueta="Sin clasificar" valor={d.totalSinClasificar} alerta={d.totalSinClasificar > 0} />
           </div>
 
           {d.numSinClasificar > 0 && (
             <p className="text-xs mt-2" style={{ color: 'var(--warn)' }}>
-              {d.numSinClasificar} movimientos sin naturaleza asignada. Ponles una en la columna «Naturaleza del gasto» de la tabla
-              para que entren en el presupuesto.
+              {d.numSinClasificar} movimientos sin concepto asignado. Ponles uno en la columna «Concepto» de la tabla para que
+              entren donde toca.
             </p>
           )}
 
           <button className="text-sm underline mt-3" style={{ color: 'var(--color-brand-500)' }} onClick={() => setAbierto((v) => !v)}>
-            {abierto ? 'Ocultar desglose' : 'Ver desglose por naturaleza'}
+            {abierto ? 'Ocultar desglose' : 'Ver desglose por concepto'}
           </button>
 
           {abierto && (
@@ -113,8 +124,8 @@ export function GastosCuenta({
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ color: 'var(--text-muted)' }} className="text-left">
-                    <th className="py-2 pr-3 font-medium">Naturaleza del gasto</th>
-                    <th className="py-2 pr-3 font-medium">Origen</th>
+                    <th className="py-2 pr-3 font-medium">Concepto</th>
+                    <th className="py-2 pr-3 font-medium">En el presupuesto</th>
                     <th className="py-2 pr-3 font-medium text-right">Movs.</th>
                     <th className="py-2 font-medium text-right">Importe</th>
                   </tr>
@@ -126,7 +137,7 @@ export function GastosCuenta({
                         {l.categoria}
                       </td>
                       <td className="py-2 pr-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {l.esBancaria ? 'Lo cobra el banco' : 'Pagado por el banco'}
+                        {ETIQUETA_EFECTO[l.efecto]}
                       </td>
                       <td className="py-2 pr-3 text-right tabular">{l.numMovimientos}</td>
                       <td className="py-2 text-right"><ImporteEuro valor={l.total} /></td>

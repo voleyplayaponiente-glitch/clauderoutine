@@ -13,6 +13,28 @@ import { totalesCompra } from './compras'
 import { generarCuadro } from './amortizacion'
 import type { Compra, CategoriaGasto, Deuda, TipoDeuda, ID } from './tipos'
 
+// ─────────────────────── Ámbito de las categorías ───────────────────────
+
+/**
+ * Dónde se usa una categoría. La naturaleza del gasto (stock, alquileres,
+ * gasolina…) es de **Compras**, que es donde están las facturas; el banco tiene
+ * su propia lista para lo que no lleva factura (comisiones, seguros, tributos).
+ * Las categorías guardadas antes de esta separación no traen `ambito`: se
+ * deduce de `esBancaria`.
+ */
+export function ambitoDe(cat: CategoriaGasto): 'COMPRAS' | 'BANCO' {
+  return cat.ambito ?? (cat.esBancaria ? 'BANCO' : 'COMPRAS')
+}
+
+export function categoriasDe(categorias: CategoriaGasto[], ambito: 'COMPRAS' | 'BANCO'): CategoriaGasto[] {
+  return categorias.filter((c) => ambitoDe(c) === ambito).sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+}
+
+/** Qué hace en el presupuesto. Sin indicar, es gasto. */
+export function efectoPresupuestoDe(cat: CategoriaGasto | undefined): 'GASTO' | 'FINANCIACION' | 'NINGUNO' {
+  return cat?.efectoPresupuesto ?? 'GASTO'
+}
+
 export interface LineaResumenGasto {
   categoriaId: ID | 'sin-categoria'
   categoria: string
@@ -220,21 +242,19 @@ export function cuotasDeudaPorMes(deudas: Deuda[], ejercicio: number): LineaDeud
 export interface LineaGastoBancario {
   categoriaId: ID | 'sin-clasificar'
   categoria: string
+  /** Tipo con el que entra en el presupuesto. */
+  efecto: 'GASTO' | 'FINANCIACION'
   meses: number[]
   totalAnual: number
 }
 
-/**
- * Reparte por meses los gastos nacidos en las cuentas de tesorería (comisiones,
- * mantenimiento, seguros del banco, intereses), agrupados por su categoría.
- * Se toman los movimientos de salida ya clasificados; los que no tienen
- * categoría se agrupan aparte para que se vean y se puedan clasificar.
- */
 export interface LineaGastoCuenta {
   categoriaId: ID | 'sin-clasificar'
   categoria: string
-  /** Nace en el propio banco (comisiones, mantenimiento, seguros, intereses). */
+  /** Nace en el propio banco (comisiones, mantenimiento, intereses). */
   esBancaria: boolean
+  /** Qué hace en el presupuesto: gasto, financiación o nada (ya contado). */
+  efecto: 'GASTO' | 'FINANCIACION' | 'NINGUNO'
   total: number
   numMovimientos: number
 }
@@ -243,18 +263,24 @@ export interface DesgloseGastosCuenta {
   lineas: LineaGastoCuenta[]
   /** Todo lo que ha salido de la cuenta en el periodo. */
   total: number
-  /** La parte que cobra el banco: es la que se lleva al presupuesto. */
+  /** La parte que cobra el banco: comisiones, mantenimiento, intereses. */
   totalBancario: number
-  /** Salidas todavía sin naturaleza asignada. */
+  /** Gasto de explotación que se presupuesta desde aquí. */
+  totalGasto: number
+  /** Tributos, Seguridad Social y demás pagos de deuda ya devengada. */
+  totalFinanciacion: number
+  /** Ya contado en otro sitio (facturas, cuotas de préstamo, traspasos). */
+  totalYaContabilizado: number
+  /** Salidas todavía sin concepto asignado. */
   totalSinClasificar: number
   numSinClasificar: number
 }
 
 /**
- * Desglosa las **salidas** de una cuenta por naturaleza del gasto, para poder
- * responder a «de dónde vienen». Separa lo que cobra el propio banco de lo que
- * simplemente se paga por el banco, y deja a la vista lo que aún no se ha
- * clasificado en lugar de esconderlo en un «otros».
+ * Desglosa las **salidas** de una cuenta por concepto, para responder a «de
+ * dónde vienen». Distingue lo que cobra el banco, lo que es pago de impuestos
+ * o deuda, y lo que ya está contabilizado en otra pantalla (una factura, una
+ * cuota de préstamo). Lo que aún no se ha clasificado se enseña, no se esconde.
  */
 export function gastosCuentaPorCategoria(
   movimientos: { fecha: string; importe: number; categoriaId?: ID; clase: string; anuladoEn?: string }[],
@@ -276,6 +302,7 @@ export function gastosCuentaPorCategoria(
         categoriaId: clave,
         categoria: cat?.nombre ?? 'Sin clasificar',
         esBancaria: cat?.esBancaria === true || (!cat && m.clase === 'COMISION'),
+        efecto: cat ? efectoPresupuestoDe(cat) : 'GASTO',
         total: 0,
         numMovimientos: 0,
       } as LineaGastoCuenta)
@@ -293,11 +320,26 @@ export function gastosCuentaPorCategoria(
     lineas,
     total: sumar(() => true),
     totalBancario: sumar((l) => l.esBancaria),
+    totalGasto: sumar((l) => l.efecto === 'GASTO'),
+    totalFinanciacion: sumar((l) => l.efecto === 'FINANCIACION'),
+    totalYaContabilizado: sumar((l) => l.efecto === 'NINGUNO'),
     totalSinClasificar: sinClasificar?.total ?? 0,
     numSinClasificar: sinClasificar?.numMovimientos ?? 0,
   }
 }
 
+/**
+ * Reparte por meses lo que sale por el banco y **sí** hay que presupuestar,
+ * agrupado por concepto bancario. Deja fuera, a propósito, lo que ya entra en
+ * el presupuesto por otra puerta:
+ *  · las facturas de proveedores (el gasto está en Compras),
+ *  · las cuotas de préstamo (salen del cuadro de deuda),
+ *  · los traspasos entre cuentas propias (no son gasto).
+ * Contarlas aquí sería presupuestar dos veces lo mismo.
+ *
+ * Los tributos y la Seguridad Social entran como FINANCIACIÓN: sale dinero,
+ * pero se salda una deuda ya devengada, no se genera gasto nuevo.
+ */
 export function gastosBancariosPorMes(
   movimientos: { fecha: string; importe: number; categoriaId?: ID; clase: string; anuladoEn?: string }[],
   categorias: CategoriaGasto[],
@@ -309,11 +351,11 @@ export function gastosBancariosPorMes(
   for (const m of movimientos) {
     if (m.anuladoEn || m.importe >= 0) continue
     if (Number(m.fecha.slice(0, 4)) !== ejercicio) continue
-    // Solo lo que es un gasto del banco: o está clasificado en una categoría
-    // bancaria, o viene marcado como comisión.
     const cat = m.categoriaId ? indice.get(m.categoriaId) : undefined
-    const esGastoBanco = cat?.esBancaria === true || m.clase === 'COMISION'
-    if (!esGastoBanco) continue
+    // Sin clasificar solo se recoge lo que el banco marcó como comisión.
+    if (!cat && m.clase !== 'COMISION') continue
+    if (cat && ambitoDe(cat) !== 'BANCO') continue
+    if (cat && efectoPresupuestoDe(cat) === 'NINGUNO') continue
 
     const clave = cat?.id ?? 'sin-clasificar'
     const meses = porCategoria.get(clave) ?? Array(12).fill(0)
@@ -324,11 +366,16 @@ export function gastosBancariosPorMes(
   }
 
   return [...porCategoria.entries()]
-    .map(([categoriaId, meses]) => ({
-      categoriaId,
-      categoria: indice.get(categoriaId)?.nombre ?? 'Gastos bancarios sin clasificar',
-      meses,
-      totalAnual: aEuros(meses.reduce((s, m) => s + aCentimos(m), 0)),
-    }))
+    .map(([categoriaId, meses]) => {
+      const cat = indice.get(categoriaId)
+      const efecto = efectoPresupuestoDe(cat)
+      return {
+        categoriaId,
+        categoria: cat?.nombre ?? 'Gastos bancarios sin clasificar',
+        efecto: (efecto === 'FINANCIACION' ? 'FINANCIACION' : 'GASTO') as 'GASTO' | 'FINANCIACION',
+        meses,
+        totalAnual: aEuros(meses.reduce((s, m) => s + aCentimos(m), 0)),
+      }
+    })
     .sort((a, b) => b.totalAnual - a.totalAnual)
 }

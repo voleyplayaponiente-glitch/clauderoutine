@@ -102,6 +102,23 @@ export interface CategoriaGasto {
   esInternacional?: boolean
   /** Categoría de gasto bancario (comisiones, seguros del banco…). */
   esBancaria?: boolean
+  /**
+   * Dónde se usa. COMPRAS: naturaleza del gasto de una factura. BANCO: concepto
+   * de un movimiento de la cuenta, normalmente sin factura. Si falta, se deduce
+   * de `esBancaria` (datos guardados con la versión anterior).
+   */
+  ambito?: 'COMPRAS' | 'BANCO'
+  /**
+   * Qué hace en el presupuesto:
+   *  · GASTO — gasto de explotación (comisiones, seguros, mantenimiento).
+   *  · FINANCIACION — sale dinero pero no es gasto de P&G (impuestos del
+   *    trimestre, aplazamientos: se salda una deuda ya devengada).
+   *  · NINGUNO — no se presupuesta desde aquí porque ya viene por otro sitio
+   *    (facturas de proveedores → Compras; cuotas de préstamo → cuadro de deuda)
+   *    o porque no es un gasto (traspasos entre cuentas propias).
+   * Si falta, se trata como GASTO.
+   */
+  efectoPresupuesto?: 'GASTO' | 'FINANCIACION' | 'NINGUNO'
   orden?: number
 }
 

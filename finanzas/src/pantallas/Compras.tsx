@@ -8,7 +8,7 @@ import { EditorLineasIva } from '../componentes/EditorLineasIva'
 import { hoyISO, formatearFecha, mesDe, nombreMes, sumarDias } from '../lib/fechas'
 import { nuevoId } from '../dominio/id'
 import { totalesCompra } from '../dominio/compras'
-import { resumirCompras } from '../dominio/resumen-compras'
+import { resumirCompras, categoriasDe } from '../dominio/resumen-compras'
 import { extraerDatosFactura, type DatosFactura } from '../dominio/factura-pdf'
 import { lineasDePdf } from '../lib/extracto'
 import { ResumenMensual } from './compras/ResumenMensual'
@@ -262,9 +262,7 @@ function ListaCompras() {
                 onChange={setCategoriaUnica}
                 opciones={[
                   { valor: '', texto: '— Sin clasificar —' },
-                  ...[...config.categoriasGasto]
-                    .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
-                    .map((c) => ({ valor: c.id, texto: c.nombre })),
+                  ...categoriasDe(config.categoriasGasto, 'COMPRAS').map((c) => ({ valor: c.id, texto: c.nombre })),
                 ]}
               />
               <div>

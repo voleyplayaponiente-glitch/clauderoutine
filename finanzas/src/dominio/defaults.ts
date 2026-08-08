@@ -95,32 +95,53 @@ export const OBLIGACIONES_FISCALES_DEFECTO: ObligacionFiscal[] = [
 
 export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
   // Compras de mercadería. El stock internacional puede traer impuesto especial.
-  { id: 'cat-stock-nac', nombre: 'Stock nacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, orden: 1 },
-  { id: 'cat-stock-int', nombre: 'Stock internacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, esInternacional: true, orden: 2 },
+  { id: 'cat-stock-nac', nombre: 'Stock nacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, orden: 1, ambito: 'COMPRAS' },
+  { id: 'cat-stock-int', nombre: 'Stock internacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, esInternacional: true, orden: 2, ambito: 'COMPRAS' },
   // Estructura.
-  { id: 'cat-alquiler', nombre: 'Alquileres', cuentaPGC: '621', deduciblePorDefecto: true, orden: 3 },
-  { id: 'cat-gastos-ventas', nombre: 'Gastos de ventas', cuentaPGC: '624', deduciblePorDefecto: true, orden: 4 },
-  { id: 'cat-gasolina', nombre: 'Gasolina deducible', cuentaPGC: '628', deduciblePorDefecto: true, orden: 5 },
-  { id: 'cat-gasolina-nd', nombre: 'Gasolina NO deducible', cuentaPGC: '628', deduciblePorDefecto: false, orden: 6 },
-  { id: 'cat-oficina', nombre: 'Gastos de oficina', cuentaPGC: '629', deduciblePorDefecto: true, orden: 7 },
-  { id: 'cat-alarma', nombre: 'Alarma', cuentaPGC: '629', deduciblePorDefecto: true, orden: 8 },
-  { id: 'cat-telefono', nombre: 'Teléfono', cuentaPGC: '629', deduciblePorDefecto: true, orden: 9 },
-  { id: 'cat-wifi', nombre: 'Wifi', cuentaPGC: '629', deduciblePorDefecto: true, orden: 10 },
-  { id: 'cat-luz', nombre: 'Luz', cuentaPGC: '628', deduciblePorDefecto: true, orden: 11 },
-  { id: 'cat-mantenimiento', nombre: 'Mantenimiento', cuentaPGC: '622', deduciblePorDefecto: true, orden: 12 },
-  { id: 'cat-mantenimiento-nd', nombre: 'Mantenimiento NO deducible', cuentaPGC: '622', deduciblePorDefecto: false, orden: 13 },
-  { id: 'cat-marketing', nombre: 'Marketing y publicidad', cuentaPGC: '627', deduciblePorDefecto: true, orden: 14 },
-  { id: 'cat-gestoria', nombre: 'Gestoría', cuentaPGC: '623', deduciblePorDefecto: true, orden: 15 },
-  { id: 'cat-renting', nombre: 'Renting de vehículos', cuentaPGC: '621', deduciblePorDefecto: true, orden: 16 },
-  { id: 'cat-ia', nombre: 'Gastos de IA', cuentaPGC: '629', deduciblePorDefecto: true, orden: 17 },
-  { id: 'cat-tpv', nombre: 'Gastos de TPV', cuentaPGC: '626', deduciblePorDefecto: true, orden: 18 },
-  { id: 'cat-varios-tiendas', nombre: 'Gastos varios de tiendas', cuentaPGC: '629', deduciblePorDefecto: true, orden: 19 },
-  { id: 'cat-generales', nombre: 'Gastos generales', cuentaPGC: '629', deduciblePorDefecto: true, orden: 20 },
-  // Gastos que nacen en la propia cuenta bancaria.
-  { id: 'cat-banco-comision', nombre: 'Comisiones bancarias', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, orden: 21 },
-  { id: 'cat-banco-mantenimiento', nombre: 'Mantenimiento de cuenta', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, orden: 22 },
-  { id: 'cat-banco-seguro', nombre: 'Seguros del banco', cuentaPGC: '625', deduciblePorDefecto: true, esBancaria: true, orden: 23 },
-  { id: 'cat-banco-intereses', nombre: 'Intereses y gastos financieros', cuentaPGC: '662', deduciblePorDefecto: true, esBancaria: true, orden: 24 },
+  { id: 'cat-alquiler', nombre: 'Alquileres', cuentaPGC: '621', deduciblePorDefecto: true, orden: 3, ambito: 'COMPRAS' },
+  { id: 'cat-gastos-ventas', nombre: 'Gastos de ventas', cuentaPGC: '624', deduciblePorDefecto: true, orden: 4, ambito: 'COMPRAS' },
+  { id: 'cat-gasolina', nombre: 'Gasolina deducible', cuentaPGC: '628', deduciblePorDefecto: true, orden: 5, ambito: 'COMPRAS' },
+  { id: 'cat-gasolina-nd', nombre: 'Gasolina NO deducible', cuentaPGC: '628', deduciblePorDefecto: false, orden: 6, ambito: 'COMPRAS' },
+  { id: 'cat-oficina', nombre: 'Gastos de oficina', cuentaPGC: '629', deduciblePorDefecto: true, orden: 7, ambito: 'COMPRAS' },
+  { id: 'cat-alarma', nombre: 'Alarma', cuentaPGC: '629', deduciblePorDefecto: true, orden: 8, ambito: 'COMPRAS' },
+  { id: 'cat-telefono', nombre: 'Teléfono', cuentaPGC: '629', deduciblePorDefecto: true, orden: 9, ambito: 'COMPRAS' },
+  { id: 'cat-wifi', nombre: 'Wifi', cuentaPGC: '629', deduciblePorDefecto: true, orden: 10, ambito: 'COMPRAS' },
+  { id: 'cat-luz', nombre: 'Luz', cuentaPGC: '628', deduciblePorDefecto: true, orden: 11, ambito: 'COMPRAS' },
+  { id: 'cat-mantenimiento', nombre: 'Mantenimiento', cuentaPGC: '622', deduciblePorDefecto: true, orden: 12, ambito: 'COMPRAS' },
+  { id: 'cat-mantenimiento-nd', nombre: 'Mantenimiento NO deducible', cuentaPGC: '622', deduciblePorDefecto: false, orden: 13, ambito: 'COMPRAS' },
+  { id: 'cat-marketing', nombre: 'Marketing y publicidad', cuentaPGC: '627', deduciblePorDefecto: true, orden: 14, ambito: 'COMPRAS' },
+  { id: 'cat-gestoria', nombre: 'Gestoría', cuentaPGC: '623', deduciblePorDefecto: true, orden: 15, ambito: 'COMPRAS' },
+  { id: 'cat-renting', nombre: 'Renting de vehículos', cuentaPGC: '621', deduciblePorDefecto: true, orden: 16, ambito: 'COMPRAS' },
+  { id: 'cat-ia', nombre: 'Gastos de IA', cuentaPGC: '629', deduciblePorDefecto: true, orden: 17, ambito: 'COMPRAS' },
+  { id: 'cat-tpv', nombre: 'Gastos de TPV', cuentaPGC: '626', deduciblePorDefecto: true, orden: 18, ambito: 'COMPRAS' },
+  { id: 'cat-varios-tiendas', nombre: 'Gastos varios de tiendas', cuentaPGC: '629', deduciblePorDefecto: true, orden: 19, ambito: 'COMPRAS' },
+  { id: 'cat-generales', nombre: 'Gastos generales', cuentaPGC: '629', deduciblePorDefecto: true, orden: 20, ambito: 'COMPRAS' },
+  // ── Conceptos del banco (ámbito BANCO) ──
+  // Aquí NO se repite la naturaleza del gasto de las facturas: lo que se paga
+  // con factura ya está contado en Compras. Esta lista es para lo que nace en
+  // la cuenta y normalmente no lleva factura.
+  //
+  // «Facturas de proveedores» existe para poder clasificar el cargo y que
+  // cuadre el extracto, pero NO se presupuesta: el gasto está en la factura.
+  { id: 'cat-bco-facturas', nombre: 'Facturas de proveedores (ya en Compras)', cuentaPGC: '400', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 21 },
+  { id: 'cat-bco-comision-tpv', nombre: 'Comisiones de TPV', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 22 },
+  { id: 'cat-banco-comision', nombre: 'Comisiones bancarias', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 23 },
+  { id: 'cat-banco-mantenimiento', nombre: 'Gastos de mantenimiento', cuentaPGC: '626', deduciblePorDefecto: true, esBancaria: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 24 },
+  { id: 'cat-banco-intereses', nombre: 'Intereses y gastos financieros', cuentaPGC: '662', deduciblePorDefecto: true, esBancaria: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 25 },
+  // Seguros: se domicilian y no llevan factura de compra.
+  { id: 'cat-banco-seguro', nombre: 'Seguro de responsabilidad civil', cuentaPGC: '625', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 26 },
+  { id: 'cat-bco-seguro-vida', nombre: 'Seguro de vida', cuentaPGC: '625', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 27 },
+  { id: 'cat-bco-seguro-salud', nombre: 'Seguro de salud', cuentaPGC: '625', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 28 },
+  // Tributos: pagar el trimestre o la cuota de un aplazamiento salda una deuda
+  // ya devengada; sale dinero, pero no es gasto de P&G. Va como financiación.
+  { id: 'cat-bco-tributos-trimestre', nombre: 'Tributos: trimestre corriente (303, 111, 115…)', cuentaPGC: '475', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 29 },
+  { id: 'cat-bco-tributos-aplazamiento', nombre: 'Tributos: cuota de aplazamiento', cuentaPGC: '475', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 30 },
+  { id: 'cat-bco-seg-social', nombre: 'Seguridad Social', cuentaPGC: '476', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 31 },
+  // La cuota del préstamo ya entra en el presupuesto por el cuadro de deuda:
+  // si además se contase aquí, se presupuestaría dos veces.
+  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 32 },
+  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 33 },
+  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 34 },
 ]
 
 /**
