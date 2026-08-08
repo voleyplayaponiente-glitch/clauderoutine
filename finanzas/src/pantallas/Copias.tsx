@@ -11,6 +11,7 @@ import type { Backup } from '../dominio/backup'
 export function Copias() {
   const config = useStore((s) => s.config)
   const datos = useStore((s) => s.datos)
+  const grupo = useStore((s) => s.grupo)
   const restaurarTodo = useStore((s) => s.restaurarTodo)
   const hoy = hoyISO()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -36,7 +37,7 @@ export function Copias() {
   const confirmarRestauracion = () => {
     if (!candidato) return
     // Backup previo de seguridad de los datos actuales antes de sobrescribir.
-    descargarBackupJson(config, datos, `previo-${hoy}`)
+    descargarBackupJson(config, datos, `previo-${hoy}`, grupo)
     restaurarTodo(candidato.backup.config, candidato.backup.datos)
     setMensaje({ tipo: 'positivo', texto: `Restaurado desde ${candidato.origen}. Se descargó un backup previo de seguridad.` })
     setCandidato(null)
@@ -53,7 +54,7 @@ export function Copias() {
           <h3 className="font-semibold mb-1">Copia manual</h3>
           <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Descarga todos tus datos en formato abierto. El JSON incluye un checksum de integridad.</p>
           <div className="flex gap-2">
-            <Boton onClick={() => descargarBackupJson(config, datos, hoy)}>Descargar JSON</Boton>
+            <Boton onClick={() => descargarBackupJson(config, datos, hoy, grupo)}>Descargar JSON</Boton>
             <Boton variante="secundario" onClick={() => void descargarBackupExcel(datos, hoy)}>Descargar Excel</Boton>
           </div>
         </Tarjeta>

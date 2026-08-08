@@ -20,6 +20,7 @@ import {
 import { agregadoDelGrupo } from '../lib/grupo'
 import type { AgregadoGrupo } from '../dominio/grupo'
 import { validarNifCif } from '../dominio/validacion'
+import { PanelAccionariado } from './grupo/PanelAccionariado'
 
 function Aviso({ children }: { children: React.ReactNode }) {
   return (
@@ -245,6 +246,9 @@ export function Grupo() {
           </div>
         )}
       </Tarjeta>
+
+      {/* ── Accionariado ── */}
+      <PanelAccionariado />
 
       {/* ── Vista agregada ── */}
       <Tarjeta>

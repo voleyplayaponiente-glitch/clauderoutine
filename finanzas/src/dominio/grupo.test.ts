@@ -29,6 +29,7 @@ function grupoEjemplo(): Grupo {
     nombre: 'Grupo',
     empresas: [empresa('H', 'Holding SL', true), empresa('A', 'Tienda A SL'), empresa('B', 'Tienda B SL'), empresa('C', 'Online C SL')],
     participaciones: [part('p1', 'H', 'A', 100), part('p2', 'H', 'B', 60), part('p3', 'A', 'C', 50)],
+    socios: [],
     empresaActivaId: 'H',
   }
 }
@@ -161,6 +162,7 @@ describe('porcentaje efectivo', () => {
         part('p3', 'A', 'C', 50),
         part('p4', 'B', 'C', 50),
       ],
+      socios: [],
       empresaActivaId: 'H',
     }
     // 60 %×50 % + 40 %×50 % = 30 + 20 = 50

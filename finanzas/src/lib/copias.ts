@@ -7,6 +7,7 @@ import { construirBackup, verificarIntegridad, type Backup } from '../dominio/ba
 import { cargarSnapshots, guardarSnapshots } from './db'
 import { parseJsonSeguro } from './backup'
 import type { Configuracion, DatosOperativos } from '../dominio/tipos'
+import type { Grupo } from '../dominio/grupo'
 
 const RETENCION_DIARIOS = 7
 
@@ -20,8 +21,8 @@ function descargar(contenido: string, nombre: string, tipo: string) {
   URL.revokeObjectURL(url)
 }
 
-export function descargarBackupJson(config: Configuracion, datos: DatosOperativos, fecha: string): void {
-  const backup = construirBackup(config, datos, fecha)
+export function descargarBackupJson(config: Configuracion, datos: DatosOperativos, fecha: string, grupo?: Grupo): void {
+  const backup = construirBackup(config, datos, fecha, grupo)
   descargar(JSON.stringify(backup, null, 2), `backup-finanzas-${fecha}.json`, 'application/json')
 }
 
@@ -50,10 +51,10 @@ export async function leerBackup(file: File): Promise<Backup> {
 }
 
 /** Crea un snapshot diario si aún no existe uno de hoy, respetando la retención. */
-export async function crearSnapshotDiario(config: Configuracion, datos: DatosOperativos, fecha: string): Promise<void> {
+export async function crearSnapshotDiario(config: Configuracion, datos: DatosOperativos, fecha: string, grupo?: Grupo): Promise<void> {
   const snapshots = await cargarSnapshots()
   if (snapshots.some((s) => s.fecha.slice(0, 10) === fecha.slice(0, 10))) return
-  const nuevo = construirBackup(config, datos, fecha)
+  const nuevo = construirBackup(config, datos, fecha, grupo)
   const lista = [nuevo, ...snapshots].slice(0, RETENCION_DIARIOS)
   await guardarSnapshots(lista)
 }

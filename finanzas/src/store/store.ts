@@ -26,6 +26,7 @@ import {
   type EmpresaResumen,
   type Participacion,
 } from '../dominio/grupo'
+import { validarSocio, type Socio } from '../dominio/socios'
 
 type Tema = 'claro' | 'oscuro'
 
@@ -56,6 +57,10 @@ interface Estado {
   renombrarGrupo: (nombre: string) => void
   guardarParticipacion: (p: Participacion) => { ok: boolean; motivo?: string }
   eliminarParticipacion: (id: string) => void
+  actualizarFichaEmpresa: (empresaId: string, parcial: Partial<EmpresaResumen>) => void
+  // Accionariado
+  guardarSocio: (s: Socio) => { ok: boolean; motivo?: string }
+  eliminarSocio: (id: string) => void
   alternarTema: () => void
   actualizarConfig: (parcial: Partial<Configuracion>) => void
   reemplazarConfig: (config: Configuracion) => void
@@ -158,13 +163,13 @@ function upsert<T extends { id: string }>(lista: T[], item: T): T[] {
 export const useStore = create<Estado>((set, get) => ({
   loaded: false,
   tema: 'claro',
-  grupo: { version: 1, nombre: 'Mi grupo', empresas: [], participaciones: [], empresaActivaId: '' },
+  grupo: { version: 1, nombre: 'Mi grupo', empresas: [], participaciones: [], socios: [], empresaActivaId: '' },
   config: configuracionInicial(),
   datos: datosIniciales(),
 
   init: async () => {
     const tema = await cargarTema()
-    let grupo = await cargarGrupo()
+    let grupo = migrarGrupo(await cargarGrupo())
 
     if (!grupo) {
       // Primer arranque tras el cambio a multi-empresa: se crea el grupo con una
@@ -205,7 +210,7 @@ export const useStore = create<Estado>((set, get) => ({
     // Si no había nada guardado, deja la config inicial persistida.
     if (!config) void guardarConfig(empresaId, get().config)
     // Copia de seguridad automática diaria (retención gestionada en la capa lib).
-    void import('../lib/copias').then((m) => m.crearSnapshotDiario(get().config, get().datos, new Date().toISOString()))
+    void import('../lib/copias').then((m) => m.crearSnapshotDiario(get().config, get().datos, new Date().toISOString(), get().grupo))
   },
 
   cambiarEmpresa: async (empresaId) => {
@@ -288,6 +293,30 @@ export const useStore = create<Estado>((set, get) => ({
 
   eliminarParticipacion: (id) => {
     const grupo = { ...get().grupo, participaciones: get().grupo.participaciones.filter((p) => p.id !== id) }
+    set({ grupo })
+    void guardarGrupo(grupo)
+  },
+
+  actualizarFichaEmpresa: (empresaId, parcial) => {
+    const grupo = {
+      ...get().grupo,
+      empresas: get().grupo.empresas.map((e) => (e.id === empresaId ? { ...e, ...parcial } : e)),
+    }
+    set({ grupo })
+    void guardarGrupo(grupo)
+  },
+
+  guardarSocio: (socio) => {
+    const v = validarSocio(socio)
+    if (!v.valido) return { ok: false, motivo: v.motivo }
+    const grupo = { ...get().grupo, socios: upsert(get().grupo.socios, socio) }
+    set({ grupo })
+    void guardarGrupo(grupo)
+    return { ok: true }
+  },
+
+  eliminarSocio: (id) => {
+    const grupo = { ...get().grupo, socios: get().grupo.socios.filter((s) => s.id !== id) }
     set({ grupo })
     void guardarGrupo(grupo)
   },
@@ -518,6 +547,12 @@ export const useStore = create<Estado>((set, get) => ({
     sincronizarFichaGrupo(set, get, c)
   },
 }))
+
+/** Rellena los campos que no existían en versiones anteriores del grupo guardado. */
+function migrarGrupo(g: Grupo | undefined): Grupo | undefined {
+  if (!g) return undefined
+  return { ...g, socios: g.socios ?? [], participaciones: g.participaciones ?? [], empresas: g.empresas ?? [] }
+}
 
 /** Mantiene el índice del grupo alineado con la configuración de la empresa activa. */
 function sincronizarFichaGrupo(

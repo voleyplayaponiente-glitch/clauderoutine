@@ -13,6 +13,7 @@
  * consolidadas. La UI debe decirlo de forma visible.
  */
 import type { ID } from './tipos'
+import type { Socio } from './socios'
 
 export const VERSION_GRUPO = 1
 
@@ -25,6 +26,8 @@ export interface EmpresaResumen {
   esHolding: boolean
   creadaEn: string
   color?: string
+  /** Capital social escriturado (Registro Mercantil), en euros. */
+  capitalSocial?: number
 }
 
 /** Participación de una empresa (matriz) en el capital de otra (participada). */
@@ -41,6 +44,8 @@ export interface Grupo {
   nombre: string
   empresas: EmpresaResumen[]
   participaciones: Participacion[]
+  /** Libro registro de socios de cada empresa (personas y terceros ajenos al grupo). */
+  socios: Socio[]
   empresaActivaId: ID
 }
 
@@ -67,7 +72,7 @@ export const ETIQUETA_RELACION: Record<Relacion, string> = {
 }
 
 export function grupoInicial(empresa: EmpresaResumen, nombre = 'Mi grupo'): Grupo {
-  return { version: VERSION_GRUPO, nombre, empresas: [empresa], participaciones: [], empresaActivaId: empresa.id }
+  return { version: VERSION_GRUPO, nombre, empresas: [empresa], participaciones: [], socios: [], empresaActivaId: empresa.id }
 }
 
 export function empresaPorId(grupo: Grupo, id: ID): EmpresaResumen | undefined {

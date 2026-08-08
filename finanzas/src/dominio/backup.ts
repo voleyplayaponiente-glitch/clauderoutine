@@ -4,6 +4,7 @@
  * de restaurar. Formato abierto (JSON) para no depender del proveedor.
  */
 import type { Configuracion, DatosOperativos } from './tipos'
+import type { Grupo } from './grupo'
 
 export const VERSION_BACKUP = 1
 
@@ -14,6 +15,22 @@ export interface Backup {
   checksum: string
   config: Configuracion
   datos: DatosOperativos
+  /**
+   * Estructura societaria (empresas, participaciones y socios) en el momento de
+   * la copia. Viaja en el fichero para que no se pierda al cambiar de
+   * dispositivo. Es opcional: los backups anteriores al multi-empresa no la
+   * traen y siguen siendo válidos.
+   */
+  grupo?: Grupo
+}
+
+/**
+ * Contenido sobre el que se calcula el checksum. Incluye el grupo solo cuando
+ * existe, de modo que un backup antiguo (sin grupo) verifica con la misma
+ * fórmula con la que se creó.
+ */
+function contenidoFirmado(config: Configuracion, datos: DatosOperativos, grupo?: Grupo) {
+  return grupo ? { config, datos, grupo } : { config, datos }
 }
 
 /**
@@ -54,9 +71,17 @@ export function redactarCredenciales(config: Configuracion): Configuracion {
 }
 
 /** Construye un backup con su checksum. `fecha` se pasa desde fuera (motor puro). */
-export function construirBackup(config: Configuracion, datos: DatosOperativos, fecha: string): Backup {
+export function construirBackup(config: Configuracion, datos: DatosOperativos, fecha: string, grupo?: Grupo): Backup {
   const limpia = redactarCredenciales(config)
-  return { version: VERSION_BACKUP, tipo: 'backup-completo', fecha, checksum: calcularChecksum({ config: limpia, datos }), config: limpia, datos }
+  return {
+    version: VERSION_BACKUP,
+    tipo: 'backup-completo',
+    fecha,
+    checksum: calcularChecksum(contenidoFirmado(limpia, datos, grupo)),
+    config: limpia,
+    datos,
+    ...(grupo ? { grupo } : {}),
+  }
 }
 
 /** Verifica que el backup es estructuralmente válido y su checksum coincide. */
@@ -66,7 +91,7 @@ export function verificarIntegridad(b: unknown): { valido: boolean; motivo?: str
   if (bk.tipo !== 'backup-completo') return { valido: false, motivo: 'No es un backup completo' }
   if (!bk.config || !bk.datos) return { valido: false, motivo: 'Faltan datos o configuración' }
   if (!bk.checksum) return { valido: false, motivo: 'El backup no tiene checksum' }
-  const recalculado = calcularChecksum({ config: bk.config, datos: bk.datos })
+  const recalculado = calcularChecksum(contenidoFirmado(bk.config, bk.datos, bk.grupo))
   if (recalculado !== bk.checksum) return { valido: false, motivo: 'El checksum no coincide: el backup está corrupto o alterado' }
   return { valido: true }
 }
