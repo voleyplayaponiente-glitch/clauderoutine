@@ -125,6 +125,7 @@ export function resumenBackup(datos: DatosOperativos): { clave: string; etiqueta
     terceros: 'Terceros', ventas: 'Ventas', compras: 'Compras', cuentasTesoreria: 'Cuentas', movimientos: 'Mov. tesorería',
     arqueos: 'Arqueos', almacenes: 'Almacenes', articulos: 'Artículos', movimientosStock: 'Mov. stock',
     deudas: 'Deudas', deudores: 'Deudores', presupuestos: 'Presupuestos', importaciones: 'Importaciones', recurrentes: 'Recurrentes',
+    inversiones: 'Inversiones', operacionesInversion: 'Op. inversión', valoracionesInversion: 'Valoraciones',
   }
   return Object.entries(et).map(([clave, etiqueta]) => ({ clave, etiqueta, n: Array.isArray((datos as any)[clave]) ? (datos as any)[clave].length : 0 }))
 }

@@ -16,7 +16,7 @@ function datosVacios(): DatosOperativos {
   return {
     terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [],
     almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [],
-    logsSync: [],
+    logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [],
   }
 }
 

@@ -17,6 +17,7 @@ import { Presupuesto } from './pantallas/Presupuesto'
 import { Informes } from './pantallas/Informes'
 import { Copias } from './pantallas/Copias'
 import { Grupo } from './pantallas/Grupo'
+import { Inversiones } from './pantallas/Inversiones'
 import { PantallaModulo } from './pantallas/Pantalla'
 
 // Carga diferida: dashboard y previsión usan Recharts, que no debe pesar en el arranque.
@@ -45,6 +46,7 @@ function Contenido() {
   if (modulo.id === 'informes') return <Informes />
   if (modulo.id === 'copias') return <Copias />
   if (modulo.id === 'grupo') return <Grupo />
+  if (modulo.id === 'inversiones') return <Inversiones />
   return <PantallaModulo modulo={modulo} />
 }
 

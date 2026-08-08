@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 260 tests (Vitest) del motor
+npm test         # 298 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -120,6 +120,26 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
 - La importación **siempre pasa por previsualización** (`ModalImportarExtracto`): se ven los
   movimientos leídos, la suma y las líneas descartadas con su motivo antes de tocar nada.
 
+## Inversiones (`dominio/inversiones.ts`)
+Cartera de fondos, acciones, cripto, inmuebles, depósitos y préstamos concedidos.
+Cuatro reglas del PGC que **no se negocian**:
+1. El **coste incluye los gastos** de compra (comisiones, ITP, notaría). NRV 9.ª.
+2. **La plusvalía latente NO es beneficio**: se muestra aparte, en gris y con la coletilla
+   «no es beneficio», y jamás entra en el resultado ni genera asiento.
+3. **La minusvalía latente SÍ**: si el valor cae bajo el coste, `deterioroSugerido` lo dice en
+   rojo. La asimetría es deliberada (prudencia).
+4. **El terreno no se amortiza**, solo la construcción: el inmueble guarda las dos partes y
+   `amortizacionAnualInmueble` solo divide la construcción.
+- Al vender se da de baja el **precio medio ponderado** (criterio del PGC, no FIFO), igual que
+  el almacén. La diferencia con el neto cobrado va a 766 (beneficio) o 666 (pérdida).
+- Cripto con **8 decimales**; fondos con 6.
+- **Genera asientos**: `asientosInversion` se engancha en `lib/contabilidad.ts`, así que las
+  inversiones entran en sumas y saldos, balance y P&G. Verificado en navegador que el libro
+  cuadra (206.305 € debe = haber) y que el saldo de la 250 coincide con el coste de la cartera.
+- La cripto **no tiene cuenta oficial en el PGC** (el ICAC la trata como intangible si es
+  inversión, o existencias si el negocio es comprar y vender): la cuenta es editable y la app
+  avisa de que se confirme con la asesoría.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -133,7 +153,7 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos (260 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones (298 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

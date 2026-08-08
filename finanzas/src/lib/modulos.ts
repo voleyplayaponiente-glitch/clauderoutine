@@ -21,6 +21,7 @@ export const MODULOS: Modulo[] = [
   { id: 'stock', ruta: '/stock', titulo: 'Stock', grupo: 'Operativa', icono: 'stock', resumen: 'Maestro de artículos, multi-almacén, valoración a coste medio e inventario.', fase: 4 },
   { id: 'importacion', ruta: '/importacion', titulo: 'Importación', grupo: 'Sistema', icono: 'importar', resumen: 'Carga de Excel, CSV y PDF con mapeo de columnas y previsualización validada.', fase: 5 },
   { id: 'deudas', ruta: '/deudas', titulo: 'Deudas', grupo: 'Tesorería', icono: 'deuda', resumen: 'Préstamos, leasing y acreedores con cuadro de amortización y vencimientos.', fase: 6 },
+  { id: 'inversiones', ruta: '/inversiones', titulo: 'Inversiones', grupo: 'Tesorería', icono: 'inversion', resumen: 'Fondos, acciones, criptomonedas e inmuebles: coste, valor de mercado y plusvalía latente.', fase: 14 },
   { id: 'deudores', ruta: '/deudores', titulo: 'Deudores', grupo: 'Tesorería', icono: 'deudor', resumen: 'Cobros pendientes, antigüedad de saldos y provisión por insolvencia.', fase: 6 },
   { id: 'presupuesto', ruta: '/presupuesto', titulo: 'Presupuesto y cash flow', grupo: 'Planificación', icono: 'presupuesto', resumen: 'Presupuesto anual por centro de coste y cash flow con desviación vs. real.', fase: 7 },
   { id: 'tesoreria', ruta: '/tesoreria', titulo: 'Previsión de tesorería', grupo: 'Planificación', icono: 'tesoreria', resumen: 'Saldo diario proyectado a 30/60/90 días con alerta de tensión de liquidez.', fase: 7 },

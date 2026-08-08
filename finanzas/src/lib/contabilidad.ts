@@ -1,9 +1,10 @@
 /**
  * Genera la lista completa de asientos a partir de los datos operativos:
- * ventas, compras y regularizaciones de inventario. Alimenta los libros
- * contables (sumas y saldos, balance, P&G).
+ * ventas, compras, inversiones y regularizaciones de inventario. Alimenta los
+ * libros contables (sumas y saldos, balance, P&G).
  */
 import { asientoVenta, asientoCompra } from '../dominio/asientos'
+import { asientosInversion } from '../dominio/inversiones'
 import { asientoRegularizacion } from '../dominio/inventario'
 import { cuadreVenta } from '../dominio/ventas'
 import type { Asiento } from '../dominio/partida-doble'
@@ -26,6 +27,13 @@ export function generarAsientos(datos: DatosOperativos, anio?: number): Asiento[
   for (const c of datos.compras) {
     if (c.anuladoEn || !enAnio(c.fechaFactura)) continue
     asientos.push(asientoCompra(c))
+  }
+  // Inversiones: compras, ventas (con su 766/666), dividendos y gastos.
+  for (const inv of datos.inversiones ?? []) {
+    if (inv.anuladoEn) continue
+    for (const a of asientosInversion(inv, datos.operacionesInversion ?? [])) {
+      if (enAnio(a.fecha)) asientos.push(a)
+    }
   }
   for (const m of datos.movimientosStock) {
     if (m.anuladoEn || m.tipo !== 'REGULARIZACION' || !enAnio(m.fecha)) continue
