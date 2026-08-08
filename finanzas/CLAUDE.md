@@ -117,6 +117,10 @@ Libro registro de socios por empresa, dentro de `grupo.socios`.
   del parser antiguo y ofrece seleccionarlos de golpe.
 - Cada importación registra un `LoteImportacion` (destino `movimientos-banco`) con los ids
   insertados, así que se puede deshacer una tanda entera.
+- **Conciliar** = dejar constancia de que ese apunte se ha cotejado con el extracto del banco.
+  El contador «No conciliados» es la lista de pendientes de comprobar. Se marca uno a uno con el
+  Sí/No de su fila, o **en bloque** seleccionando y pulsando «Conciliar N» / «Desconciliar»
+  (`conciliarMovimientos` en el store, una sola escritura). Es reversible y no altera importes.
 - La importación **siempre pasa por previsualización** (`ModalImportarExtracto`): se ven los
   movimientos leídos, la suma y las líneas descartadas con su motivo antes de tocar nada.
 

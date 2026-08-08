@@ -81,6 +81,7 @@ interface Estado {
   /** Importa movimientos y, si se indica el fichero, deja una tanda deshacible. */
   importarMovimientos: (ms: MovimientoTesoreria[], nombreFichero?: string) => number
   conciliarMovimiento: (id: string, conciliado: boolean) => void
+  conciliarMovimientos: (ids: string[], conciliado: boolean) => number
   guardarArqueo: (a: ArqueoCaja) => void
   // Stock
   guardarAlmacen: (a: Almacen) => void
@@ -451,6 +452,21 @@ export const useStore = create<Estado>((set, get) => ({
     const datos = { ...get().datos, movimientos }
     set({ datos })
     persistirDatos(datos)
+  },
+  conciliarMovimientos: (ids, conciliado) => {
+    const objetivo = new Set(ids)
+    if (objetivo.size === 0) return 0
+    let n = 0
+    const movimientos = get().datos.movimientos.map((m) => {
+      if (!objetivo.has(m.id) || m.conciliado === conciliado) return m
+      n++
+      return { ...m, conciliado }
+    })
+    if (n === 0) return 0
+    const datos = { ...get().datos, movimientos }
+    set({ datos })
+    persistirDatos(datos)
+    return n
   },
   guardarArqueo: (a) => {
     const datos = { ...get().datos, arqueos: upsert(get().datos.arqueos, a) }
