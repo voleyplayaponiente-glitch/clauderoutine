@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 375 tests (Vitest) del motor
+npm test         # 384 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -222,8 +222,33 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
   dejaría los movimientos apuntando a un centro inexistente. No regenerarlos con `nuevoId()`.
 - `fusionarCentros` (store) los añade a las configuraciones ya guardadas sin pisar lo que el
   usuario haya editado (nombre, tipo, `activoHasta`), igual que `fusionarCategorias`.
-- El tipo de punto de venta de cada uno es una suposición por el nombre y es editable en
-  Configuración → Centros de coste.
+- Tipos: los tres «GV/Alfafar» son **stands** en centro comercial, San Juan es **tienda** y
+  VAPESPACE.ES es la **web**. Editables en Configuración → Centros de coste.
+
+## Tarjetas de empresa
+`TARJETAS_DEFECTO`: Bankinter · BBVA · Sabadell · CaixaBank (ids `tar-<banco>`, editables).
+- **«Pagado con tarjeta» a secas no vale**: sin saber cuál, el cargo no se puede cuadrar con el
+  extracto del banco que la emite. Al elegir forma de pago TARJETA aparece el selector, y en el
+  listado sale la tarjeta o un «tarjeta sin indicar» en ámbar.
+- `Compra.tarjetaId` solo tiene sentido con `formaPago === 'TARJETA'`; al cambiar de forma de
+  pago se limpia.
+
+## Archivo de documentos y carpeta para la gestoría
+- **`lib/adjuntos.ts`**: cada PDF vive en su propia clave (`finanzas:adjunto:<empresa>:<id>`),
+  NO dentro de `DatosOperativos`. Si fuera dentro, cada guardado reescribiría megas de PDF.
+  La compra solo guarda `adjuntoId` + nombre, tipo y tamaño.
+- La factura que se sube con «Subir factura en PDF» **se archiva sola**; el adjunto manual del
+  formulario también. En el listado aparece un enlace «PDF» que la abre.
+- **`dominio/zip.ts`** (puro): escritor de ZIP sin dependencias, método *almacenado* (un PDF ya
+  viene comprimido; meter una librería de deflate no compensa y la CSP no admite CDN). CRC-32
+  propio, nombres en UTF-8 (bit 11), nombres repetidos numerados. Verificado con `unzip -t` real.
+- **«Carpeta para la gestoría»** (resumen de Compras) descarga `compras-AAAA-MM.zip` con el
+  resumen por naturaleza, el listado de facturas y `facturas/` con los PDF. Lo que no tenga
+  documento se marca **SIN DOCUMENTO** en el listado y se dice en el aviso; no se calla.
+- **Los CSV que salen para la gestoría llevan coma decimal** (`numeroCsv` en `lib/exportar.ts`):
+  con punto, Excel en español los trata como texto y no se pueden sumar.
+- **Aviso pendiente**: los PDF NO viajan en el backup JSON (los volvería enormes). El archivo se
+  lleva de un equipo a otro con el ZIP mensual.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
@@ -238,7 +263,7 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (375 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (384 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

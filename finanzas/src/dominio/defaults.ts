@@ -14,6 +14,7 @@ import type {
   ObligacionFiscal,
   CategoriaGasto,
   CentroCoste,
+  Tarjeta,
   Umbrales,
 } from './tipos'
 
@@ -98,7 +99,8 @@ export const OBLIGACIONES_FISCALES_DEFECTO: ObligacionFiscal[] = [
  * Puntos de venta del grupo. Se precargan para no tener que teclearlos, pero
  * son **datos de configuración editables**: se les cambia el nombre, el tipo o
  * el código, y se pueden cerrar (`activoHasta`) o añadir otros nuevos.
- * El tipo de cada uno es una suposición razonable por el nombre; confírmalo.
+ * Los tres «GV/Alfafar» son stands en centro comercial; San Juan es tienda y
+ * VAPESPACE.ES es la venta online.
  */
 // Los ids son FIJOS a propósito: una compra o una venta guardan el id del
 // centro, así que no pueden cambiar entre recargas.
@@ -107,9 +109,21 @@ const SELLO = { creadoEn: '2025-01-01T00:00:00.000Z', creadoPor: 'sistema', orig
 export const CENTROS_COSTE_DEFECTO: CentroCoste[] = [
   { ...SELLO, id: 'cc-gv-alicante', codigo: 'GVA', nombre: 'VAPESSENCE GV ALICANTE', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'STAND', activoDesde: '2025-01-01' },
   { ...SELLO, id: 'cc-san-juan', codigo: 'SJU', nombre: 'VAPESPACE SAN JUAN', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'TIENDA', activoDesde: '2025-01-01' },
-  { ...SELLO, id: 'cc-alfafar', codigo: 'ALF', nombre: 'VAPESSENCE ALFAFAR', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'TIENDA', activoDesde: '2025-01-01' },
+  { ...SELLO, id: 'cc-alfafar', codigo: 'ALF', nombre: 'VAPESSENCE ALFAFAR', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'STAND', activoDesde: '2025-01-01' },
   { ...SELLO, id: 'cc-gv-hortaleza', codigo: 'GVH', nombre: 'VAPESSENCE GV HORTALEZA', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'STAND', activoDesde: '2025-01-01' },
   { ...SELLO, id: 'cc-vapespace-es', codigo: 'WEB', nombre: 'VAPESPACE.ES', tipo: 'PUNTO_VENTA', tipoPuntoVenta: 'WEB', activoDesde: '2025-01-01' },
+]
+
+/**
+ * Tarjetas de empresa. «Pagado con tarjeta» a secas no permite cuadrar el gasto
+ * con el extracto del banco que la emite: hay que decir cuál. Editables (nombre,
+ * banco, últimos 4 dígitos) y ampliables en Configuración.
+ */
+export const TARJETAS_DEFECTO: Tarjeta[] = [
+  { id: 'tar-bankinter', nombre: 'Tarjeta Bankinter', banco: 'Bankinter', activa: true },
+  { id: 'tar-bbva', nombre: 'Tarjeta BBVA', banco: 'BBVA', activa: true },
+  { id: 'tar-sabadell', nombre: 'Tarjeta Sabadell', banco: 'Banco Sabadell', activa: true },
+  { id: 'tar-caixabank', nombre: 'Tarjeta CaixaBank', banco: 'CaixaBank', activa: true },
 ]
 
 export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
@@ -215,6 +229,7 @@ export function configuracionInicial(): Configuracion {
       esFilial: false,
     },
     centrosCoste: [...CENTROS_COSTE_DEFECTO],
+    tarjetas: [...TARJETAS_DEFECTO],
     planContable: [...PLAN_CONTABLE_DEFECTO],
     tiposIva: [...TIPOS_IVA_DEFECTO],
     impuestosEspeciales: [...IMPUESTOS_ESPECIALES_DEFECTO],

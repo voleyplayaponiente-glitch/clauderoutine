@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react'
 import { Tarjeta, Boton, ImporteEuro, formatearEuro } from '../../componentes/ui'
 import { Select } from '../../componentes/formularios'
 import { gastosCuentaPorCategoria, type EfectoPresupuesto, type Flujo } from '../../dominio/resumen-compras'
-import { exportarCSV } from '../../lib/exportar'
+import { exportarCSV, numeroCsv } from '../../lib/exportar'
 import type { MovimientoTesoreria, CategoriaGasto } from '../../dominio/tipos'
 
 /** Periodos que se pueden mirar: el año entero o un mes suelto. */
@@ -78,8 +78,8 @@ export function GastosCuenta({
       `${esSalida ? 'cargos' : 'abonos'}-${nombreCuenta}-${ejercicio}${mes === 'todo' ? '' : `-${mes}`}`,
       ['Concepto', 'En el presupuesto', 'Movimientos', 'Importe'],
       [
-        ...d.lineas.map((l) => [l.categoria, etiqueta[l.efecto], String(l.numMovimientos), l.total.toFixed(2)]),
-        ['TOTAL', '', '', d.total.toFixed(2)],
+        ...d.lineas.map((l) => [l.categoria, etiqueta[l.efecto], String(l.numMovimientos), numeroCsv(l.total)]),
+        ['TOTAL', '', '', numeroCsv(d.total)],
       ],
     )
   }

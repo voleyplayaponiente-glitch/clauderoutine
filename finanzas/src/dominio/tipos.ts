@@ -29,6 +29,21 @@ export interface DatosEmpresa {
   matrizCif?: string
 }
 
+/**
+ * Tarjeta de empresa. Pagar «con tarjeta» sin decir cuál deja el gasto sin
+ * poder cuadrar con el extracto del banco que la emite.
+ */
+export interface Tarjeta {
+  id: ID
+  nombre: string
+  banco: string
+  /** Últimos 4 dígitos, para reconocerla en el extracto. Opcional. */
+  ultimos4?: string
+  /** Cuenta de tesorería a la que se carga, si está dada de alta. */
+  cuentaTesoreriaId?: ID
+  activa: boolean
+}
+
 export type TipoCentroCoste = 'PUNTO_VENTA' | 'ESTRUCTURA' | 'PROYECTO'
 export type TipoPuntoVenta =
   | 'TIENDA'
@@ -208,7 +223,16 @@ export interface Compra extends Trazable {
   impuestoEspecial?: number
   deducible: boolean
   motivoNoDeducible?: string
+  /** Con qué tarjeta se pagó. Solo tiene sentido si `formaPago === 'TARJETA'`. */
+  tarjetaId?: ID
   adjuntoNombre?: string
+  /**
+   * Clave del fichero guardado (la factura en PDF). El contenido NO vive aquí:
+   * se guarda aparte en IndexedDB para no engordar el objeto de datos.
+   */
+  adjuntoId?: ID
+  adjuntoTipo?: string
+  adjuntoTamano?: number
   esRecurrente?: boolean
   previsto?: boolean // recurrente auto-generado pendiente de confirmar
 }
@@ -491,6 +515,7 @@ export interface PlantillaImportacion {
 export interface Configuracion {
   empresa: DatosEmpresa
   centrosCoste: CentroCoste[]
+  tarjetas: Tarjeta[]
   planContable: CuentaPGC[]
   tiposIva: TipoIva[]
   impuestosEspeciales: ImpuestoEspecial[]
