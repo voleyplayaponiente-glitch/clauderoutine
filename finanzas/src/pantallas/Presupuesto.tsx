@@ -4,7 +4,7 @@ import { CabeceraPantalla } from './Pantalla'
 import { Tarjeta, Boton, EstadoVacio, ImporteEuro } from '../componentes/ui'
 import { Campo, CampoNumero, Select, Modal } from '../componentes/formularios'
 import { nuevoId } from '../dominio/id'
-import { cuotasDeudaPorMes, gastosBancariosPorMes } from '../dominio/resumen-compras'
+import { cuotasDeudaPorMes, gastosBancariosPorMes, ingresosBancariosPorMes } from '../dominio/resumen-compras'
 import { aCentimos, aEuros, formatearEuro } from '../dominio/dinero'
 import { brutoVenta } from '../dominio/ventas'
 import { totalesCompra } from '../dominio/compras'
@@ -44,12 +44,13 @@ export function Presupuesto() {
     if (!presupuesto) return
     const deuda = cuotasDeudaPorMes(datos.deudas, ejercicio)
     const banco = gastosBancariosPorMes(datos.movimientos, config.categoriasGasto, ejercicio)
-    if (deuda.length === 0 && banco.length === 0) {
+    const entradas = ingresosBancariosPorMes(datos.movimientos, config.categoriasGasto, ejercicio)
+    if (deuda.length === 0 && banco.length === 0 && entradas.length === 0) {
       window.alert(
         'No hay nada que traer todavía.\n\n' +
           '· Las cuotas salen de las deudas registradas en la pantalla de Deudas.\n' +
-          '· Los gastos del banco salen de los movimientos con concepto asignado en Bancos.\n\n' +
-          'No se traen las facturas de proveedores ni las cuotas de préstamo: ya están contadas en Compras y en Deudas.',
+          '· Los cargos y abonos del banco salen de los movimientos con concepto asignado en Bancos.\n\n' +
+          'No se traen las facturas de proveedores, los cobros de clientes ni las cuotas de préstamo: ya están contados en Compras, Ventas y Deudas.',
       )
       return
     }
@@ -59,6 +60,14 @@ export function Presupuesto() {
       // Cada concepto bancario entra con su efecto: las comisiones y los seguros
       // son gasto; los tributos y la Seguridad Social saldan deuda ya devengada.
       ...banco.map((b) => ({ concepto: `Banco: ${b.categoria}`, tipo: b.efecto, meses: b.meses })),
+      // Las entradas van en su propia línea. Un ingreso suma tal cual; el
+      // capital, la financiación y las desinversiones usan líneas que restan,
+      // así que se apuntan en negativo para que sumen a la caja.
+      ...entradas.map((e) => ({
+        concepto: `Banco (entra): ${e.categoria}`,
+        tipo: e.efecto,
+        meses: e.efecto === 'INGRESO' ? e.meses : e.meses.map((m) => -m),
+      })),
     ]
 
     let lineas = [...presupuesto.lineas]
@@ -208,7 +217,12 @@ export function Presupuesto() {
               </table>
             </div>
           </Tarjeta>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Los importes de línea son base (sin IVA). El «real» se calcula de ventas y compras del ejercicio. Reforecast: combina meses cerrados a real con los futuros a presupuesto.</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Los importes de línea son base (sin IVA). El «real» se calcula de ventas y compras del ejercicio. Reforecast: combina
+            meses cerrados a real con los futuros a presupuesto. En las líneas que restan (inversión y financiación) un importe{' '}
+            <strong>negativo significa dinero que entra</strong>: así una ampliación de capital o la venta de una inversión suman
+            a la caja sin contarse como beneficio.
+          </p>
         </div>
       )}
 

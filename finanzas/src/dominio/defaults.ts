@@ -143,11 +143,33 @@ export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
   // la pantalla de Inversiones, que es la que lleva coste, valor y asientos.
   { id: 'cat-bco-inv-grupo', nombre: 'Inversiones en empresas del grupo', cuentaPGC: '2403', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 32 },
   { id: 'cat-bco-inv-financiera', nombre: 'Inversiones financieras', cuentaPGC: '250', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 33 },
+  // Prestar a un socio NO es gasto ni retribución: nace un derecho de cobro.
+  // Ojo, es lo contrario de «Préstamos de socios», que es deuda de la empresa.
+  { id: 'cat-bco-prestamo-socios', nombre: 'Préstamos a socios (dinero que se presta)', cuentaPGC: '253', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 34 },
   // La cuota del préstamo ya entra en el presupuesto por el cuadro de deuda:
   // si además se contase aquí, se presupuestaría dos veces.
-  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 34 },
-  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 35 },
-  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 36 },
+  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 35 },
+  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 36 },
+  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 37 },
+
+  // ── Abonos del banco (ámbito BANCO, flujo ENTRADA) ──
+  // Un extracto también tiene entradas y no todas son ingreso: una ampliación
+  // de capital o la devolución de un préstamo concedido engordan la cuenta sin
+  // ser beneficio. Cada concepto dice qué es en realidad.
+  { id: 'cat-bco-in-clientes', nombre: 'Cobros de clientes (ya en Ventas)', cuentaPGC: '430', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'NINGUNO', orden: 51 },
+  { id: 'cat-bco-in-dividendos', nombre: 'Dividendos recibidos', cuentaPGC: '760', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INGRESO', orden: 52 },
+  { id: 'cat-bco-in-retrocesion', nombre: 'Retrocesión de comisiones bancarias', cuentaPGC: '769', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INGRESO', orden: 53 },
+  { id: 'cat-bco-in-intereses', nombre: 'Intereses a favor', cuentaPGC: '769', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INGRESO', orden: 54 },
+  { id: 'cat-bco-in-subvencion', nombre: 'Subvenciones y ayudas', cuentaPGC: '740', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INGRESO', orden: 55 },
+  // Devolver un préstamo concedido es recuperar un activo: desinversión.
+  { id: 'cat-bco-in-devol-prestamo', nombre: 'Devolución de préstamos concedidos', cuentaPGC: '253', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INVERSION', orden: 56 },
+  { id: 'cat-bco-in-venta-inversion', nombre: 'Venta de inversiones', cuentaPGC: '250', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INVERSION', orden: 57 },
+  // Capital y financiación: entra dinero, pero no es beneficio de nadie.
+  { id: 'cat-bco-in-capital', nombre: 'Aportación de capital de socios', cuentaPGC: '118', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'FINANCIACION', orden: 58 },
+  { id: 'cat-bco-in-prestamo', nombre: 'Préstamo o póliza recibida', cuentaPGC: '170', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'FINANCIACION', orden: 59 },
+  { id: 'cat-bco-in-devol-hacienda', nombre: 'Devolución de Hacienda', cuentaPGC: '4709', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'FINANCIACION', orden: 60 },
+  { id: 'cat-bco-in-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'NINGUNO', orden: 61 },
+  { id: 'cat-bco-in-otros', nombre: 'Otros ingresos sin factura', cuentaPGC: '759', deduciblePorDefecto: false, ambito: 'BANCO', flujo: 'ENTRADA', efectoPresupuesto: 'INGRESO', orden: 62 },
 ]
 
 /**

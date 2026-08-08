@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 358 tests (Vitest) del motor
+npm test         # 364 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -152,21 +152,31 @@ Cuatro reglas del PGC que **no se negocian**:
     oficina · Alarma · Teléfono · Wifi · Luz · Mantenimiento · Mantenimiento NO deducible ·
     Marketing y publicidad · Gestoría · Renting de vehículos · Gastos de IA · Gastos de TPV ·
     Gastos varios de tiendas · Gastos generales. **No renombrarlas ni reordenarlas sin pedirlo.**
-  · **Bancos (`ambito: 'BANCO'`) = «concepto del cargo»**, para lo que **no lleva factura**:
+  · **Bancos (`ambito: 'BANCO'`)**, para lo que **no lleva factura**, con DOS sublistas según
+    `flujo`. **Cargos** (`flujo: 'SALIDA'`, el valor por defecto):
     Facturas de proveedores (ya en Compras) · Comisiones de TPV · Comisiones bancarias · Gastos
     de mantenimiento · Intereses y gastos financieros · Seguro de RC · Seguro de vida · Seguro
     de salud · Tributos: trimestre corriente · Tributos: cuota de aplazamiento · Seguridad
-    Social · **Inversiones en empresas del grupo (2403)** · **Inversiones financieras (250)** ·
+    Social · Inversiones en empresas del grupo (2403) · Inversiones financieras (250) ·
+    **Préstamos a socios (253)** — ojo, es lo contrario de «Préstamos de socios», que es deuda ·
     Cuota de préstamo (ya en Deudas) · Traspaso entre cuentas propias · Otros gastos sin factura.
+    **Abonos** (`flujo: 'ENTRADA'`): Cobros de clientes (ya en Ventas) · Dividendos recibidos ·
+    Retrocesión de comisiones bancarias · Intereses a favor · Subvenciones · Devolución de
+    préstamos concedidos · Venta de inversiones · Aportación de capital de socios · Préstamo o
+    póliza recibida · Devolución de Hacienda · Traspaso entre cuentas propias · Otros ingresos.
   · `ambitoDe`/`categoriasDe`/`efectoPresupuestoDe` (en `resumen-compras.ts`) son los que
     filtran. Las categorías guardadas antes de la separación **no traen `ambito`**: se deduce de
     `esBancaria`, así que los datos viejos siguen funcionando.
 - **`efectoPresupuesto` evita presupuestar dos veces lo mismo** (la regla que sostiene todo esto):
   · `NINGUNO` — facturas de proveedores (el gasto ya está en Compras), cuotas de préstamo (ya
     salen del cuadro de deuda) y traspasos entre cuentas propias. **No se llevan al presupuesto.**
-  · `INVERSION` — participaciones en empresas del grupo e inversiones financieras: el dinero no
-    se consume, se cambia por un activo, así que no resta del resultado. **Clasificar el cargo
-    NO da de alta la inversión**: eso se hace en la pantalla de Inversiones, que es la que lleva
+  · `INGRESO` — solo en abonos: dividendos, retrocesiones, intereses a favor, subvenciones.
+    **No todo lo que entra es ingreso**: el capital y los préstamos recibidos son FINANCIACION y
+    la devolución de un préstamo concedido o la venta de una inversión son INVERSION.
+  · `INVERSION` — participaciones en empresas del grupo, inversiones financieras y préstamos a
+    socios (y sus desinversiones al volver): el dinero no
+    se consume, se cambia por un activo, así que no resta del resultado. **Clasificar el
+    movimiento NO da de alta ni de baja la inversión**: eso se hace en la pantalla de Inversiones, que es la que lleva
     coste, valor y asientos. La app lo avisa bajo el panel.
   · `FINANCIACION` — tributos del trimestre, cuotas de aplazamiento y Seguridad Social: sale
     dinero pero se salda una deuda ya devengada, no es gasto de P&G.
@@ -196,8 +206,12 @@ Cuatro reglas del PGC que **no se negocian**:
   · Es **idempotente**: se empareja por concepto, pulsarlo dos veces actualiza, no duplica.
 - **Bancos**: cada salida tiene su selector de «Concepto del cargo» (lista del banco) y el panel
   **«Cargos de la cuenta: de dónde vienen»** (`gastosCuentaPorCategoria`) agrupa las salidas del
-  año/mes en *Gasto* · *Inversión* · *Impuestos y deuda* · *Ya contado* · *Sin clasificar*, esto
-  último en rojo (sin clasificar no entra en el presupuesto).
+  año/mes con un conmutador **Cargos / Abonos**: en cargos *Gasto* · *Inversión* · *Impuestos y
+  deuda*; en abonos *Ingreso de verdad* · *Desinversión* · *Capital y financiación*. Lo *Sin
+  clasificar* va en rojo en ambos (sin clasificar no entra en el presupuesto).
+- **Signo en el presupuesto**: las líneas de inversión y financiación restan, así que las
+  **entradas** se apuntan en NEGATIVO (`Banco (entra): …`) para que sumen a la caja sin contarse
+  como beneficio. Los ingresos de verdad van en positivo. La pantalla lo explica al pie.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
@@ -212,7 +226,7 @@ Cuatro reglas del PGC que **no se negocian**:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (358 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado + extractos + inversiones + gasto/deuda al presupuesto (364 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,
