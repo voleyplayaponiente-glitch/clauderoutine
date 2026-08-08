@@ -25,7 +25,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 154 tests (Vitest) del motor
+npm test         # 187 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -66,6 +66,22 @@ participaciones.
   (`mismaEmpresa`) se muestra un aviso rojo antes de sobrescribir.
 - Fiscalidad decidida: **cada empresa declara por separado** (303/347/IS propios).
 
+### Accionariado (`dominio/socios.ts`)
+Libro registro de socios por empresa, dentro de `grupo.socios`.
+- **El % NUNCA se teclea**: se deriva del `capitalNominal` de cada socio sobre el capital de
+  referencia (el `capitalSocial` escriturado de la empresa; si es 0, la suma de lo aportado).
+- `capTable` une socios personas/terceros **+ las empresas del grupo que participan**, para que
+  el cuadro sume el 100 % real. A las empresas del grupo se les deduce el nominal desde su %.
+- `primaEmision` engorda fondos propios (110) pero **no da más %**; `pendienteDesembolso` se
+  registra aparte y no puede superar lo suscrito.
+- Bajas **lógicas** (`fechaBaja`): salen del reparto y quedan en el histórico, nunca se borran.
+- `resumenAccionariado` expone el **descuadre** entre escriturado y repartido; la UI lo pinta en
+  rojo, nunca se oculta. `avisosAccionariado` señala unipersonalidad (S.L.U.), capital sin
+  repartir, pendiente de desembolso y nominales unitarios incoherentes.
+- **El backup incluye ahora `grupo`** (empresas, participaciones y socios). El checksum se
+  calcula sobre `{config,datos,grupo}` solo si hay grupo, así los backups antiguos siguen siendo
+  válidos con la fórmula antigua.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -79,7 +95,7 @@ participaciones.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado — Fases 0–12 + auditoría de seguridad + multi-empresa (154 tests en verde)
+## Estado — Fases 0–12 + seguridad + multi-empresa + accionariado (187 tests en verde)
 Configuración · Ventas · Compras · Caja/arqueos · Bancos (N43+conciliación) · Stock ·
 Importación (Excel/CSV, 4 pasos) · Deudas/Deudores · Presupuesto+Cash flow · Previsión de
 tesorería (alerta de tensión) · Dashboard interactivo · Informes (IVA/303/347, balance, P&G,

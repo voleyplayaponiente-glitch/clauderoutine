@@ -97,3 +97,32 @@ describe('restaurar en la empresa correcta (grupo)', () => {
     expect(mismaEmpresa({}, {})).toBe(true)
   })
 })
+
+describe('el grupo viaja en el backup sin romper los antiguos', () => {
+  const grupoDemo = {
+    version: 1,
+    nombre: 'Grupo',
+    empresas: [{ id: 'H', razonSocial: 'Holding SL', cif: 'B12345674', esHolding: true, creadaEn: '2026-01-01', capitalSocial: 3000 }],
+    participaciones: [],
+    socios: [{ id: 's1', empresaId: 'H', nombre: 'Ana', nifCif: '12345678Z', tipo: 'PERSONA_FISICA' as const, capitalNominal: 3000 }],
+    empresaActivaId: 'H',
+  }
+
+  it('incluye la estructura societaria y verifica', () => {
+    const b = construirBackup(configuracionInicial(), datosVacios(), '2026-08-08', grupoDemo)
+    expect(b.grupo?.socios[0].nombre).toBe('Ana')
+    expect(verificarIntegridad(b).valido).toBe(true)
+  })
+
+  it('detecta la manipulación del grupo', () => {
+    const b = construirBackup(configuracionInicial(), datosVacios(), '2026-08-08', grupoDemo)
+    b.grupo!.socios[0].capitalNominal = 1 // altera sin recalcular el checksum
+    expect(verificarIntegridad(b).valido).toBe(false)
+  })
+
+  it('un backup anterior al multi-empresa sigue siendo válido', () => {
+    const antiguo = construirBackup(configuracionInicial(), datosVacios(), '2026-05-01')
+    expect(antiguo.grupo).toBeUndefined()
+    expect(verificarIntegridad(antiguo).valido).toBe(true)
+  })
+})
