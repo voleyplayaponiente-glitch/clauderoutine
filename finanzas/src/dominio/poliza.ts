@@ -19,7 +19,10 @@
  * la liquidación real.
  */
 import { aCentimos, aEuros, redondear2 } from './dinero'
-import type { Poliza } from './tipos'
+import type { CuentaTesoreria, MovimientoTesoreria, Poliza } from './tipos'
+
+/** Umbral de consumo por defecto: pasado de ahí, la renovación se complica. */
+export const UMBRAL_CONSUMO = 75
 
 /** Año comercial: es la base con la que liquidan los bancos españoles. */
 export const BASE_DIAS = 360
@@ -70,6 +73,84 @@ export function situacionPoliza(p: Poliza): SituacionPoliza {
     excedido: p.importeExcedido ?? Math.max(0, aEuros(aCentimos(saldoContable) - aCentimos(limite))),
     porcentajeDispuesto: limite > 0 ? redondear2((p.dispuesto / limite) * 100) : 0,
   }
+}
+
+// ───────────── La póliza en cuenta corriente: lo dispuesto es el descubierto ─────────────
+
+/**
+ * Saldo de la cuenta en una fecha (incluido ese día).
+ * Se replica aquí, en vez de usar `saldoCuenta`, porque hace falta a una fecha
+ * concreta para poder recorrer el año día a día.
+ */
+export function saldoEnFecha(cuenta: CuentaTesoreria, movimientos: MovimientoTesoreria[], fecha: string): number {
+  let cent = aCentimos(cuenta.saldoInicial)
+  for (const m of movimientos) {
+    if (m.cuentaId !== cuenta.id || m.anuladoEn) continue
+    if (m.fecha > fecha) continue
+    cent += aCentimos(m.importe)
+  }
+  return aEuros(cent)
+}
+
+/**
+ * Capital dispuesto de una póliza instrumentada en cuenta: **el saldo negativo
+ * de la cuenta**. Con la cuenta en positivo, la póliza no está dispuesta.
+ */
+export function dispuestoDeCuenta(cuenta: CuentaTesoreria, movimientos: MovimientoTesoreria[], fecha: string): number {
+  const saldo = saldoEnFecha(cuenta, movimientos, fecha)
+  return saldo < 0 ? aEuros(-aCentimos(saldo)) : 0
+}
+
+export interface ConsumoPeriodo {
+  /** Media del saldo dispuesto ponderada por días, que es como la mira el banco. */
+  medio: number
+  /** Punto más alto de consumo del periodo. */
+  maximo: number
+  /** % que representa la media sobre el límite. */
+  porcentajeMedio: number
+  dias: number
+}
+
+/**
+ * Consumo medio y máximo entre dos fechas, **ponderado por días**: un pico de
+ * un día no pesa lo mismo que dos meses al límite, y el banco mira la media.
+ * Se recorre el periodo saltando de movimiento en movimiento.
+ */
+export function consumoMedio(
+  cuenta: CuentaTesoreria,
+  movimientos: MovimientoTesoreria[],
+  desde: string,
+  hasta: string,
+  limite: number,
+): ConsumoPeriodo {
+  const dias = Math.max(1, Math.round((Date.parse(hasta + 'T00:00:00') - Date.parse(desde + 'T00:00:00')) / 86_400_000) + 1)
+
+  // Fechas en las que el saldo cambia, dentro del periodo.
+  const cortes = [
+    ...new Set(
+      movimientos
+        .filter((m) => m.cuentaId === cuenta.id && !m.anuladoEn && m.fecha > desde && m.fecha <= hasta)
+        .map((m) => m.fecha),
+    ),
+  ].sort()
+
+  let acumulado = 0
+  let maximo = 0
+  let tramoDesde = desde
+  for (const corte of [...cortes, undefined]) {
+    const dispuesto = dispuestoDeCuenta(cuenta, movimientos, tramoDesde)
+    const tramoHasta = corte ? corte : hasta
+    const diasTramo = Math.max(
+      corte ? 0 : 1,
+      Math.round((Date.parse(tramoHasta + 'T00:00:00') - Date.parse(tramoDesde + 'T00:00:00')) / 86_400_000) + (corte ? 0 : 1),
+    )
+    acumulado += aCentimos(dispuesto) * diasTramo
+    if (dispuesto > maximo) maximo = dispuesto
+    if (corte) tramoDesde = corte
+  }
+
+  const medio = aEuros(Math.round(acumulado / dias))
+  return { medio, maximo, porcentajeMedio: limite > 0 ? redondear2((medio / limite) * 100) : 0, dias }
 }
 
 export interface LiquidacionEstimada {
@@ -189,18 +270,49 @@ export function costePolizasPorMes(polizas: Poliza[], ejercicio: number): LineaP
   return lineas.sort((a, b) => b.totalAnual - a.totalAnual)
 }
 
+/**
+ * Póliza con el dispuesto tomado de su cuenta, cuando así se ha configurado.
+ * Devuelve la misma póliza si se lleva a mano o si la cuenta no existe: nunca
+ * se pone un 0 por no encontrarla.
+ */
+export function polizaConCuenta(
+  p: Poliza,
+  cuentas: CuentaTesoreria[],
+  movimientos: MovimientoTesoreria[],
+  hoy: string,
+): Poliza {
+  if (p.origenDispuesto !== 'CUENTA' || !p.cuentaTesoreriaId) return p
+  const cuenta = cuentas.find((c) => c.id === p.cuentaTesoreriaId && !c.anuladoEn)
+  if (!cuenta) return p
+  const dispuesto = dispuestoDeCuenta(cuenta, movimientos, hoy)
+  // Con la cuenta como origen, dispuesto y contable son lo mismo: el saldo.
+  return { ...p, dispuesto, saldoContable: dispuesto }
+}
+
 /** Avisos de la póliza: lo que hay que vigilar y cuesta dinero si se descuida. */
-export function avisosPoliza(p: Poliza, hoy: string): string[] {
+export function avisosPoliza(p: Poliza, hoy: string, consumo?: ConsumoPeriodo): string[] {
   const avisos: string[] = []
   const s = situacionPoliza(p)
+  const umbral = p.umbralAviso ?? UMBRAL_CONSUMO
 
   if (s.excedido > 0) {
     avisos.push(
       `Excedida en ${s.excedido.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` +
         (p.comisionExcedido ? `: la comisión de máximo excedido es del ${p.comisionExcedido} %, muy por encima del interés normal.` : '.'),
     )
-  } else if (s.porcentajeDispuesto >= 90) {
-    avisos.push(`Dispuesto el ${s.porcentajeDispuesto.toFixed(1)} % del límite: queda poco margen antes del excedido.`)
+  } else if (s.porcentajeDispuesto >= umbral) {
+    avisos.push(
+      `Consumida al ${s.porcentajeDispuesto.toFixed(1)} % del límite, por encima del ${umbral} % que te has marcado: ` +
+        'queda poco margen y el saldo medio del año sube.',
+    )
+  }
+
+  // La renovación se juega con la media del año, no con la foto de hoy.
+  if (consumo && consumo.porcentajeMedio > umbral) {
+    avisos.push(
+      `El consumo MEDIO del año va al ${consumo.porcentajeMedio.toFixed(1)} % (${consumo.medio.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €), ` +
+        `por encima del ${umbral} %. Una póliza que vive dispuesta se renueva peor: el banco la lee como financiación estructural, no como tesorería puntual.`,
+    )
   }
 
   if (p.fechaVencimiento) {

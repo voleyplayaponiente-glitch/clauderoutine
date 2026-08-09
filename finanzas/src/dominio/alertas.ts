@@ -23,6 +23,10 @@ export interface MetricasAlerta {
   impuestosProximos: number
   conciliacionesPendientes: number
   puntosBajoObjetivo: number
+  /** Pólizas cuyo consumo de hoy pasa del umbral marcado. */
+  polizasSobreUmbral: number
+  /** Pólizas cuyo consumo MEDIO del año pasa del umbral: la renovación peligra. */
+  polizasMediaAlta: number
 }
 
 const ORDEN: Record<NivelAlerta, number> = { critico: 0, aviso: 1, info: 2 }
@@ -45,6 +49,26 @@ export function generarAlertas(m: MetricasAlerta, fmt: (n: number) => string): A
   }
   if (m.puntosBajoObjetivo > 0) {
     alertas.push({ id: 'objetivo', nivel: 'aviso', titulo: `${plural(m.puntosBajoObjetivo, 'punto por debajo de objetivo', 'puntos por debajo de objetivo')}`, detalle: 'Venta del mes inferior al objetivo', ruta: '/ventas' })
+  }
+  // La póliza es de las pocas cosas que se pueden arreglar con antelación: si
+  // se avisa tarde, ya no hay margen para bajar el saldo antes de la renovación.
+  if (m.polizasSobreUmbral > 0) {
+    alertas.push({
+      id: 'poliza-consumo',
+      nivel: 'aviso',
+      titulo: `${plural(m.polizasSobreUmbral, 'póliza muy dispuesta', 'pólizas muy dispuestas')}`,
+      detalle: 'Han pasado del umbral de consumo que marcaste',
+      ruta: '/deudas',
+    })
+  }
+  if (m.polizasMediaAlta > 0) {
+    alertas.push({
+      id: 'poliza-media',
+      nivel: 'critico',
+      titulo: `${plural(m.polizasMediaAlta, 'póliza con saldo medio alto', 'pólizas con saldo medio alto')}`,
+      detalle: 'El consumo medio del año compromete la renovación',
+      ruta: '/deudas',
+    })
   }
   if (m.stockBajo > 0) {
     alertas.push({ id: 'stock', nivel: 'aviso', titulo: `${plural(m.stockBajo, 'artículo bajo mínimo', 'artículos bajo mínimo')}`, detalle: 'Necesitan reposición', ruta: '/stock' })

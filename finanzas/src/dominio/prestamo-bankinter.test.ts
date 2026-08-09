@@ -115,3 +115,74 @@ describe('los dos ficheros de Bankinter juntos', () => {
     expect(f.cuotas[0].fecha).toBe('2026-08-13')
   })
 })
+
+/**
+ * Los MISMOS dos ficheros, pero descargados en PDF. Bankinter cambia bastante:
+ * abrevia los rótulos y los parte en dos líneas («F. Inicio /» arriba,
+ * «F. Vencimiento» debajo), y los importes llegan como «5.000,00 EUR».
+ */
+const CONDICIONES_PDF = [
+  ['Empresa', 'Usuario', 'Fecha y hora'],
+  ['BESPAIN 7777 SL', 'ANDREW NIETO LOPEZ', '09.08.2026 21:35'],
+  ['Préstamos'],
+  ['SWIFT: BKBKESMMXXX'],
+  ['Condiciones'],
+  ['Condiciones préstamo'],
+  ['F. Inicio /', 'Imp. inicial /', 'Deuda pdte.', 'Liquidación', 'Próxima Cuota', 'Tipo Interés', 'Clases de Cuota'],
+  ['F. Vencimiento', 'Imp. pendiente'],
+  ['13.07.2026', '15000 EUR', '15000 EUR', 'Diferida', '13.08.2026', '0 %', 'CUOTAS AMORT CTE'],
+  ['13.10.2026', '15000 EUR'],
+  ['Cuenta de cargo: ES4801281632600100028335'],
+  ['Tipos de interés'],
+]
+
+const CUADRO_PDF = [
+  ['Empresa', 'Usuario', 'Fecha y hora'],
+  ['BESPAIN 7777 SL', 'ANDREW NIETO LOPEZ', '9/8/26 21:35'],
+  ['*La información de este cuadro de amortización es orientativa…'],
+  ['Amortizacion'],
+  ['FECHA CUOTA', 'IMPORTE CUOTA', 'AMORTIZACION', 'INTERESES', 'IMPORTE PENDIENTE DE AMORTIZACIÓN'],
+  ['13.08.2026', '5.000,00 EUR', '5.000,00 EUR', '0,00 EUR', '10.000,00 EUR'],
+  ['13.09.2026', '5.000,00 EUR', '5.000,00 EUR', '0,00 EUR', '5.000,00 EUR'],
+  ['13.10.2026', '5.000,00 EUR', '5.000,00 EUR', '0,00 EUR', '0,00 EUR'],
+  ['El presente cuadro de amortización no tiene en cuenta posibles amortizaciones parciales…'],
+]
+
+describe('los mismos préstamos de Bankinter, pero en PDF', () => {
+  it('lee el cuadro con importes en «5.000,00 EUR» y fechas con puntos', () => {
+    const d = leerPrestamo(CUADRO_PDF)
+    expect(d.cuotas.length).toBe(3)
+    expect(d.cuotas[0]).toMatchObject({ fecha: '2026-08-13', cuota: 5000, principal: 5000, pendiente: 10000 })
+    expect(d.importeOriginal).toBe(15000)
+  })
+
+  it('lee las condiciones con los rótulos abreviados y partidos en dos líneas', () => {
+    const d = leerCondicionesPrestamo(CONDICIONES_PDF)!
+    expect(d).toBeDefined()
+    expect(d.fechaInicio).toBe('2026-07-13')
+    expect(d.importeOriginal).toBe(15000)
+    expect(d.tipoInteres).toBe(0)
+    expect(d.sistema).toBe('LINEAL')
+    expect(d.entidad).toBe('Bankinter')
+  })
+
+  it('el PDF da el mismo préstamo que el Excel', () => {
+    const pdf = fusionarPrestamos([leerPrestamo(CONDICIONES_PDF), leerPrestamo(CUADRO_PDF)])
+    const excel = fusionarPrestamos([leerPrestamo(CONDICIONES), leerPrestamo(CUADRO)])
+    for (const campo of ['importeOriginal', 'fechaInicio', 'tipoInteres', 'cuota', 'nPeriodos', 'periodicidad', 'sistema', 'entidad'] as const) {
+      expect({ campo, valor: pdf[campo] }).toEqual({ campo, valor: excel[campo] })
+    }
+  })
+})
+
+describe('la cuenta de cargo no es el número del préstamo', () => {
+  it('del PDF se saca el banco, pero no se usa la cuenta de cargo como contrato', () => {
+    const d = leerCondicionesPrestamo(CONDICIONES_PDF)!
+    expect(d.entidad).toBe('Bankinter')
+    expect(d.numeroContrato).toBeUndefined()
+  })
+
+  it('del Excel sí, porque ahí el IBAN es el del propio préstamo', () => {
+    expect(leerCondicionesPrestamo(CONDICIONES)!.numeroContrato).toBe('ES9701281632600510018517')
+  })
+})

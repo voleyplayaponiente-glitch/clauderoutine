@@ -5,7 +5,15 @@ import { Campo, CampoNumero, Select, Toggle, Modal } from '../../componentes/for
 import { hoyISO, formatearFecha } from '../../lib/fechas'
 import { nuevoId } from '../../dominio/id'
 import { formatearEuro, formatearPorcentaje } from '../../dominio/dinero'
-import { avisosPoliza, estimarLiquidacion, fechasLiquidacion, situacionPoliza } from '../../dominio/poliza'
+import {
+  UMBRAL_CONSUMO,
+  avisosPoliza,
+  consumoMedio,
+  estimarLiquidacion,
+  fechasLiquidacion,
+  polizaConCuenta,
+  situacionPoliza,
+} from '../../dominio/poliza'
 import type { DatosPoliza } from '../../dominio/poliza-archivo'
 import type { Poliza } from '../../dominio/tipos'
 
@@ -65,7 +73,9 @@ export function SeccionPolizas({
   plantilla?: Poliza | null
   onCerrarPlantilla?: () => void
 }) {
-  const polizas = useStore((s) => s.datos.polizas).filter((p) => !p.anuladoEn)
+  const guardadas = useStore((s) => s.datos.polizas).filter((p) => !p.anuladoEn)
+  const cuentas = useStore((s) => s.datos.cuentasTesoreria).filter((c) => !c.anuladoEn)
+  const movimientos = useStore((s) => s.datos.movimientos)
   const guardar = useStore((s) => s.guardarPoliza)
   const anular = useStore((s) => s.anularPoliza)
   const hoy = hoyISO()
@@ -76,6 +86,10 @@ export function SeccionPolizas({
     onCerrarLectura()
     onCerrarPlantilla?.()
   }
+
+  // Con la cuenta como origen, lo dispuesto se recalcula en cada pintada: es el
+  // saldo negativo de la cuenta, no un número que haya que ir actualizando.
+  const polizas = guardadas.map((p) => polizaConCuenta(p, cuentas, movimientos, hoy))
 
   const totalDispuesto = polizas.reduce((s, p) => s + p.dispuesto, 0)
   const totalDisponible = polizas.reduce((s, p) => s + situacionPoliza(p).disponible, 0)
@@ -96,6 +110,7 @@ export function SeccionPolizas({
         <ModalPoliza
           poliza={revisar}
           titulo={lectura ? 'Alta de póliza desde la ficha del banco' : 'Nueva póliza de crédito'}
+          cuentas={cuentas}
           leido={lectura?.encontrados ?? []}
           avisos={lectura?.avisos ?? []}
           onCerrar={cerrarRevision}
@@ -127,7 +142,11 @@ export function SeccionPolizas({
 
           {polizas.map((p) => {
             const s = situacionPoliza(p)
-            const avisos = avisosPoliza(p, hoy)
+            const cuenta = cuentas.find((c) => c.id === p.cuentaTesoreriaId)
+            // La renovación se juega con la media del año, no con la foto de hoy.
+            const consumo = cuenta ? consumoMedio(cuenta, movimientos, `${hoy.slice(0, 4)}-01-01`, hoy, s.limite) : undefined
+            const umbral = p.umbralAviso ?? UMBRAL_CONSUMO
+            const avisos = avisosPoliza(p, hoy, consumo)
             const fechas = fechasLiquidacion(p, Number(hoy.slice(0, 4)))
             const proxima = fechas.find((f) => f >= hoy) ?? p.fechaProximaLiquidacion
             const liq = estimarLiquidacion(p, 30, proxima ?? hoy)
@@ -148,12 +167,18 @@ export function SeccionPolizas({
                   </div>
                 </div>
 
-                {/* Barra de uso: de un vistazo, cuánto queda antes del excedido. */}
-                <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: 'var(--surface-2)' }}>
+                {/* Barra de uso con la marca del umbral: de un vistazo se ve si
+                    se ha pasado del consumo que se ha fijado. */}
+                <div className="relative h-2 rounded-full overflow-hidden mb-1" style={{ background: 'var(--surface-2)' }}>
                   <div
                     className="h-full"
-                    style={{ width: `${Math.min(100, s.porcentajeDispuesto)}%`, background: s.excedido > 0 ? 'var(--neg)' : s.porcentajeDispuesto >= 90 ? 'var(--warn)' : 'var(--pos)' }}
+                    style={{ width: `${Math.min(100, s.porcentajeDispuesto)}%`, background: s.excedido > 0 ? 'var(--neg)' : s.porcentajeDispuesto >= umbral ? 'var(--warn)' : 'var(--pos)' }}
                   />
+                  <div className="absolute top-0 bottom-0 w-px" style={{ left: `${umbral}%`, background: 'var(--text-muted)' }} />
+                </div>
+                <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Consumida el {s.porcentajeDispuesto.toFixed(1)} % · marca de aviso en el {umbral} %
+                  {consumo ? ` · media del año ${consumo.porcentajeMedio.toFixed(1)} %` : ''}
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -174,6 +199,25 @@ export function SeccionPolizas({
                     <div className="tabular">{formatearEuro(liq.total)}</div>
                   </div>
                 </div>
+
+                {consumo && (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Consumo medio del año</div>
+                      <div className="tabular" style={{ color: consumo.porcentajeMedio > umbral ? 'var(--warn)' : undefined }}>
+                        {formatearEuro(consumo.medio)} ({consumo.porcentajeMedio.toFixed(1)} %)
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Máximo dispuesto</div>
+                      <div className="tabular">{formatearEuro(consumo.maximo)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Origen del dispuesto</div>
+                      <div>{p.origenDispuesto === 'CUENTA' ? `Saldo de ${cuenta?.nombre ?? 'la cuenta'}` : 'A mano'}</div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-3 rounded-xl p-3 text-xs space-y-1" style={{ background: 'var(--surface-2)' }}>
                   <div className="flex justify-between">
@@ -209,6 +253,7 @@ export function SeccionPolizas({
         <ModalPoliza
           poliza={edit}
           titulo={edit.entidad ? 'Editar póliza' : 'Nueva póliza de crédito'}
+          cuentas={cuentas}
           leido={[]}
           avisos={[]}
           onCerrar={() => setEdit(null)}
@@ -222,6 +267,7 @@ export function SeccionPolizas({
 function ModalPoliza({
   poliza,
   titulo,
+  cuentas,
   leido,
   avisos,
   onCerrar,
@@ -229,6 +275,7 @@ function ModalPoliza({
 }: {
   poliza: Poliza
   titulo: string
+  cuentas: { id: string; nombre: string }[]
   leido: string[]
   avisos: string[]
   onCerrar: () => void
@@ -252,15 +299,45 @@ function ModalPoliza({
           <Campo etiqueta="Entidad" valor={p.entidad} onChange={(v) => setP({ ...p, entidad: v })} autoFocus />
           <Campo etiqueta="Nº de contrato" valor={p.numeroContrato ?? ''} onChange={(v) => setP({ ...p, numeroContrato: v || undefined })} />
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          <CampoNumero etiqueta="Capital concedido" valor={p.limiteConcedido} onChange={(v) => setP({ ...p, limiteConcedido: v, limiteActual: p.limiteActual || v })} sufijo="€" />
-          <CampoNumero etiqueta="Límite actual" valor={p.limiteActual} onChange={(v) => setP({ ...p, limiteActual: v })} sufijo="€" />
-          <CampoNumero etiqueta="Capital dispuesto" valor={p.dispuesto} onChange={(v) => setP({ ...p, dispuesto: v })} sufijo="€" paso="0.01" />
-        </div>
         <div className="grid grid-cols-2 gap-4">
-          <CampoNumero etiqueta="Saldo contable" valor={p.saldoContable ?? 0} onChange={(v) => setP({ ...p, saldoContable: v || undefined })} sufijo="€" paso="0.01" />
-          <CampoNumero etiqueta="Importe excedido" valor={p.importeExcedido ?? 0} onChange={(v) => setP({ ...p, importeExcedido: v || undefined })} sufijo="€" paso="0.01" />
+          <CampoNumero etiqueta="Capital concedido" valor={p.limiteConcedido} onChange={(v) => setP({ ...p, limiteConcedido: v, limiteActual: p.limiteActual || v })} sufijo="€" />
+          <CampoNumero etiqueta="Límite actual (si el banco lo ha bajado)" valor={p.limiteActual} onChange={(v) => setP({ ...p, limiteActual: v })} sufijo="€" />
         </div>
+
+        {/* Lo dispuesto no se teclea si la póliza va en cuenta corriente: es el
+            saldo negativo de esa cuenta y se actualiza solo con cada extracto. */}
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            etiqueta="De dónde sale lo dispuesto"
+            valor={p.cuentaTesoreriaId ?? ''}
+            onChange={(v) =>
+              setP({ ...p, cuentaTesoreriaId: v || undefined, origenDispuesto: v ? 'CUENTA' : 'MANUAL', saldoContable: v ? undefined : p.saldoContable })
+            }
+            opciones={[
+              { valor: '', texto: 'Lo escribo a mano' },
+              ...cuentas.map((c) => ({ valor: c.id, texto: `Saldo negativo de ${c.nombre}` })),
+            ]}
+          />
+          <CampoNumero
+            etiqueta={`% de consumo a partir del cual avisar`}
+            valor={p.umbralAviso ?? UMBRAL_CONSUMO}
+            onChange={(v) => setP({ ...p, umbralAviso: v || undefined })}
+            sufijo="%"
+          />
+        </div>
+
+        {p.origenDispuesto === 'CUENTA' ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            El capital dispuesto se toma del saldo negativo de la cuenta elegida, así que se actualiza solo al importar el
+            extracto. No hace falta teclearlo ni mantenerlo.
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            <CampoNumero etiqueta="Capital dispuesto" valor={p.dispuesto} onChange={(v) => setP({ ...p, dispuesto: v })} sufijo="€" paso="0.01" />
+            <CampoNumero etiqueta="Saldo contable" valor={p.saldoContable ?? 0} onChange={(v) => setP({ ...p, saldoContable: v || undefined })} sufijo="€" paso="0.01" />
+            <CampoNumero etiqueta="Importe excedido" valor={p.importeExcedido ?? 0} onChange={(v) => setP({ ...p, importeExcedido: v || undefined })} sufijo="€" paso="0.01" />
+          </div>
+        )}
 
         {/* Los tres precios de la póliza, que es lo que la hace distinta. */}
         <div className="grid grid-cols-3 gap-4">
