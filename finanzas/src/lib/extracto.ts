@@ -9,9 +9,10 @@
  * el arranque de la app.
  */
 import { decodificarTextoBancario } from '../dominio/texto'
-import { parsearCSV } from '../dominio/csv'
+import { parsearCSV, detectarSeparador } from '../dominio/csv'
 import { parsearN43 } from '../dominio/n43'
 import { leerHoja, lineasAMovimientos, type MovimientoExtracto, type ResultadoExtracto } from '../dominio/extracto'
+import type { Celda } from '../dominio/prestamo-archivo'
 
 export type FormatoExtracto = 'N43' | 'EXCEL' | 'CSV' | 'PDF' | 'DESCONOCIDO'
 
@@ -220,4 +221,33 @@ async function leerPdf(fichero: File): Promise<LecturaExtracto> {
     )
   }
   return { formato: 'PDF', ...r, errores }
+}
+
+/**
+ * Filas de un fichero de préstamo: Excel del banco o PDF. Devuelve la matriz
+ * tal cual, sin interpretar: de eso se encarga `dominio/prestamo-archivo`.
+ * En el PDF cada línea se parte por dos o más espacios, que es como quedan las
+ * columnas al extraer el texto.
+ */
+export async function filasDePrestamo(fichero: File): Promise<Celda[][]> {
+  const ext = (fichero.name.split('.').pop() ?? '').toLowerCase()
+
+  if (['xlsx', 'xls', 'xlsm'].includes(ext)) {
+    const XLSX = await import('xlsx')
+    const wb = XLSX.read(await fichero.arrayBuffer(), { type: 'array' })
+    const hoja = wb.Sheets[wb.SheetNames[0]]
+    return XLSX.utils.sheet_to_json(hoja, { header: 1, defval: '' }) as Celda[][]
+  }
+
+  if (ext === 'pdf') {
+    const lineas = await lineasDePdf(await fichero.arrayBuffer())
+    return lineas.map((l) => l.split(/\s{2,}/).map((c) => c.trim()))
+  }
+
+  if (['csv', 'tsv', 'txt'].includes(ext)) {
+    const texto = decodificarTextoBancario(await fichero.arrayBuffer())
+    return parsearCSV(texto, detectarSeparador(texto)) as Celda[][]
+  }
+
+  throw new Error(`No se sabe leer un fichero «${ext}». Usa el Excel o el PDF que descarga el banco.`)
 }

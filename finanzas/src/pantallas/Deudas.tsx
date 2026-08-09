@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/store'
 import { CabeceraPantalla } from './Pantalla'
 import { Tarjeta, Boton, EstadoVacio, Semaforo, ImporteEuro } from '../componentes/ui'
@@ -9,6 +9,8 @@ import { nuevoId } from '../dominio/id'
 import { formatearEuro, formatearPorcentaje } from '../dominio/dinero'
 import { generarCuadro, resumenCuadro } from '../dominio/amortizacion'
 import { agruparPorTramo, type ItemVencimiento } from '../dominio/vencimientos'
+import { leerPrestamo, fusionarPrestamos, type DatosPrestamo } from '../dominio/prestamo-archivo'
+import { filasDePrestamo } from '../lib/extracto'
 import type { Deuda, TipoDeuda } from '../dominio/tipos'
 
 const TIPOS: { valor: TipoDeuda; texto: string; grupo: 'financiera' | 'comercial' | 'fiscal' | 'otra' }[] = [
@@ -41,6 +43,31 @@ export function Deudas() {
   const hoy = hoyISO()
   const [edit, setEdit] = useState<Deuda | null>(null)
   const [expandida, setExpandida] = useState<string | null>(null)
+  const refArchivo = useRef<HTMLInputElement>(null)
+  const [lectura, setLectura] = useState<DatosPrestamo | null>(null)
+  const [leyendo, setLeyendo] = useState(false)
+  const [errorArchivo, setErrorArchivo] = useState<string | null>(null)
+
+  /** Lee uno o varios ficheros del mismo préstamo y los combina. */
+  const leerArchivos = async (ficheros: File[]) => {
+    setLeyendo(true)
+    setErrorArchivo(null)
+    try {
+      const lecturas = []
+      for (const f of ficheros) lecturas.push(leerPrestamo(await filasDePrestamo(f)))
+      const fusion = fusionarPrestamos(lecturas)
+      if (fusion.cuotas.length === 0 && fusion.encontrados.length === 0) {
+        setErrorArchivo(fusion.avisos[0] ?? 'No se ha podido leer el fichero.')
+      } else {
+        setLectura(fusion)
+      }
+    } catch (e) {
+      setErrorArchivo(`No se ha podido leer el fichero: ${e instanceof Error ? e.message : 'error desconocido'}`)
+    } finally {
+      setLeyendo(false)
+      if (refArchivo.current) refArchivo.current.value = ''
+    }
+  }
 
   const conCuadro = useMemo(() => deudas.map((d) => {
     const cuadro = cuadroDe(d)
@@ -63,8 +90,34 @@ export function Deudas() {
     <>
       <div className="flex items-start justify-between gap-4 mb-6">
         <CabeceraPantalla titulo="Deudas" descripcion="Préstamos, leasing y acreedores con cuadro de amortización y vencimientos." />
-        <Boton onClick={() => setEdit(deudaNueva())}>+ Deuda</Boton>
+        <div className="flex gap-2">
+          {/* El banco parte el préstamo en dos descargas; se admiten las dos a la vez. */}
+          <Boton variante="secundario" onClick={() => refArchivo.current?.click()}>
+            {leyendo ? 'Leyendo…' : 'Subir cuadro del banco'}
+          </Boton>
+          <input
+            ref={refArchivo}
+            type="file"
+            multiple
+            accept=".xlsx,.xls,.xlsm,.pdf,.csv,.txt"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files; if (f?.length) void leerArchivos([...f]) }}
+          />
+          <Boton onClick={() => setEdit(deudaNueva())}>+ Deuda</Boton>
+        </div>
       </div>
+
+      {errorArchivo && (
+        <div className="mb-4"><Semaforo estado="negativo" texto={errorArchivo} /></div>
+      )}
+
+      {lectura && (
+        <RevisarPrestamo
+          datos={lectura}
+          onCancelar={() => setLectura(null)}
+          onAceptar={(d) => { guardar(d); setLectura(null) }}
+        />
+      )}
 
       {deudas.length === 0 ? (
         <Tarjeta><EstadoVacio icono="deuda" titulo="Aún no hay deudas registradas" descripcion="Da de alta préstamos, pólizas, leasing y acreedores. Verás su cuadro de amortización, el capital pendiente y los vencimientos por tramos." accion={<Boton onClick={() => setEdit(deudaNueva())}>Añadir la primera</Boton>} /></Tarjeta>
@@ -167,6 +220,114 @@ function ModalDeuda({ deuda, setDeuda, onGuardar }: { deuda: Deuda; setDeuda: (d
           </div>
         )}
         <div className="flex justify-end gap-2 pt-1"><Boton variante="secundario" onClick={() => setDeuda(null)}>Cancelar</Boton><Boton onClick={() => onGuardar(deuda)}>Guardar</Boton></div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Revisión de lo leído del fichero del banco antes de dar de alta la deuda.
+ * Se enseña qué se ha encontrado y qué no, y los campos siguen siendo
+ * editables: la app propone, la persona confirma.
+ */
+function RevisarPrestamo({
+  datos,
+  onCancelar,
+  onAceptar,
+}: {
+  datos: DatosPrestamo
+  onCancelar: () => void
+  onAceptar: (d: Deuda) => void
+}) {
+  const [deuda, setDeuda] = useState<Deuda>(() => ({
+    id: nuevoId(),
+    creadoEn: new Date().toISOString(),
+    creadoPor: 'sistema',
+    origen: 'EXCEL',
+    tipo: 'PRESTAMO',
+    acreedor: [datos.entidad, datos.nombreProducto].filter(Boolean).join(' · ') || '',
+    importeOriginal: datos.importeOriginal ?? 0,
+    tipoInteres: datos.tipoInteres ?? 0,
+    comisiones: datos.comisionApertura,
+    periodicidad: datos.periodicidad ?? 'MENSUAL',
+    nPeriodos: datos.nPeriodos ?? datos.cuotas.length ?? 12,
+    sistema: datos.sistema ?? 'FRANCES',
+    fechaInicio: datos.fechaInicio ?? hoyISO(),
+    esVinculada: false,
+    notas: datos.numeroContrato ? `Contrato ${datos.numeroContrato}` : undefined,
+  }))
+
+  const falta = (campo: string) => !datos.encontrados.includes(campo)
+  const cuadro = cuadroDe(deuda)
+  const cuotaApp = cuadro[0]?.cuota
+  // Si la cuota que calcula la app se aparta de la del banco, algo no encaja.
+  const desvia = cuotaApp !== undefined && datos.cuota !== undefined && Math.abs(cuotaApp - datos.cuota) > 1
+
+  return (
+    <Modal titulo="Alta de préstamo desde el fichero del banco" onCerrar={onCancelar}>
+      <div className="space-y-4">
+        <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: 'var(--surface-2)' }}>
+          <p className="font-medium">
+            Leído: {datos.encontrados.length > 0 ? datos.encontrados.join(', ') : 'nada aprovechable'}. Revísalo antes de guardar.
+          </p>
+          {datos.numeroContrato && (
+            <p style={{ color: 'var(--text-muted)' }}>
+              Contrato {datos.numeroContrato}
+              {datos.nombreProducto ? ` · ${datos.nombreProducto}` : ''}
+            </p>
+          )}
+          {datos.cuotas.length > 0 && (
+            <p style={{ color: 'var(--text-muted)' }}>
+              {datos.cuotas.length} cuotas en el fichero ({datos.nPagadas ?? 0} pagadas, {datos.nPendientes ?? 0} pendientes)
+              {datos.capitalPendiente !== undefined ? ` · capital vivo ${formatearEuro(datos.capitalPendiente)}` : ''}
+            </p>
+          )}
+          {datos.avisos.map((a) => (
+            <p key={a} style={{ color: 'var(--warn)' }}>· {a}</p>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select etiqueta="Tipo" valor={deuda.tipo} onChange={(v) => setDeuda({ ...deuda, tipo: v })} opciones={TIPOS.map((t) => ({ valor: t.valor, texto: t.texto }))} />
+          <Campo etiqueta="Acreedor" valor={deuda.acreedor} onChange={(v) => setDeuda({ ...deuda, acreedor: v })} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <CampoNumero etiqueta={`Importe original${falta('importeOriginal') ? ' (no leído)' : ''}`} valor={deuda.importeOriginal} onChange={(v) => setDeuda({ ...deuda, importeOriginal: v })} sufijo="€" />
+          <CampoNumero etiqueta={`Tipo de interés anual${falta('tipoInteres') ? ' (no leído)' : ''}`} valor={deuda.tipoInteres} onChange={(v) => setDeuda({ ...deuda, tipoInteres: v })} sufijo="%" paso="0.001" />
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <CampoNumero etiqueta="Nº de cuotas" valor={deuda.nPeriodos} onChange={(v) => setDeuda({ ...deuda, nPeriodos: Math.max(1, v) })} />
+          <Select etiqueta="Periodicidad" valor={deuda.periodicidad} onChange={(v) => setDeuda({ ...deuda, periodicidad: v })} opciones={[{ valor: 'MENSUAL', texto: 'Mensual' }, { valor: 'TRIMESTRAL', texto: 'Trimestral' }, { valor: 'ANUAL', texto: 'Anual' }]} />
+          <Select etiqueta="Sistema" valor={deuda.sistema} onChange={(v) => setDeuda({ ...deuda, sistema: v })} opciones={[{ valor: 'FRANCES', texto: 'Francés' }, { valor: 'LINEAL', texto: 'Lineal' }]} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Campo etiqueta={`Fecha de inicio${falta('fechaInicio') ? ' (no leída)' : ''}`} valor={deuda.fechaInicio} onChange={(v) => setDeuda({ ...deuda, fechaInicio: v })} tipo="date" />
+          <CampoNumero etiqueta="Comisión de apertura" valor={deuda.comisiones ?? 0} onChange={(v) => setDeuda({ ...deuda, comisiones: v || undefined })} sufijo="€" />
+        </div>
+
+        {/* Comprobación de que lo registrado reproduce el cuadro del banco. */}
+        <div className="rounded-xl p-3 text-sm" style={{ background: 'var(--surface-2)' }}>
+          <div className="flex justify-between">
+            <span style={{ color: 'var(--text-muted)' }}>Cuota del banco</span>
+            <span className="tabular">{datos.cuota !== undefined ? formatearEuro(datos.cuota) : '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span style={{ color: 'var(--text-muted)' }}>Cuota que calcula la app</span>
+            <span className="tabular">{cuotaApp !== undefined ? formatearEuro(cuotaApp) : '—'}</span>
+          </div>
+          {desvia && (
+            <p className="text-xs mt-1" style={{ color: 'var(--warn)' }}>
+              No coinciden. Ajusta el nº de cuotas, el tipo o el sistema hasta que cuadren: si no, el cuadro de la app no será el
+              del banco.
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Boton variante="secundario" onClick={onCancelar}>Cancelar</Boton>
+          <Boton onClick={() => onAceptar(deuda)}>Dar de alta el préstamo</Boton>
+        </div>
+        {!deuda.acreedor.trim() && <p className="text-xs text-right" style={{ color: 'var(--warn)' }}>Indica el acreedor.</p>}
       </div>
     </Modal>
   )
