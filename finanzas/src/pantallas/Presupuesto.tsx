@@ -5,6 +5,8 @@ import { Tarjeta, Boton, EstadoVacio, ImporteEuro } from '../componentes/ui'
 import { Campo, CampoNumero, Select, Modal } from '../componentes/formularios'
 import { nuevoId } from '../dominio/id'
 import { cuotasDeudaPorMes, gastosBancariosPorMes, ingresosBancariosPorMes } from '../dominio/resumen-compras'
+import { cuotasRentingPorMes } from '../dominio/renting'
+import { costePolizasPorMes } from '../dominio/poliza'
 import { aCentimos, aEuros, formatearEuro } from '../dominio/dinero'
 import { brutoVenta } from '../dominio/ventas'
 import { totalesCompra } from '../dominio/compras'
@@ -45,18 +47,38 @@ export function Presupuesto() {
     const deuda = cuotasDeudaPorMes(datos.deudas, ejercicio)
     const banco = gastosBancariosPorMes(datos.movimientos, config.categoriasGasto, ejercicio)
     const entradas = ingresosBancariosPorMes(datos.movimientos, config.categoriasGasto, ejercicio)
-    if (deuda.length === 0 && banco.length === 0 && entradas.length === 0) {
+    const rentings = cuotasRentingPorMes(datos.rentings, ejercicio)
+    const polizas = costePolizasPorMes(datos.polizas, ejercicio)
+    if (deuda.length === 0 && banco.length === 0 && entradas.length === 0 && rentings.length === 0 && polizas.length === 0) {
       window.alert(
         'No hay nada que traer todavía.\n\n' +
           '· Las cuotas salen de las deudas registradas en la pantalla de Deudas.\n' +
+          '· Los rentings y las pólizas, de sus contratos en esa misma pantalla.\n' +
           '· Los cargos y abonos del banco salen de los movimientos con concepto asignado en Bancos.\n\n' +
           'No se traen las facturas de proveedores, los cobros de clientes ni las cuotas de préstamo: ya están contados en Compras, Ventas y Deudas.',
       )
       return
     }
+    if (rentings.length > 0) {
+      window.alert(
+        'Aviso sobre los rentings.\n\n' +
+          'Se traen como GASTO por la cuota SIN IVA, que es lo que resta del resultado (el IVA soportado se deduce).\n\n' +
+          'Si además registras las facturas del renting en Compras con la naturaleza «Renting de vehículos», ese gasto ya estaría contado: ' +
+          'quédate con uno de los dos caminos para no presupuestarlo dos veces.',
+      )
+    }
 
     const nuevas = [
       ...deuda.map((d) => ({ concepto: `Deuda: ${d.concepto}`, tipo: 'FINANCIACION' as const, meses: d.meses })),
+      // El renting es gasto de P&G, no financiación: no hay capital que devolver.
+      // Va por la base, porque el IVA soportado se deduce.
+      ...rentings.map((r) => ({ concepto: `Renting: ${r.concepto}`, tipo: 'GASTO' as const, meses: r.meses })),
+      // De la póliza, los intereses y comisiones son gasto; devolver el dispuesto
+      // al vencimiento (si no se renueva) es financiación y va en su propia línea.
+      ...polizas.map((p) => ({ concepto: `Póliza: ${p.concepto}`, tipo: 'GASTO' as const, meses: p.meses })),
+      ...polizas
+        .filter((p) => p.mesesDevolucion)
+        .map((p) => ({ concepto: `Póliza (devolución): ${p.concepto}`, tipo: 'FINANCIACION' as const, meses: p.mesesDevolucion as number[] })),
       // Cada concepto bancario entra con su efecto: las comisiones y los seguros
       // son gasto; los tributos y la Seguridad Social saldan deuda ya devengada.
       ...banco.map((b) => ({ concepto: `Banco: ${b.categoria}`, tipo: b.efecto, meses: b.meses })),

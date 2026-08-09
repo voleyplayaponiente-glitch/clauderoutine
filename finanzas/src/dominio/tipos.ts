@@ -430,6 +430,75 @@ export interface Deuda extends Trazable {
   notas?: string
 }
 
+/**
+ * Renting: **no es deuda**, es un arrendamiento operativo.
+ * No lleva tipo de interés: se pacta una cuota lineal durante todo el contrato y
+ * al final se devuelve el bien (no hay opción de compra ni capital pendiente).
+ * La cuota es gasto deducible (621) y su IVA se soporta y se deduce.
+ */
+export interface Renting extends Trazable {
+  arrendador: string
+  numeroContrato?: string
+  cuentaVinculada?: string
+  cuentaPagoId?: ID
+  /** Qué se alquila: «RENAULT Clio / 2023». */
+  descripcion: string
+  matricula?: string
+  bastidor?: string
+  /** Cuota SIN IVA. Lineal: la misma todos los periodos. */
+  cuotaBase: number
+  /** % de IVA de la cuota. Editable: no se da por supuesto el 21 %. */
+  tipoIva: number
+  periodicidad: 'MENSUAL' | 'TRIMESTRAL' | 'ANUAL'
+  nCuotas: number
+  fechaInicio: string
+  fechaFin?: string
+  /** Cuotas ya facturadas según el banco (para cotejar con lo que calcula la app). */
+  cuotasFacturadas?: number
+  fianza?: number
+  kmContratados?: number
+  centroCosteId?: ID
+  notas?: string
+}
+
+/**
+ * Póliza de crédito (cuenta de crédito): **no tiene cuadro de amortización**.
+ * Se dispone y se devuelve libremente hasta un límite, se liquida intereses
+ * periódicamente y se renueva al vencimiento. Hay dos precios: el del capital
+ * dispuesto y la comisión de disponibilidad sobre lo NO dispuesto; y un tercero,
+ * mucho más caro, si se excede el límite.
+ */
+export interface Poliza extends Trazable {
+  entidad: string
+  numeroContrato?: string
+  cuentaRelacionada?: string
+  cuentaTesoreriaId?: ID
+  /** Capital concedido en la escritura. */
+  limiteConcedido: number
+  /** Límite vigente hoy (el banco lo puede reducir en la renovación). */
+  limiteActual: number
+  /** Saldo del capital dispuesto. */
+  dispuesto: number
+  /** Saldo contable: es el que el banco usa para calcular el disponible. */
+  saldoContable?: number
+  importeExcedido?: number
+  /** % anual sobre el capital dispuesto. */
+  tipoInteresDispuesto: number
+  /** % anual sobre el capital NO dispuesto (comisión de disponibilidad). */
+  comisionDisponibilidad: number
+  /** % sobre el máximo excedido; se cobra si se pasa del límite. */
+  comisionExcedido?: number
+  periodicidadLiquidacion: 'MENSUAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL'
+  fechaConstitucion: string
+  /** Fecha de cancelación prevista (vencimiento de la póliza). */
+  fechaVencimiento?: string
+  fechaUltimaLiquidacion?: string
+  fechaProximaLiquidacion?: string
+  /** Si se prevé renovarla, el dispuesto no se presupuesta como devolución. */
+  seRenueva: boolean
+  notas?: string
+}
+
 export type EstadoDeudor = 'AL_CORRIENTE' | 'VENCIDO' | 'EN_RECLAMACION' | 'INCOBRABLE'
 export type TipoDeudor =
   | 'CLIENTE_APLAZADO'
@@ -502,6 +571,8 @@ export interface DatosOperativos {
   movimientosStock: MovimientoStock[]
   importaciones: LoteImportacion[]
   deudas: Deuda[]
+  rentings: Renting[]
+  polizas: Poliza[]
   deudores: DeudorVario[]
   presupuestos: Presupuesto[]
   logsSync: LogSync[]

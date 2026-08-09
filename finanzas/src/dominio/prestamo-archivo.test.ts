@@ -322,3 +322,27 @@ describe('deducir el nº de cuotas', () => {
     expect(nPeriodosPorCuota(100000, 10, 100, 'MENSUAL')).toBeUndefined()
   })
 })
+
+describe('«Fecha de vencimiento» no siempre es la cabecera de un cuadro', () => {
+  it('no confunde el rótulo suelto de la ficha con una tabla de cuotas', () => {
+    // La ficha del préstamo de CaixaBank tiene una fila
+    // «Importe pendiente · Cuota a pagar · Fecha de vencimiento» que NO es la
+    // cabecera de un cuadro. Al leer el PDF por columnas empezó a colarse como
+    // tal y el fichero dejó de aportar importe, fecha y entidad.
+    const ficha = [
+      ['Microcr. financ. de 12.000€'],
+      ['Importe pendiente', 'Cuota a pagar', 'Fecha de vencimiento'],
+      ['527,44 €', '01/11/2027'],
+      ['7.644,77 €'],
+      ['Cuenta vinculada', '415223-56'],
+      ['ES31 2100 3985', 'Fecha'],
+      ['5902 0036 5748', 'constitución', 'Tipo de interés'],
+      ['16/10/2025', '5,182%'],
+    ]
+    const r = leerPrestamo(ficha)
+    expect(r.importeOriginal).toBe(12000)
+    expect(r.fechaInicio).toBe('2025-10-16')
+    expect(r.tipoInteres).toBe(5.182)
+    expect(r.entidad).toBe('CaixaBank')
+  })
+})

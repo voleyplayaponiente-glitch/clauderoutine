@@ -10,14 +10,20 @@ import { formatearEuro, formatearPorcentaje } from '../dominio/dinero'
 import { generarCuadro, resumenCuadro } from '../dominio/amortizacion'
 import { agruparPorTramo, type ItemVencimiento } from '../dominio/vencimientos'
 import { leerPrestamo, fusionarPrestamos, type DatosPrestamo } from '../dominio/prestamo-archivo'
+import { esFichaRenting, leerRenting, type DatosRenting } from '../dominio/renting-archivo'
+import { esFichaPoliza, leerPoliza, type DatosPoliza } from '../dominio/poliza-archivo'
 import { filasDePrestamo } from '../lib/extracto'
+import { SeccionRentings } from './deudas/SeccionRentings'
+import { SeccionPolizas } from './deudas/SeccionPolizas'
 import type { Deuda, TipoDeuda } from '../dominio/tipos'
 
 const TIPOS: { valor: TipoDeuda; texto: string; grupo: 'financiera' | 'comercial' | 'fiscal' | 'otra' }[] = [
   { valor: 'PRESTAMO', texto: 'Préstamo bancario', grupo: 'financiera' },
   { valor: 'POLIZA', texto: 'Póliza de crédito', grupo: 'financiera' },
   { valor: 'LEASING', texto: 'Leasing', grupo: 'financiera' },
-  { valor: 'RENTING', texto: 'Renting', grupo: 'financiera' },
+  // El renting tiene su propia sección (no es deuda); se deja el tipo para no
+  // romper lo ya guardado, pero se avisa de dónde va lo nuevo.
+  { valor: 'RENTING', texto: 'Renting (usa la sección de Rentings)', grupo: 'financiera' },
   { valor: 'PROVEEDOR', texto: 'Proveedor', grupo: 'comercial' },
   { valor: 'ACREEDOR', texto: 'Acreedor diverso', grupo: 'comercial' },
   { valor: 'SOCIOS', texto: 'Socios y administradores', grupo: 'otra' },
@@ -45,17 +51,36 @@ export function Deudas() {
   const [expandida, setExpandida] = useState<string | null>(null)
   const refArchivo = useRef<HTMLInputElement>(null)
   const [lectura, setLectura] = useState<DatosPrestamo | null>(null)
+  const [lecturaRenting, setLecturaRenting] = useState<DatosRenting | null>(null)
+  const [lecturaPoliza, setLecturaPoliza] = useState<DatosPoliza | null>(null)
   const [leyendo, setLeyendo] = useState(false)
   const [errorArchivo, setErrorArchivo] = useState<string | null>(null)
 
-  /** Lee uno o varios ficheros del mismo préstamo y los combina. */
+  /**
+   * Lee uno o varios ficheros del banco. Un renting y una póliza no son
+   * préstamos y no traen cuadro, así que primero se mira **qué es** el
+   * documento y se manda a su lector; si no, se combinan como préstamo (el
+   * banco lo parte en dos descargas).
+   */
   const leerArchivos = async (ficheros: File[]) => {
     setLeyendo(true)
     setErrorArchivo(null)
     try {
-      const lecturas = []
-      for (const f of ficheros) lecturas.push(leerPrestamo(await filasDePrestamo(f)))
-      const fusion = fusionarPrestamos(lecturas)
+      const filas = []
+      for (const f of ficheros) filas.push(await filasDePrestamo(f))
+
+      const renting = filas.find(esFichaRenting)
+      if (renting) {
+        setLecturaRenting(leerRenting(renting))
+        return
+      }
+      const poliza = filas.find(esFichaPoliza)
+      if (poliza) {
+        setLecturaPoliza(leerPoliza(poliza))
+        return
+      }
+
+      const fusion = fusionarPrestamos(filas.map(leerPrestamo))
       if (fusion.cuotas.length === 0 && fusion.encontrados.length === 0) {
         setErrorArchivo(fusion.avisos[0] ?? 'No se ha podido leer el fichero.')
       } else {
@@ -89,11 +114,12 @@ export function Deudas() {
   return (
     <>
       <div className="flex items-start justify-between gap-4 mb-6">
-        <CabeceraPantalla titulo="Deudas" descripcion="Préstamos, leasing y acreedores con cuadro de amortización y vencimientos." />
+        <CabeceraPantalla titulo="Deudas y financiación" descripcion="Préstamos con cuadro, rentings (que son gasto, no deuda) y pólizas de crédito." />
         <div className="flex gap-2">
-          {/* El banco parte el préstamo en dos descargas; se admiten las dos a la vez. */}
+          {/* El banco parte el préstamo en dos descargas; se admiten las dos a la vez.
+              El mismo botón reconoce la ficha de un renting o de una póliza. */}
           <Boton variante="secundario" onClick={() => refArchivo.current?.click()}>
-            {leyendo ? 'Leyendo…' : 'Subir cuadro del banco'}
+            {leyendo ? 'Leyendo…' : 'Subir fichero del banco'}
           </Boton>
           <input
             ref={refArchivo}
@@ -182,6 +208,15 @@ export function Deudas() {
           </Tarjeta>
         </div>
       )}
+
+      {/* Renting y póliza viven aquí porque es donde se mira «qué pago cada mes»,
+          pero se presentan aparte: ninguno de los dos es deuda con cuadro. */}
+      <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+        <SeccionRentings lectura={lecturaRenting} onCerrarLectura={() => setLecturaRenting(null)} />
+      </div>
+      <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+        <SeccionPolizas lectura={lecturaPoliza} onCerrarLectura={() => setLecturaPoliza(null)} />
+      </div>
 
       {edit && <ModalDeuda deuda={edit} setDeuda={setEdit} onGuardar={(d) => { if (d.acreedor.trim()) { guardar(d); setEdit(null) } }} />}
     </>
