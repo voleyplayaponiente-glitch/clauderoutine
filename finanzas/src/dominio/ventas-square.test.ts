@@ -43,11 +43,20 @@ describe('resumen semanal de Square', () => {
     expect(esResumenSemanalSquare(parsearCSV(SQUARE, detectarSeparador(SQUARE)))).toBe(true)
   })
 
-  it('saca el periodo del nombre del fichero', () => {
+  it('saca el periodo del nombre del fichero, lo escriba Square como lo escriba', () => {
     expect(rangoDeNombre(NOMBRE)).toEqual({ desde: '2026-08-01', hasta: '2026-08-07' })
     // El prefijo que añade la subida no molesta.
     expect(rangoDeNombre('a5fe7e86-resumenventas2026080120260807.csv')).toEqual({ desde: '2026-08-01', hasta: '2026-08-07' })
+    // Caso real: Square también lo descarga con guiones y con «(1)» al final.
+    expect(rangoDeNombre('resumen-ventas-2026-08-01-2026-08-01 (1).csv')).toEqual({ desde: '2026-08-01', hasta: '2026-08-01' })
+    expect(rangoDeNombre('resumen-ventas-2026-08-01-2026-08-07.csv')).toEqual({ desde: '2026-08-01', hasta: '2026-08-07' })
+    // Con una sola fecha, el periodo es ese día.
+    expect(rangoDeNombre('resumen-ventas-2026-08-01.csv')).toEqual({ desde: '2026-08-01', hasta: '2026-08-01' })
+    // Al revés, se ordena solo.
+    expect(rangoDeNombre('ventas-2026-08-07-2026-08-01.csv')).toEqual({ desde: '2026-08-01', hasta: '2026-08-07' })
     expect(rangoDeNombre('ventas.csv')).toBeUndefined()
+    // Lo que parece fecha pero no lo es, no cuela.
+    expect(rangoDeNombre('informe-2026-13-45.csv')).toBeUndefined()
   })
 
   it('cruza cada día de la semana con su fecha real', () => {
@@ -160,7 +169,8 @@ Total de transacciones de pagos cobrados,49
 `
 
 describe('resumen de Square de un solo día', () => {
-  const r = leerVentasCsv(SQUARE_DIA, 'resumenventas2026080120260801_1.csv')
+  // Nombre tal y como lo descarga Square desde el navegador.
+  const r = leerVentasCsv(SQUARE_DIA, 'resumen-ventas-2026-08-01-2026-08-01 (1).csv')
 
   it('toma la fecha del periodo del nombre', () => {
     expect(r.origen).toBe('SQUARE_RESUMEN')
