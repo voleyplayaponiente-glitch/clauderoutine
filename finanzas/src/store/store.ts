@@ -4,7 +4,7 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, DeudorVario, Presupuesto, Conector, LogSync } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, Renting, Poliza, DeudorVario, Presupuesto, Conector, LogSync } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import {
   cargarConfig,
@@ -32,7 +32,7 @@ import type { Inversion, OperacionInversion, ValoracionInversion } from '../domi
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
 }
 
 /** Colección de datos que recibe cada destino de importación. */
@@ -98,6 +98,10 @@ interface Estado {
   // Deudas y deudores
   guardarDeuda: (d: Deuda) => void
   anularDeuda: (id: string) => void
+  guardarRenting: (r: Renting) => void
+  anularRenting: (id: string) => void
+  guardarPoliza: (p: Poliza) => void
+  anularPoliza: (id: string) => void
   guardarDeudor: (d: DeudorVario) => void
   anularDeudor: (id: string) => void
   guardarPresupuesto: (p: Presupuesto) => void
@@ -551,6 +555,28 @@ export const useStore = create<Estado>((set, get) => ({
   anularDeuda: (id) => {
     const deudas = get().datos.deudas.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
     const datos = { ...get().datos, deudas }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarRenting: (r) => {
+    const datos = { ...get().datos, rentings: upsert(get().datos.rentings, r) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularRenting: (id) => {
+    const rentings = get().datos.rentings.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
+    const datos = { ...get().datos, rentings }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarPoliza: (p) => {
+    const datos = { ...get().datos, polizas: upsert(get().datos.polizas, p) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularPoliza: (id) => {
+    const polizas = get().datos.polizas.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
+    const datos = { ...get().datos, polizas }
     set({ datos })
     persistirDatos(datos)
   },

@@ -124,17 +124,29 @@ function desdeFilas(filas: string[][], formato: FormatoExtracto): LecturaExtract
  * los fragmentos se agrupan por su coordenada vertical, que es lo que convierte
  * un amasijo de trozos en filas de tabla legibles.
  */
-export async function lineasDePdf(buffer: ArrayBuffer): Promise<string[]> {
+interface TrozoPdf {
+  x: number
+  y: number
+  ancho: number
+  texto: string
+}
+
+/** Dos fragmentos pertenecen a la misma fila si su Y no difiere más que esto. */
+const TOLERANCIA_Y = 4
+
+/**
+ * Filas de fragmentos de un PDF, agrupadas por cercanía vertical y ordenadas de
+ * izquierda a derecha. Es la base común de `lineasDePdf` (una cadena por fila) y
+ * de `celdasDePdf` (columnas separadas).
+ */
+async function filasDeTrozos(buffer: ArrayBuffer): Promise<TrozoPdf[][]> {
   const pdfjs = await import('pdfjs-dist')
   // El worker se sirve desde el propio bundle (la CSP no permite CDN externos).
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
   const tarea = pdfjs.getDocument({ data: new Uint8Array(buffer) })
   const doc = await tarea.promise
-  const lineas: string[] = []
-
-  /** Dos fragmentos pertenecen a la misma fila si su Y no difiere más que esto. */
-  const TOLERANCIA_Y = 4
+  const filas: TrozoPdf[][] = []
 
   for (let p = 1; p <= doc.numPages; p++) {
     const pagina = await doc.getPage(p)
@@ -144,32 +156,26 @@ export async function lineasDePdf(buffer: ArrayBuffer): Promise<string[]> {
     // (una capa visible y otra de accesibilidad). Sin quitar los repetidos, el
     // importe aparecía duplicado y la línea quedaba ilegible.
     const vistos = new Set<string>()
-    const trozos: { x: number; y: number; texto: string }[] = []
-    for (const item of contenido.items as { str: string; transform: number[] }[]) {
+    const trozos: TrozoPdf[] = []
+    for (const item of contenido.items as { str: string; width?: number; transform: number[] }[]) {
       if (!item.str || item.str.trim() === '') continue
       const x = item.transform[4]
       const y = item.transform[5]
       const huella = `${Math.round(x)}|${Math.round(y)}|${item.str}`
       if (vistos.has(huella)) continue
       vistos.add(huella)
-      trozos.push({ x, y, texto: item.str })
+      trozos.push({ x, y, ancho: item.width ?? 0, texto: item.str })
     }
 
     // Agrupación por cercanía vertical: la fecha y el resto de la fila pueden
     // ir a uno o dos puntos de distancia, y un redondeo fijo las separaba.
     trozos.sort((a, b) => b.y - a.y || a.x - b.x)
-    let grupo: typeof trozos = []
+    let grupo: TrozoPdf[] = []
     let yGrupo = Number.NaN
 
     const cerrarGrupo = () => {
       if (grupo.length === 0) return
-      const texto = grupo
-        .sort((a, b) => a.x - b.x)
-        .map((t) => t.texto)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-      if (texto !== '') lineas.push(texto)
+      filas.push(grupo.sort((a, b) => a.x - b.x))
       grupo = []
     }
 
@@ -186,7 +192,56 @@ export async function lineasDePdf(buffer: ArrayBuffer): Promise<string[]> {
     cerrarGrupo()
   }
   await tarea.destroy()
-  return lineas
+  return filas
+}
+
+/**
+ * Extrae las líneas de texto de un PDF respetando la disposición visual:
+ * los fragmentos se agrupan por su coordenada vertical, que es lo que convierte
+ * un amasijo de trozos en filas de tabla legibles.
+ */
+export async function lineasDePdf(buffer: ArrayBuffer): Promise<string[]> {
+  const filas = await filasDeTrozos(buffer)
+  return filas
+    .map((f) => f.map((t) => t.texto).join(' ').replace(/\s+/g, ' ').trim())
+    .filter((l) => l !== '')
+}
+
+/**
+ * Igual que `lineasDePdf`, pero **conservando las columnas**: cada fila sale
+ * troceada en celdas.
+ *
+ * Hace falta para las fichas de contrato de la banca digital, donde la
+ * información va en columnas y juntarlo todo en una cadena la destruye
+ * («Cuotas contratadas 48 · Cuotas facturadas 10» acababa como «4810»). El
+ * corte se decide por el **hueco horizontal** entre fragmentos: dentro de una
+ * celda pdf.js entrega el texto seguido, y entre columnas siempre hay separación.
+ */
+export async function celdasDePdf(buffer: ArrayBuffer): Promise<string[][]> {
+  /** Hueco, en puntos, a partir del cual dos fragmentos son celdas distintas. */
+  const HUECO_COLUMNA = 2
+  /** Por debajo de esto van pegados sin espacio (el «:» suelto de un rótulo). */
+  const HUECO_PEGADO = 0.5
+
+  const filas = await filasDeTrozos(buffer)
+  return filas
+    .map((fila) => {
+      const celdas: string[] = []
+      let actual = ''
+      let finAnterior = Number.NaN
+      for (const t of fila) {
+        const hueco = t.x - finAnterior
+        if (actual === '' || Number.isNaN(finAnterior)) actual = t.texto
+        else if (hueco > HUECO_COLUMNA) {
+          celdas.push(actual.trim())
+          actual = t.texto
+        } else actual += (hueco <= HUECO_PEGADO ? '' : ' ') + t.texto
+        finAnterior = t.x + t.ancho
+      }
+      if (actual.trim() !== '') celdas.push(actual.trim())
+      return celdas.filter((c) => c !== '')
+    })
+    .filter((f) => f.length > 0)
 }
 
 async function leerPdf(fichero: File): Promise<LecturaExtracto> {
@@ -240,8 +295,9 @@ export async function filasDePrestamo(fichero: File): Promise<Celda[][]> {
   }
 
   if (ext === 'pdf') {
-    const lineas = await lineasDePdf(await fichero.arrayBuffer())
-    return lineas.map((l) => l.split(/\s{2,}/).map((c) => c.trim()))
+    // Por columnas, no por líneas: las fichas de contrato del banco reparten los
+    // datos en columnas y juntarlas en una cadena las hace ilegibles.
+    return (await celdasDePdf(await fichero.arrayBuffer())) as Celda[][]
   }
 
   if (['csv', 'tsv', 'txt'].includes(ext)) {

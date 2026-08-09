@@ -58,7 +58,7 @@ export interface DatosPrestamo {
  * Códigos de entidad españoles (las cuatro primeras cifras del contrato).
  * Solo para **proponer** el acreedor; siempre se puede corregir.
  */
-const ENTIDADES: Record<string, string> = {
+export const ENTIDADES: Record<string, string> = {
   '0182': 'BBVA',
   '2100': 'CaixaBank',
   '0081': 'Banco Sabadell',
@@ -133,6 +133,12 @@ function cabeceraTabla(filas: Celda[][]): { i: number; col: Record<string, numbe
     const n = (filas[i] ?? []).map((c) => normalizar(texto(c)))
     if (!n.some((c) => c.startsWith('fecha de vencimiento'))) continue
     const buscar = (...claves: string[]) => n.findIndex((c) => c !== '' && claves.some((k) => c === k || c.startsWith(k)))
+    // «Fecha de vencimiento» a secas no basta: la ficha del préstamo la usa
+    // como rótulo de un dato suelto («Importe pendiente · Cuota a pagar · Fecha
+    // de vencimiento»). Para ser una tabla tiene que traer además las columnas
+    // de importe del cuadro; si no, se lee por texto.
+    const columnasCuadro = ['importe de cuota', 'importe del movimiento', 'importe principal', 'importe de intereses', 'capital pendiente']
+    if (columnasCuadro.filter((k) => buscar(k) !== -1).length < 2) continue
     return {
       i,
       col: {

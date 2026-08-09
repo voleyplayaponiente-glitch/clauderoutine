@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 471 tests (Vitest) del motor
+npm test         # 516 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -388,6 +388,66 @@ Cuando `cabeceraTabla` no encuentra columnas, `leerPrestamo` cae a **`leerTextoP
 - El banco **alterna los céntimos** entre cuotas (527,43 / 527,44): la diferencia con la cuota que
   calcula la app es de 1 cts, por debajo del umbral de aviso. No es un error.
 
+## Renting y póliza de crédito: financiación que NO es un cuadro de cuotas
+Los dos viven en la pantalla de Deudas, en secciones aparte, porque ninguno encaja en `Deuda`
+(que reparte un principal en cuotas con intereses). El mismo botón «Subir fichero del banco»
+reconoce qué documento es (`esFichaRenting` / `esFichaPoliza`) y lo manda a su lector.
+
+### Renting (`dominio/renting.ts`) — **es gasto, no deuda**
+Dicho por el usuario: *no lleva tipo de interés, es una cuota lineal durante los 48 meses y
+luego se devuelve el vehículo; cuota más su IVA porque es gasto deducible.*
+- Cuota **idéntica** todos los periodos: ni cuadro francés ni intereses que separar. Al acabar
+  se devuelve el bien, así que **no hay capital pendiente ni opción de compra**.
+- **Al presupuesto va la BASE (sin IVA)** como GASTO, porque el IVA soportado se deduce y no es
+  coste; la **salida de caja** es la cuota CON IVA. La pantalla enseña las dos y lo explica.
+  Lo pendiente se llama **compromiso**, no deuda.
+- `Renting.tipoIva` es un campo: se propone el marcado por defecto en Configuración y se puede
+  poner a 0. Nunca se da por supuesto el 21 %.
+- **Aviso de doble conteo**: si además se registran las facturas del renting en Compras
+  («Renting de vehículos»), el gasto estaría dos veces. Se avisa al traerlo al presupuesto.
+- Primera cuota **un periodo después** de `fechaInicio`, igual que en los préstamos.
+- `avisosRenting` compara las cuotas facturadas que dice el banco con las que salen por fechas
+  (con el contrato real: 10 frente a 8, porque el recibo se gira el día 1 y no el de la firma).
+  Se avisa, **no se apaña por dentro**.
+
+### Póliza de crédito (`dominio/poliza.ts`) — **sin cuotas**
+Dicho por el usuario: *se renueva una vez al año, tiene un tipo de interés del capital dispuesto
+y otro por el capital no dispuesto, con liquidación mensual de intereses.*
+- Tres precios: interés del **dispuesto**, comisión de **disponibilidad** sobre lo NO dispuesto
+  (se paga por tenerlo reservado) y comisión de **máximo excedido**, mucho más cara.
+- **El disponible se calcula con el SALDO CONTABLE, no con el dispuesto**: es lo que hace el
+  banco. Con la póliza real, 28.000 − 16.783,14 = 11.216,86 € (con el dispuesto saldría
+  10.111,02, que no es lo que imprime la ficha). El lector comprueba ese cuadre y avisa si falla.
+- `estimarLiquidacion` prorratea con **base 360 y saldo constante**: es una ESTIMACIÓN para
+  presupuestar y se dice en pantalla. El banco liquida sobre el saldo medio diario.
+  La comisión de excedido **no se prorratea**: es un % sobre el mayor exceso del periodo.
+- Al presupuesto: intereses y comisiones como GASTO, mes a mes. Si `seRenueva` es falso, la
+  devolución del dispuesto va en **línea aparte de FINANCIACION** en el mes del vencimiento.
+- Sin fechas de liquidación, el calendario se cuenta desde la constitución (dato del contrato).
+
+### Lectura de fichas del banco (`dominio/ficha-banco.ts`)
+Las fichas de contrato de la banca digital son **rótulo → valor**, no tablas. `leerFicha` recorre
+el documento con una **cola de rótulos pendientes** y sabe con dos formas distintas:
+- La del **renting** pone una fila de rótulos y la siguiente con los valores, y **parte los
+  rótulos largos** entre líneas («Importe de la cuota» + «periódica:»).
+- La de la **póliza** pone rótulo y valor en la misma fila, alternando.
+El corte: una fila que alterna rótulo/valor se basta a sí misma; en las demás, un trozo final sin
+dos puntos es la continuación de un rótulo **si parece prosa** (varias palabras en minúscula) y
+un valor **si parece un valor** (empieza por cifra, o es una palabra suelta tipo «MENSUAL»).
+`pareceValor` es lo que distingue «Fecha impresión: 09/08/2026» de «Cargo por km adicional».
+**El primer valor gana**: la página 2 de estas fichas trae rótulos mal partidos y no debe pisar
+lo leído en la 1.
+
+### `celdasDePdf` (lib/extracto.ts): leer el PDF por COLUMNAS
+`lineasDePdf` junta toda la fila en una cadena y eso destruye las columnas: «Cuotas contratadas
+48 · Cuotas facturadas 10» acababa como **«4810»**. `celdasDePdf` trocea cada fila por el **hueco
+horizontal** entre fragmentos (> 2 puntos = columna nueva; ≤ 0,5 = pegado, como el «:» suelto de
+un rótulo). `filasDePrestamo` usa esta versión para los PDF.
+- **Efecto colateral que hubo que arreglar**: con las columnas separadas, la fila «Importe
+  pendiente · Cuota a pagar · Fecha de vencimiento» de la ficha del préstamo empezó a colarse
+  como cabecera de cuadro y el fichero dejó de aportar importe, fecha y entidad. `cabeceraTabla`
+  exige ahora **al menos dos columnas de importe** además de la fecha de vencimiento.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -401,7 +461,7 @@ Cuando `cabeceraTabla` no encuentra columnas, `leerPrestamo` cae a **`leerTextoP
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (471 tests en verde, desplegado)
+## Estado (516 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.
