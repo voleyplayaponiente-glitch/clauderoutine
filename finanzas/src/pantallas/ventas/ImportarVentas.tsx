@@ -7,7 +7,7 @@
  * seguridad **no se adivina**: se elige a mano en la propia tabla.
  */
 import { useMemo, useRef, useState } from 'react'
-import { Boton, Semaforo, ImporteEuro } from '../../componentes/ui'
+import { Boton, Semaforo, ImporteEuro, formatearEuro } from '../../componentes/ui'
 import { Modal } from '../../componentes/formularios'
 import { leerVentasCsv, baseYCuota, emparejarPunto, type LecturaVentasCsv } from '../../dominio/ventas-csv'
 import { decodificarTextoBancario } from '../../dominio/texto'
@@ -15,6 +15,16 @@ import { formatearFecha } from '../../lib/fechas'
 import { nuevoId } from '../../dominio/id'
 import { datafonoPrincipal, datafonosDe } from '../../dominio/datafonos'
 import type { CentroCoste, Configuracion, Venta } from '../../dominio/tipos'
+
+/** Nombre corto de cada forma de cobro para la previsualización. */
+const ETIQUETA_COBRO: Record<string, string> = {
+  EFECTIVO: 'Efectivo',
+  TARJETA: 'Tarjeta',
+  BIZUM: 'Bizum',
+  TRANSFERENCIA: 'Transferencia',
+  PASARELA: 'Pasarela',
+  APLAZADO: 'Aplazado',
+}
 
 interface Props {
   config: Configuracion
@@ -201,7 +211,7 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
             ))}
 
             <div className="flex flex-wrap gap-2">
-              <Semaforo estado={importables.length > 0 ? 'positivo' : 'neutro'} texto={`${importables.length} días a importar`} />
+              <Semaforo estado={importables.length > 0 ? 'positivo' : 'neutro'} texto={`${importables.length} ${importables.length === 1 ? 'día' : 'días'} a importar`} />
               {sinPunto > 0 && <Semaforo estado="atencion" texto={`${sinPunto} sin punto de venta`} />}
               {duplicadas > 0 && <Semaforo estado="atencion" texto={`${duplicadas} ya registrados`} />}
               {lectura.descartadas.length > 0 && <Semaforo estado="negativo" texto={`${lectura.descartadas.length} descartadas`} />}
@@ -209,11 +219,11 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
 
             {listas.length > 0 && (
               <div className="overflow-auto" style={{ maxHeight: 320 }}>
-                <table className="text-sm" style={{ minWidth: 640 }}>
+                <table className="w-full text-sm" style={{ minWidth: todos ? undefined : 640 }}>
                   <thead>
                     <tr style={{ color: 'var(--text-muted)' }} className="text-left">
                       <th className="py-2 pr-3 font-medium">Fecha</th>
-                      <th className="py-2 pr-3 font-medium">Punto de venta</th>
+                      {!todos && <th className="py-2 pr-3 font-medium">Punto de venta</th>}
                       <th className="py-2 pr-3 font-medium text-right">Base</th>
                       <th className="py-2 pr-3 font-medium text-right">IVA</th>
                       <th className="py-2 pr-3 font-medium">Cobros</th>
@@ -226,29 +236,35 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
                       return (
                         <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
                           <td className="py-1.5 pr-3 tabular">{formatearFecha(l.fila.fecha)}</td>
-                          <td className="py-1.5 pr-3">
-                            <select
-                              value={l.centroCosteId ?? ''}
-                              onChange={(e) => setPuntos((p) => p.map((v, j) => (j === i ? e.target.value || undefined : v)))}
-                              className="rounded-lg px-2 py-1 text-xs"
-                              style={{ background: 'var(--surface-2)', border: `1px solid ${l.centroCosteId ? 'var(--border)' : 'var(--warn)'}`, color: 'var(--text)' }}
-                            >
-                              <option value="">— elige la tienda —</option>
-                              {centros.map((c: CentroCoste) => (
-                                <option key={c.id} value={c.id}>{c.nombre}</option>
-                              ))}
-                            </select>
-                            {l.fila.puntoTexto && !l.centroCosteId && (
-                              <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>en el fichero: «{l.fila.puntoTexto}»</span>
-                            )}
-                          </td>
+                          {/* Con la tienda ya elegida arriba, repetirla en cada
+                              fila solo estorba y descuadra la tabla. */}
+                          {!todos && (
+                            <td className="py-1.5 pr-3">
+                              <select
+                                value={l.centroCosteId ?? ''}
+                                onChange={(e) => setPuntos((p) => p.map((v, j) => (j === i ? e.target.value || undefined : v)))}
+                                className="rounded-lg px-2 py-1 text-xs"
+                                style={{ background: 'var(--surface-2)', border: `1px solid ${l.centroCosteId ? 'var(--border)' : 'var(--warn)'}`, color: 'var(--text)' }}
+                              >
+                                <option value="">— elige la tienda —</option>
+                                {centros.map((c: CentroCoste) => (
+                                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                                ))}
+                              </select>
+                              {l.fila.puntoTexto && !l.centroCosteId && (
+                                <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>en el fichero: «{l.fila.puntoTexto}»</span>
+                              )}
+                            </td>
+                          )}
                           <td className="py-1.5 pr-3 text-right"><ImporteEuro valor={base} /></td>
                           <td className="py-1.5 pr-3 text-right">
                             <ImporteEuro valor={cuota} />
                             {desglosado && <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>desglosado</span>}
                           </td>
                           <td className="py-1.5 pr-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {l.fila.cobros.length > 0 ? l.fila.cobros.map((c) => `${c.forma.toLowerCase()} ${c.importe}`).join(' · ') : '—'}
+                            {l.fila.cobros.length > 0
+                              ? l.fila.cobros.map((c) => `${ETIQUETA_COBRO[c.forma] ?? c.forma} ${formatearEuro(c.importe)}`).join(' · ')
+                              : '—'}
                           </td>
                           <td className="py-1.5 text-xs" style={{ color: 'var(--warn)' }}>{l.duplicada ? 'ya registrado' : ''}</td>
                         </tr>
@@ -278,7 +294,7 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
 
             <div className="flex justify-end gap-2">
               <Boton variante="secundario" onClick={() => setLectura(null)}>Cancelar</Boton>
-              <Boton onClick={aplicar}>Importar {importables.length} días</Boton>
+              <Boton onClick={aplicar}>Importar {importables.length} {importables.length === 1 ? 'día' : 'días'}</Boton>
             </div>
           </div>
         </Modal>
