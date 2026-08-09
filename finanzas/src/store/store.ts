@@ -4,7 +4,7 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, Renting, Poliza, DeudorVario, Presupuesto, Conector, LogSync } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, Renting, Poliza, TarjetaCredito, DeudorVario, Presupuesto, Conector, LogSync } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import {
   cargarConfig,
@@ -32,7 +32,7 @@ import type { Inversion, OperacionInversion, ValoracionInversion } from '../domi
 type Tema = 'claro' | 'oscuro'
 
 function datosIniciales(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], tarjetasCredito: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
 }
 
 /** Colección de datos que recibe cada destino de importación. */
@@ -102,6 +102,8 @@ interface Estado {
   anularRenting: (id: string) => void
   guardarPoliza: (p: Poliza) => void
   anularPoliza: (id: string) => void
+  guardarTarjetaCredito: (t: TarjetaCredito) => void
+  anularTarjetaCredito: (id: string) => void
   guardarDeudor: (d: DeudorVario) => void
   anularDeudor: (id: string) => void
   guardarPresupuesto: (p: Presupuesto) => void
@@ -577,6 +579,17 @@ export const useStore = create<Estado>((set, get) => ({
   anularPoliza: (id) => {
     const polizas = get().datos.polizas.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
     const datos = { ...get().datos, polizas }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  guardarTarjetaCredito: (t) => {
+    const datos = { ...get().datos, tarjetasCredito: upsert(get().datos.tarjetasCredito, t) }
+    set({ datos })
+    persistirDatos(datos)
+  },
+  anularTarjetaCredito: (id) => {
+    const tarjetasCredito = get().datos.tarjetasCredito.map((x) => (x.id === id ? { ...x, anuladoEn: new Date().toISOString() } : x))
+    const datos = { ...get().datos, tarjetasCredito }
     set({ datos })
     persistirDatos(datos)
   },

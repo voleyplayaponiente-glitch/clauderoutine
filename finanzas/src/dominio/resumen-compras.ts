@@ -10,7 +10,7 @@
  */
 import { aCentimos, aEuros } from './dinero'
 import { totalesCompra } from './compras'
-import { generarCuadro } from './amortizacion'
+import { cuadroDeuda } from './financiacion'
 import type { Compra, CategoriaGasto, Deuda, TipoDeuda, ID } from './tipos'
 
 // ─────────────────────── Ámbito de las categorías ───────────────────────
@@ -218,14 +218,9 @@ export function cuotasDeudaPorMes(deudas: Deuda[], ejercicio: number): LineaDeud
     if (d.anuladoEn) continue
     let cuadro
     try {
-      cuadro = generarCuadro({
-        principal: d.importeOriginal,
-        tipoAnual: d.tipoInteres,
-        nPeriodos: d.nPeriodos,
-        periodicidad: d.periodicidad,
-        sistema: d.sistema,
-        fechaInicio: d.fechaInicio,
-      })
+      // `cuadroDeuda` respeta el calendario leído de un documento (aplazamiento
+      // de Hacienda) por encima de la fórmula.
+      cuadro = cuadroDeuda(d)
     } catch {
       continue // una deuda mal configurada no debe tumbar el presupuesto
     }

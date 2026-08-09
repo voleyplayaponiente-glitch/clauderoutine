@@ -4,7 +4,7 @@ import { configuracionInicial } from './defaults'
 import type { DatosOperativos } from './tipos'
 
 function datosVacios(): DatosOperativos {
-  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
+  return { terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [], almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], tarjetasCredito: [], deudores: [], presupuestos: [], logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [] }
 }
 
 describe('checksum determinista', () => {

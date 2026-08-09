@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 544 tests (Vitest) del motor
+npm test         # 565 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -502,6 +502,54 @@ camino evidente y el que produce un cuadro de cuotas inexistente. Para que no vu
   ofrece un botón que lleva lo tecleado a la sección correcta**.
 - La póliza se guarda con solo entidad + capital concedido; el límite actual se rellena solo.
 
+## Cuánto se debe en total (`dominio/financiacion.ts`)
+Pedido por el usuario: *la deuda total bancaria debería sumar los préstamos, las pólizas y los
+renting, identificando cada total pero con un sumatorio de todo.*
+- `resumenFinanciacion` da **un total por bloque y un total general**, y cada bloque **dice con
+  qué está medido**, porque no miden lo mismo: préstamos por **capital vivo**, póliza por
+  **dispuesto**, tarjeta por **saldo pendiente de liquidar**, renting por **cuotas pendientes sin
+  IVA**. Sumarlos sin decirlo sería engañoso.
+- La póliza en cuenta corriente se **resuelve contra su cuenta** dentro del resumen: guardada con
+  `dispuesto: 0`, sin resolverla el bloque sumaba cero y el total salía corto.
+- El **renting se suma pero va marcado `esCompromiso`**: se paga todos los meses, pero
+  contablemente es un arrendamiento operativo, no deuda del balance. La pantalla lo explica.
+- `deudaTotal` del Dashboard sale ya de aquí. En Deudas **se quitaron las cuatro tarjetas
+  antiguas** (Deuda total / Financiera / Comercial / Fiscal): dos cifras distintas de «deuda
+  total» en la misma pantalla es justo lo que confundía.
+
+### `Deuda.cuadroFijo`: calendarios que no salen de una fórmula
+`cuadroDeuda(d)` usa el cuadro leído de un documento **por encima** de `generarCuadro`. Es lo que
+permite registrar un aplazamiento tal y como viene. Lo usan la pantalla de Deudas, el presupuesto
+(`cuotasDeudaPorMes`) y el resumen, así que un plazo irregular se respeta en todas partes.
+
+## Aplazamiento de Hacienda / Seguridad Social (`dominio/aplazamiento-aeat.ts`)
+El mismo botón «Subir fichero del banco» reconoce el **acuerdo de concesión** y lo manda aquí.
+- Un aplazamiento **no es un préstamo**: la AEAT publica los vencimientos plazo a plazo, con su
+  principal y sus intereses, y no tienen por qué ser iguales. Se guardan en `cuadroFijo`, **tal
+  cual**, sin recalcular nada.
+- Fila de plazo = **una fecha y al menos un importe**; con tres, el mayor es el total, el menor
+  los intereses y el otro el principal.
+- Se leen expediente, NIF, tipo de demora e importe aplazado, y se **comprueba el cuadre**: la
+  suma de los plazos tiene que dar la deuda más sus intereses. Si no, se avisa de que puede faltar
+  algún plazo por leer; no se corrige por nuestra cuenta.
+- `esAplazamiento` pide **dos señales** para no tragarse cualquier escrito de Hacienda, y
+  distingue AEAT de la Tesorería General de la Seguridad Social.
+- **PENDIENTE de validar con un PDF real del usuario**: la disposición del test es la habitual
+  del acuerdo de concesión, pero no está tomada de un documento suyo. Cuando lo mande, convertirlo
+  en regresión como se hizo con las facturas.
+
+## Tarjetas de crédito (`dominio/tarjeta-credito.ts`)
+Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en Deudas.
+- Límite, saldo pendiente, **modalidad** y día del cargo. La modalidad es lo que decide si la
+  tarjeta cuesta dinero: **FIN_DE_MES** no devenga intereses; **APLAZADO** sí, y suele ser la
+  financiación más cara de la empresa, así que se dice el coste anual y se sugiere compararlo con
+  la póliza.
+- Misma alarma de consumo que la póliza (umbral editable, 75 % por defecto, con su marca en la
+  barra) y aviso propio si se pasa del límite.
+- **Enlazable con las tarjetas de `Configuracion.tarjetas`**: entonces la app suma las compras
+  pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
+  bueno es el del extracto, no lo que haya metido en Compras.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -515,7 +563,7 @@ camino evidente y el que produce un cuadro de cuotas inexistente. Para que no vu
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (544 tests en verde, desplegado)
+## Estado (565 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.

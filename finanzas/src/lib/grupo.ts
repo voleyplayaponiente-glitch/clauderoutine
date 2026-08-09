@@ -15,7 +15,7 @@ import type { DatosOperativos } from '../dominio/tipos'
 function datosVacios(): DatosOperativos {
   return {
     terceros: [], ventas: [], compras: [], recurrentes: [], cuentasTesoreria: [], movimientos: [], arqueos: [],
-    almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], deudores: [], presupuestos: [],
+    almacenes: [], articulos: [], movimientosStock: [], importaciones: [], deudas: [], rentings: [], polizas: [], tarjetasCredito: [], deudores: [], presupuestos: [],
     logsSync: [], inversiones: [], operacionesInversion: [], valoracionesInversion: [],
   }
 }

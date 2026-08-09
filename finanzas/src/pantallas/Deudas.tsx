@@ -7,7 +7,7 @@ import { TramosBarra } from '../componentes/TramosBarra'
 import { hoyISO, formatearFecha } from '../lib/fechas'
 import { nuevoId } from '../dominio/id'
 import { formatearEuro, formatearPorcentaje } from '../dominio/dinero'
-import { generarCuadro, resumenCuadro } from '../dominio/amortizacion'
+import { resumenCuadro } from '../dominio/amortizacion'
 import { agruparPorTramo, type ItemVencimiento } from '../dominio/vencimientos'
 import { leerPrestamo, fusionarPrestamos, type DatosPrestamo } from '../dominio/prestamo-archivo'
 import { esFichaRenting, leerRenting, type DatosRenting } from '../dominio/renting-archivo'
@@ -15,7 +15,10 @@ import { esFichaPoliza, leerPoliza, type DatosPoliza } from '../dominio/poliza-a
 import { filasDePrestamo } from '../lib/extracto'
 import { SeccionRentings, rentingNuevo } from './deudas/SeccionRentings'
 import { SeccionPolizas, polizaNueva } from './deudas/SeccionPolizas'
-import type { Deuda, Poliza, Renting, TipoDeuda } from '../dominio/tipos'
+import { SeccionTarjetas, tarjetaCreditoNueva } from './deudas/SeccionTarjetas'
+import { cuadroDeuda, resumenFinanciacion } from '../dominio/financiacion'
+import { esAplazamiento, leerAplazamiento, type DatosAplazamiento } from '../dominio/aplazamiento-aeat'
+import type { Deuda, Poliza, Renting, TarjetaCredito, TipoDeuda } from '../dominio/tipos'
 
 const TIPOS: { valor: TipoDeuda; texto: string; grupo: 'financiera' | 'comercial' | 'fiscal' | 'otra' }[] = [
   { valor: 'PRESTAMO', texto: 'Préstamo bancario', grupo: 'financiera' },
@@ -38,9 +41,9 @@ function deudaNueva(): Deuda {
   return { id: nuevoId(), creadoEn: new Date().toISOString(), creadoPor: 'admin', origen: 'MANUAL', tipo: 'PRESTAMO', acreedor: '', importeOriginal: 0, tipoInteres: 0, periodicidad: 'MENSUAL', nPeriodos: 12, sistema: 'FRANCES', fechaInicio: hoyISO(), esVinculada: false }
 }
 
-function cuadroDe(d: Deuda) {
-  return generarCuadro({ principal: d.importeOriginal, tipoAnual: d.tipoInteres, nPeriodos: d.nPeriodos, periodicidad: d.periodicidad, fechaInicio: d.fechaInicio, sistema: d.sistema })
-}
+// El cuadro sale del motor, que respeta el calendario leído de un documento
+// (aplazamiento de Hacienda) por encima de la fórmula.
+const cuadroDe = cuadroDeuda
 
 export function Deudas() {
   const deudas = useStore((s) => s.datos.deudas).filter((d) => !d.anuladoEn)
@@ -56,6 +59,8 @@ export function Deudas() {
   // Alta de renting o póliza pedida desde la cabecera o desde el modal de deuda.
   const [nuevoRenting, setNuevoRenting] = useState<Renting | null>(null)
   const [nuevaPoliza, setNuevaPoliza] = useState<Poliza | null>(null)
+  const [nuevaTarjeta, setNuevaTarjeta] = useState<TarjetaCredito | null>(null)
+  const [lecturaAplazamiento, setLecturaAplazamiento] = useState<DatosAplazamiento | null>(null)
   const ivaDefecto = useStore((s) => s.config.tiposIva).find((t) => t.porDefecto)?.tipo ?? 21
   const [leyendo, setLeyendo] = useState(false)
   const [errorArchivo, setErrorArchivo] = useState<string | null>(null)
@@ -83,6 +88,13 @@ export function Deudas() {
         setLecturaPoliza(leerPoliza(poliza))
         return
       }
+      // Un aplazamiento de Hacienda o de la Seguridad Social: no es un cuadro
+      // calculado, son los plazos que dice el acuerdo.
+      const aplazamiento = filas.find((f) => esAplazamiento(f).es)
+      if (aplazamiento) {
+        setLecturaAplazamiento(leerAplazamiento(aplazamiento))
+        return
+      }
 
       const fusion = fusionarPrestamos(filas.map(leerPrestamo))
       if (fusion.cuotas.length === 0 && fusion.encontrados.length === 0) {
@@ -104,10 +116,6 @@ export function Deudas() {
     return { deuda: d, cuadro, pendiente }
   }), [deudas, hoy])
 
-  const totalPendiente = conCuadro.reduce((s, x) => s + x.pendiente, 0)
-  const porGrupo = { financiera: 0, comercial: 0, fiscal: 0, otra: 0 }
-  for (const x of conCuadro) porGrupo[grupoDe(x.deuda.tipo)] += x.pendiente
-
   const itemsTramos: ItemVencimiento[] = useMemo(() => {
     const items: ItemVencimiento[] = []
     for (const x of conCuadro) for (const c of x.cuadro) if (c.fecha > hoy) items.push({ importe: c.capital, fechaVencimiento: c.fecha })
@@ -118,7 +126,7 @@ export function Deudas() {
   return (
     <>
       <div className="flex items-start justify-between gap-4 mb-6">
-        <CabeceraPantalla titulo="Deudas y financiación" descripcion="Préstamos con cuadro, rentings (que son gasto, no deuda) y pólizas de crédito." />
+        <CabeceraPantalla titulo="Deudas y financiación" descripcion="Préstamos, pólizas, tarjetas de crédito y renting, con el total de todo. Se puede subir el fichero del banco o el acuerdo de aplazamiento de Hacienda." />
         <div className="flex gap-2">
           {/* El banco parte el préstamo en dos descargas; se admiten las dos a la vez.
               El mismo botón reconoce la ficha de un renting o de una póliza. */}
@@ -135,6 +143,7 @@ export function Deudas() {
           />
           <Boton variante="secundario" onClick={() => setNuevoRenting(rentingNuevo(ivaDefecto))}>+ Renting</Boton>
           <Boton variante="secundario" onClick={() => setNuevaPoliza(polizaNueva())}>+ Póliza</Boton>
+          <Boton variante="secundario" onClick={() => setNuevaTarjeta(tarjetaCreditoNueva())}>+ Tarjeta</Boton>
           <Boton onClick={() => setEdit(deudaNueva())}>+ Deuda</Boton>
         </div>
       </div>
@@ -151,17 +160,22 @@ export function Deudas() {
         />
       )}
 
+      {lecturaAplazamiento && (
+        <RevisarAplazamiento
+          datos={lecturaAplazamiento}
+          onCancelar={() => setLecturaAplazamiento(null)}
+          onAceptar={(d) => { guardar(d); setLecturaAplazamiento(null) }}
+        />
+      )}
+
+      <ResumenFinanciacion />
+
       {deudas.length === 0 ? (
         <Tarjeta><EstadoVacio icono="deuda" titulo="Aún no hay deudas registradas" descripcion="Da de alta préstamos, pólizas, leasing y acreedores. Verás su cuadro de amortización, el capital pendiente y los vencimientos por tramos." accion={<Boton onClick={() => setEdit(deudaNueva())}>Añadir la primera</Boton>} /></Tarjeta>
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Deuda total</div><div className="text-lg font-semibold"><ImporteEuro valor={totalPendiente} /></div></Tarjeta>
-            <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Financiera</div><div className="text-lg font-semibold"><ImporteEuro valor={porGrupo.financiera} /></div></Tarjeta>
-            <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Comercial</div><div className="text-lg font-semibold"><ImporteEuro valor={porGrupo.comercial} /></div></Tarjeta>
-            <Tarjeta className="!p-4"><div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Fiscal</div><div className="text-lg font-semibold"><ImporteEuro valor={porGrupo.fiscal} /></div></Tarjeta>
-          </div>
-
+          {/* El total va arriba, en «Lo que se debe en total»: dos cifras de
+              «deuda total» distintas en la misma pantalla solo confunden. */}
           <Tarjeta>
             <h3 className="font-semibold mb-3">Vencimientos por tramos</h3>
             <TramosBarra tramos={tramos} />
@@ -224,6 +238,9 @@ export function Deudas() {
           plantilla={nuevoRenting}
           onCerrarPlantilla={() => setNuevoRenting(null)}
         />
+      </div>
+      <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+        <SeccionTarjetas plantilla={nuevaTarjeta} onCerrarPlantilla={() => setNuevaTarjeta(null)} />
       </div>
       <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
         <SeccionPolizas
@@ -428,6 +445,154 @@ function RevisarPrestamo({
           <Boton onClick={() => onAceptar(deuda)}>Dar de alta el préstamo</Boton>
         </div>
         {!deuda.acreedor.trim() && <p className="text-xs text-right" style={{ color: 'var(--warn)' }}>Indica el acreedor.</p>}
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Cuánto se debe en total, con el desglose por bloque.
+ * Cada bloque se mide con un criterio distinto (capital vivo, dispuesto, cuotas
+ * pendientes), así que se dice cuál: sumarlos sin decirlo sería engañoso.
+ */
+function ResumenFinanciacion() {
+  const datos = useStore((s) => s.datos)
+  const hoy = hoyISO()
+  const r = useMemo(() => resumenFinanciacion(datos, hoy), [datos, hoy])
+  if (r.total === 0) return null
+
+  return (
+    <Tarjeta className="mb-4">
+      <div className="flex items-baseline justify-between gap-4 mb-3">
+        <h3 className="font-semibold">Lo que se debe en total</h3>
+        <div className="text-2xl font-semibold tabular"><ImporteEuro valor={r.total} /></div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {r.bloques.map((b) => (
+          <div key={b.bloque} className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {b.titulo}
+              {b.numero > 0 ? ` (${b.numero})` : ''}
+            </div>
+            <div className="font-semibold tabular"><ImporteEuro valor={b.importe} /></div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{b.criterio}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-sm">
+        <span>
+          <span style={{ color: 'var(--text-muted)' }}>Bancaria: </span>
+          <span className="tabular font-medium"><ImporteEuro valor={r.totalBancaria} /></span>
+        </span>
+        <span>
+          <span style={{ color: 'var(--text-muted)' }}>No bancaria: </span>
+          <span className="tabular font-medium"><ImporteEuro valor={r.totalNoBancaria} /></span>
+        </span>
+      </div>
+      <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+        El renting se suma porque se paga todos los meses, pero contablemente no es deuda del balance: es un arrendamiento
+        operativo y al final se devuelve el bien.
+      </p>
+    </Tarjeta>
+  )
+}
+
+/**
+ * Revisión del acuerdo de aplazamiento antes de darlo de alta. Los plazos NO se
+ * recalculan: se guardan tal y como los ha leído del documento.
+ */
+function RevisarAplazamiento({
+  datos,
+  onCancelar,
+  onAceptar,
+}: {
+  datos: DatosAplazamiento
+  onCancelar: () => void
+  onAceptar: (d: Deuda) => void
+}) {
+  const [deuda, setDeuda] = useState<Deuda>(() => ({
+    id: nuevoId(),
+    creadoEn: new Date().toISOString(),
+    creadoPor: 'sistema',
+    origen: 'PDF',
+    tipo: datos.organismo === 'SEGURIDAD_SOCIAL' ? 'SEG_SOCIAL' : 'HACIENDA',
+    acreedor: datos.organismo === 'SEGURIDAD_SOCIAL' ? 'Tesorería General de la Seguridad Social' : 'Agencia Tributaria',
+    importeOriginal: datos.importeTotal ?? datos.totalPlazos ?? 0,
+    tipoInteres: datos.tipoInteres ?? 0,
+    periodicidad: 'MENSUAL',
+    nPeriodos: Math.max(1, datos.plazos.length),
+    sistema: 'FRANCES',
+    fechaInicio: datos.plazos[0]?.fecha ?? hoyISO(),
+    esVinculada: false,
+    cuadroFijo: datos.plazos.length > 0 ? datos.plazos : undefined,
+    notas: datos.referencia ? `Expediente ${datos.referencia}` : undefined,
+  }))
+
+  return (
+    <Modal titulo="Alta de aplazamiento desde el acuerdo" onCerrar={onCancelar}>
+      <div className="space-y-4">
+        <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: 'var(--surface-2)' }}>
+          <p className="font-medium">
+            Leído: {datos.encontrados.length > 0 ? datos.encontrados.join(', ') : 'nada aprovechable'}. Revísalo antes de guardar.
+          </p>
+          {datos.referencia && <p style={{ color: 'var(--text-muted)' }}>Expediente {datos.referencia}</p>}
+          {datos.plazos.length > 0 && (
+            <p style={{ color: 'var(--text-muted)' }}>
+              {datos.plazos.length} plazos, del {formatearFecha(datos.plazos[0].fecha)} al{' '}
+              {formatearFecha(datos.plazos[datos.plazos.length - 1].fecha)} · total {formatearEuro(datos.totalPlazos ?? 0)}
+            </p>
+          )}
+          {datos.avisos.map((a) => (
+            <p key={a} style={{ color: 'var(--warn)' }}>· {a}</p>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select etiqueta="Tipo" valor={deuda.tipo} onChange={(v) => setDeuda({ ...deuda, tipo: v })} opciones={TIPOS.map((t) => ({ valor: t.valor, texto: t.texto }))} />
+          <Campo etiqueta="Acreedor" valor={deuda.acreedor} onChange={(v) => setDeuda({ ...deuda, acreedor: v })} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <CampoNumero etiqueta="Importe aplazado" valor={deuda.importeOriginal} onChange={(v) => setDeuda({ ...deuda, importeOriginal: v })} sufijo="€" />
+          <CampoNumero etiqueta="Interés de demora" valor={deuda.tipoInteres} onChange={(v) => setDeuda({ ...deuda, tipoInteres: v })} sufijo="%" paso="0.0001" />
+        </div>
+
+        {datos.plazos.length > 0 && (
+          <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
+            <p className="text-sm font-medium mb-2">Plazos que se van a guardar</p>
+            <div className="overflow-x-auto max-h-56">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ color: 'var(--text-muted)' }} className="text-left">
+                    <th className="px-2 py-1">Vencimiento</th>
+                    <th className="px-2 py-1 text-right">Principal</th>
+                    <th className="px-2 py-1 text-right">Intereses</th>
+                    <th className="px-2 py-1 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.plazos.map((p) => (
+                    <tr key={p.fecha}>
+                      <td className="px-2 py-1 tabular">{formatearFecha(p.fecha)}</td>
+                      <td className="px-2 py-1 text-right tabular">{p.capital !== undefined ? formatearEuro(p.capital) : '—'}</td>
+                      <td className="px-2 py-1 text-right tabular">{p.intereses !== undefined ? formatearEuro(p.intereses) : '—'}</td>
+                      <td className="px-2 py-1 text-right tabular">{formatearEuro(p.cuota)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              Se guardan tal cual: los plazos de un aplazamiento no salen de una fórmula y no tienen por qué ser iguales.
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Boton variante="secundario" onClick={onCancelar}>Cancelar</Boton>
+          <Boton onClick={() => { if (deuda.acreedor.trim()) onAceptar(deuda) }}>Dar de alta el aplazamiento</Boton>
+        </div>
       </div>
     </Modal>
   )
