@@ -28,6 +28,9 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
   const [nombre, setNombre] = useState('')
   const [puntos, setPuntos] = useState<(string | undefined)[]>([])
   const [error, setError] = useState<string | null>(null)
+  /** El texto se guarda para poder releerlo si hay que indicar la fecha a mano. */
+  const [texto, setTexto] = useState('')
+  const [fechaManual, setFechaManual] = useState('')
   const [todos, setTodos] = useState('')
   const [datafonoElegido, setDatafonoElegido] = useState('')
 
@@ -40,8 +43,10 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
   const elegir = async (f: File) => {
     setError(null)
     try {
-      const texto = decodificarTextoBancario(await f.arrayBuffer())
-      const r = leerVentasCsv(texto, f.name)
+      const contenido = decodificarTextoBancario(await f.arrayBuffer())
+      const r = leerVentasCsv(contenido, f.name)
+      setTexto(contenido)
+      setFechaManual('')
       setLectura(r)
       setNombre(f.name)
       // Cada fila se empareja sola con su tienda; lo que no case queda vacío.
@@ -53,6 +58,22 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
     } finally {
       if (ref.current) ref.current.value = ''
     }
+  }
+
+  /**
+   * La persona indica el periodo que el fichero no trae y se vuelve a leer con
+   * ese dato. En el semanal, el día elegido es el primero de los siete.
+   */
+  const ponerFecha = (fecha: string) => {
+    setFechaManual(fecha)
+    if (!fecha || !lectura) return
+    const hasta =
+      lectura.necesitaPeriodo === 'SEMANA'
+        ? new Date(Date.parse(fecha) + 6 * 86_400_000).toISOString().slice(0, 10)
+        : fecha
+    const r = leerVentasCsv(texto, `periodo-${fecha}-${hasta}.csv`)
+    setLectura(r)
+    setPuntos(r.filas.map(() => (todos || undefined)))
   }
 
   /** Un día ya registrado en esa tienda no se duplica: se avisa y se salta. */
@@ -157,6 +178,21 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
                     ))}
                   </select>
                 )}
+              </div>
+            )}
+
+            {lectura.necesitaPeriodo && (
+              <div className="flex items-center gap-2 rounded-xl p-2.5" style={{ background: 'var(--surface-2)' }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {lectura.necesitaPeriodo === 'SEMANA' ? 'Primer día de la semana:' : 'Fecha de este resumen:'}
+                </span>
+                <input
+                  type="date"
+                  value={fechaManual}
+                  onChange={(e) => ponerFecha(e.target.value)}
+                  className="rounded-lg px-2 py-1 text-xs"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--warn)', color: 'var(--text)' }}
+                />
               </div>
             )}
 

@@ -36,6 +36,12 @@ export type OrigenVentasCsv = 'COLUMNAS' | 'SQUARE_SEMANAL' | 'SQUARE_RESUMEN'
 
 export interface LecturaVentasCsv {
   origen: OrigenVentasCsv
+  /**
+   * El informe de Square no trae fechas y el nombre del fichero tampoco: hay
+   * que preguntárselas a la persona. DIA para el resumen de un día, SEMANA
+   * para el de día de la semana (se pide el primer día).
+   */
+  necesitaPeriodo?: 'DIA' | 'SEMANA'
   filas: FilaVentaCsv[]
   descartadas: { linea: number; texto: string; motivo: string }[]
   /** Cabeceras que se han reconocido, para enseñarlas antes de importar. */
@@ -278,14 +284,26 @@ export function esResumenSemanalSquare(filas: string[][]): boolean {
   return false
 }
 
-/** Rango `AAAAMMDD`+`AAAAMMDD` incrustado en el nombre del fichero. */
+/**
+ * Periodo incrustado en el nombre del fichero. Square lo escribe de varias
+ * maneras según de dónde se descargue —`resumenventas2026080120260807.csv` y
+ * `resumen-ventas-2026-08-01-2026-08-01 (1).csv` son el mismo informe—, así que
+ * se buscan **todas** las fechas del nombre y se toman las dos primeras.
+ * Con una sola, el periodo es ese único día.
+ */
 export function rangoDeNombre(nombre: string): { desde: string; hasta: string } | undefined {
-  const m = /(\d{4})(\d{2})(\d{2})\D?(\d{4})(\d{2})(\d{2})/.exec(nombre)
-  if (!m) return undefined
-  const desde = `${m[1]}-${m[2]}-${m[3]}`
-  const hasta = `${m[4]}-${m[5]}-${m[6]}`
-  if (Number.isNaN(Date.parse(desde)) || Number.isNaN(Date.parse(hasta)) || desde > hasta) return undefined
-  return { desde, hasta }
+  const fechas: string[] = []
+  for (const m of nombre.matchAll(/(\d{4})[-_.](\d{2})[-_.](\d{2})|(\d{4})(\d{2})(\d{2})/g)) {
+    const iso = m[1] ? `${m[1]}-${m[2]}-${m[3]}` : `${m[4]}-${m[5]}-${m[6]}`
+    // Se descarta lo que parece una fecha pero no lo es (mes 13, día 40…).
+    const d = new Date(iso + 'T00:00:00Z')
+    if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso) continue
+    fechas.push(iso)
+    if (fechas.length === 2) break
+  }
+  if (fechas.length === 0) return undefined
+  const [desde, hasta = desde] = fechas
+  return desde <= hasta ? { desde, hasta } : { desde: hasta, hasta: desde }
 }
 
 /** Las fechas del rango, una por día. Vacío si el rango es absurdo. */
@@ -317,9 +335,10 @@ export function leerResumenSemanalSquare(filas: string[][], nombreFichero: strin
       filas: [],
       descartadas,
       columnas: [],
+      necesitaPeriodo: 'SEMANA',
       avisos: [
-        'Es un «Resumen de ventas» de Square por día de la semana, pero no lleva las fechas dentro y el nombre del fichero no ' +
-          'dice el periodo. Vuelve a descargarlo sin renombrarlo (viene como resumenventasAAAAMMDDAAAAMMDD.csv).',
+        'Este informe no lleva las fechas dentro y el nombre del fichero tampoco las dice. Indica abajo el primer día de la ' +
+          'semana que abarca y se reparten los siete días.',
       ],
     }
   }
@@ -453,10 +472,8 @@ export function leerResumenSquare(filas: string[][], nombreFichero: string): Lec
       filas: [],
       descartadas,
       columnas: [],
-      avisos: [
-        'Es un «Resumen de ventas» de Square, pero no lleva la fecha dentro y el nombre del fichero no dice el periodo. ' +
-          'Vuelve a descargarlo sin renombrarlo (viene como resumenventasAAAAMMDDAAAAMMDD.csv).',
-      ],
+      necesitaPeriodo: 'DIA',
+      avisos: ['Este resumen no lleva la fecha dentro y el nombre del fichero tampoco la dice. Indícala abajo.'],
     }
   }
   if (rango.desde !== rango.hasta) {

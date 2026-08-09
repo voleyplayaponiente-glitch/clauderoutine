@@ -287,7 +287,13 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
   · Viene **transpuesto**: una fila por métrica («Ventas netas», «Impuestos», «Efectivo»…) y una
     columna por **día de la semana**. Nada que ver con un CSV por columnas: se detecta por los
     nombres de los días en la cabecera y se lee aparte.
-  · **NO lleva fechas dentro**: el periodo va en el nombre (`resumenventas2026080120260807.csv`).
+  · **NO lleva fechas dentro**: el periodo va en el nombre. Square lo escribe de varias maneras
+    según de dónde se descargue —`resumenventas2026080120260807.csv` y
+    `resumen-ventas-2026-08-01-2026-08-01 (1).csv` son el mismo informe—, así que `rangoDeNombre`
+    busca **todas** las fechas del nombre (`AAAAMMDD` o `AAAA-MM-DD`) y toma las dos primeras;
+    con una sola, el periodo es ese día. Si no hay ninguna, **la previsualización pide la fecha**
+    (`necesitaPeriodo`) en vez de dejar al usuario en un callejón sin salida: el dato lo pone la
+    persona, no la app.
     La fecha de cada columna sale de cruzar el día de la semana con ese rango, y **solo vale si el
     rango es de 7 días justos**. Con más, «lunes» es la suma de varios lunes: no se importa nada y
     se explica por qué. Sin fechas en el nombre, tampoco se inventa el periodo.
