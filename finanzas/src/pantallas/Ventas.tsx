@@ -9,6 +9,7 @@ import { hoyISO, formatearFecha, mesDe, nombreMes } from '../lib/fechas'
 import { nuevoId } from '../dominio/id'
 import { brutoVenta, ticketMedio, cuadreVenta, totalCobros } from '../dominio/ventas'
 import { formatearEuro } from '../dominio/dinero'
+import { ImportarVentas } from './ventas/ImportarVentas'
 import type { Venta, FormaCobro, LineaIva } from '../dominio/tipos'
 
 const FORMAS: { forma: FormaCobro; texto: string }[] = [
@@ -39,6 +40,11 @@ export function Ventas() {
 
   const nombrePunto = (id: string) => config.centrosCoste.find((c) => c.id === id)?.nombre ?? '—'
 
+  /** Datáfono asignado hoy a una tienda; es el que se propone por defecto. */
+  const datafonoDe = (centroCosteId: string) =>
+    config.datafonos.find((d) => d.activo && d.centroCosteId === centroCosteId)
+  const nombreDatafono = (id?: string) => config.datafonos.find((d) => d.id === id)?.nombre
+
   const porMes = useMemo(() => {
     const mapa = new Map<string, Venta[]>()
     for (const v of [...ventas].sort((a, b) => b.fecha.localeCompare(a.fecha))) {
@@ -66,13 +72,28 @@ export function Ventas() {
 
   const abrirNueva = () => { setEditando(ventaNueva(puntos[0].id)); setFirma('') }
 
+  /** Las ventas importadas entran una a una por el store (borrado lógico, upsert). */
+  const importarVentas = (nuevas: Venta[]) => {
+    for (const v of nuevas) guardarVenta(v)
+  }
+
   const setCobro = (forma: FormaCobro, importe: number) => {
     if (!editando) return
     const otros = editando.cobros.filter((c) => c.forma !== forma)
-    const cobros = importe > 0 ? [...otros, { forma, importe }] : otros
+    // Al meter un cobro con tarjeta se propone el datáfono de esa tienda; si
+    // ese día cobró otro, se cambia en el selector de abajo.
+    const datafonoId = forma === 'TARJETA' ? (cobroTarjeta?.datafonoId ?? datafonoDe(editando.centroCosteId)?.id) : undefined
+    const cobros = importe > 0 ? [...otros, { forma, importe, datafonoId }] : otros
     setEditando({ ...editando, cobros })
   }
   const cobroDe = (forma: FormaCobro) => editando?.cobros.find((c) => c.forma === forma)?.importe ?? 0
+  const cobroTarjeta = editando?.cobros.find((c) => c.forma === 'TARJETA')
+  const datafonoCobro = cobroTarjeta?.datafonoId
+  const datafonos = config.datafonos.filter((d) => d.activo)
+  const setDatafono = (datafonoId?: string) => {
+    if (!editando) return
+    setEditando({ ...editando, cobros: editando.cobros.map((c) => (c.forma === 'TARJETA' ? { ...c, datafonoId } : c)) })
+  }
 
   const guardar = (cerrar: boolean) => {
     if (!editando) return
@@ -88,7 +109,10 @@ export function Ventas() {
     <>
       <div className="flex items-start justify-between gap-4 mb-6">
         <CabeceraPantalla titulo="Ventas diarias" descripcion="Registro diario de ingresos por punto de venta, IVA y forma de cobro." />
-        <Boton onClick={abrirNueva}>+ Registrar venta</Boton>
+        <div className="flex gap-2">
+          <ImportarVentas config={config} ventasExistentes={ventas} onImportar={importarVentas} />
+          <Boton onClick={abrirNueva}>+ Registrar venta</Boton>
+        </div>
       </div>
 
       {ventas.length === 0 ? (
@@ -170,6 +194,26 @@ export function Ventas() {
                   </label>
                 ))}
               </div>
+
+              {/* Por qué datáfono ha entrado la tarjeta: es lo que permite
+                  cuadrar luego con la liquidación del banco. Se propone el de
+                  la tienda y se cambia con un clic si ese día fue otro. */}
+              {cobroDe('TARJETA') > 0 && (
+                <div className="mt-3">
+                  <Select
+                    etiqueta="¿Por qué datáfono?"
+                    valor={datafonoCobro ?? ''}
+                    onChange={(v) => setDatafono(v || undefined)}
+                    opciones={[
+                      { valor: '', texto: datafonos.length ? '— Indica el datáfono —' : '— No hay datáfonos dados de alta —' },
+                      ...datafonos.map((d) => ({
+                        valor: d.id,
+                        texto: `${d.nombre} · ${d.banco}${d.centroCosteId === editando.centroCosteId ? ' (el de esta tienda)' : ''}`,
+                      })),
+                    ]}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

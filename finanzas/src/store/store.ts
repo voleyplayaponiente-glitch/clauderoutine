@@ -711,6 +711,7 @@ function migrarConfig(c: Partial<Configuracion>): Configuracion {
     empresa: { ...base.empresa, ...c.empresa },
     centrosCoste: fusionarCentros(c.centrosCoste, base.centrosCoste),
     tarjetas: c.tarjetas?.length ? c.tarjetas : base.tarjetas,
+    datafonos: c.datafonos?.length ? c.datafonos : base.datafonos,
     planContable: c.planContable ?? base.planContable,
     tiposIva: c.tiposIva ?? base.tiposIva,
     impuestosEspeciales: c.impuestosEspeciales ?? base.impuestosEspeciales,

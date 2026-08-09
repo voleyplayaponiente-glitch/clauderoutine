@@ -15,6 +15,7 @@ import type {
   CategoriaGasto,
   CentroCoste,
   Tarjeta,
+  Datafono,
   Umbrales,
 } from './tipos'
 
@@ -126,6 +127,19 @@ export const TARJETAS_DEFECTO: Tarjeta[] = [
   { id: 'tar-caixabank', nombre: 'Tarjeta CaixaBank', banco: 'CaixaBank', activa: true },
 ]
 
+/**
+ * Datáfonos: uno por tienda, con el banco que liquida. Es una precarga
+ * razonable para empezar; lo normal es ajustar en Configuración qué terminal
+ * hay realmente en cada sitio, y moverlos de tienda cuando cambian.
+ * Los stands y la web no llevan datáfono propio por defecto.
+ */
+export const DATAFONOS_DEFECTO: Datafono[] = [
+  { id: 'dat-gv-alicante', nombre: 'Datáfono GV Alicante', banco: 'CaixaBank', centroCosteId: 'cc-gv-alicante', activo: true },
+  { id: 'dat-san-juan', nombre: 'Datáfono San Juan', banco: 'CaixaBank', centroCosteId: 'cc-san-juan', activo: true },
+  { id: 'dat-alfafar', nombre: 'Datáfono Alfafar', banco: 'CaixaBank', centroCosteId: 'cc-alfafar', activo: true },
+  { id: 'dat-gv-hortaleza', nombre: 'Datáfono GV Hortaleza', banco: 'CaixaBank', centroCosteId: 'cc-gv-hortaleza', activo: true },
+]
+
 export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
   // Compras de mercadería. El stock internacional puede traer impuesto especial.
   { id: 'cat-stock-nac', nombre: 'Stock nacional', cuentaPGC: '600', deduciblePorDefecto: true, esStock: true, orden: 1, ambito: 'COMPRAS' },
@@ -230,6 +244,7 @@ export function configuracionInicial(): Configuracion {
     },
     centrosCoste: [...CENTROS_COSTE_DEFECTO],
     tarjetas: [...TARJETAS_DEFECTO],
+    datafonos: [...DATAFONOS_DEFECTO],
     planContable: [...PLAN_CONTABLE_DEFECTO],
     tiposIva: [...TIPOS_IVA_DEFECTO],
     impuestosEspeciales: [...IMPUESTOS_ESPECIALES_DEFECTO],
