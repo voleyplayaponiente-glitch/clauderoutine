@@ -13,6 +13,7 @@ import { resumenArticulo } from '../dominio/stock'
 import { proyectarSaldoDiario, detectarTension, type Flujo } from '../dominio/prevision'
 import { evaluarArqueo } from '../dominio/tesoreria'
 import { UMBRAL_CONSUMO, consumoMedio, polizaConCuenta, situacionPoliza } from '../dominio/poliza'
+import { resumenFinanciacion } from '../dominio/financiacion'
 import type { MetricasAlerta } from '../dominio/alertas'
 import type { Configuracion, DatosOperativos, TipoPuntoVenta } from '../dominio/tipos'
 import { construirFlujosPrevistos } from './flujos'
@@ -85,10 +86,8 @@ export function calcularDashboard(datos: DatosOperativos, config: Configuracion,
   const resultadoMes = aEuros(aCentimos(margenBruto) - aCentimos(gastosMes))
 
   // Deuda total pendiente.
-  const deudaTotal = datos.deudas.filter((d) => !d.anuladoEn).reduce((s, d) => {
-    const cuadro = generarCuadro({ principal: d.importeOriginal, tipoAnual: d.tipoInteres, nPeriodos: d.nPeriodos, periodicidad: d.periodicidad, fechaInicio: d.fechaInicio, sistema: d.sistema })
-    return s + resumenCuadro(cuadro).pendienteA(hoy)
-  }, 0)
+  // Todo lo que se debe: préstamos, pólizas, tarjetas, renting y no bancaria.
+  const deudaTotal = resumenFinanciacion(datos, hoy).total
 
   // Stock valorado.
   const almacenIds = datos.almacenes.filter((a) => !a.anuladoEn).map((a) => a.id)

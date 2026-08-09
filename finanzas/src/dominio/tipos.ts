@@ -428,6 +428,50 @@ export interface Deuda extends Trazable {
   garantias?: string
   esVinculada: boolean
   notas?: string
+  /**
+   * Calendario leído de un documento, cuando los plazos NO salen de una fórmula.
+   * Un aplazamiento de Hacienda trae sus vencimientos escritos uno a uno y no
+   * tienen por qué ser iguales; si está, manda sobre el cuadro calculado.
+   */
+  cuadroFijo?: PlazoDeuda[]
+}
+
+/** Un vencimiento concreto de un calendario leído de un documento. */
+export interface PlazoDeuda {
+  fecha: string
+  cuota: number
+  intereses?: number
+  capital?: number
+}
+
+/**
+ * Tarjeta de crédito: **deuda financiera a corto plazo**. Lo gastado se debe al
+ * banco hasta la liquidación, y si se aplaza devenga intereses (de los más
+ * caros que hay). No tiene cuadro: hay un límite y un saldo dispuesto.
+ */
+export interface TarjetaCredito extends Trazable {
+  entidad: string
+  /** Cómo se la llama en casa; y los 4 últimos dígitos para identificarla. */
+  alias: string
+  ultimos4?: string
+  /** Enlaza con la tarjeta de `Configuracion.tarjetas` con la que se pagan compras. */
+  tarjetaId?: ID
+  limite: number
+  /** Saldo dispuesto pendiente de liquidar. */
+  dispuesto: number
+  /**
+   * FIN_DE_MES — se paga entero en la liquidación (no devenga intereses).
+   * APLAZADO — se paga a plazos y devenga interés.
+   */
+  modalidad: 'FIN_DE_MES' | 'APLAZADO'
+  /** % anual del aplazado. Solo tiene sentido con modalidad APLAZADO. */
+  tipoInteres?: number
+  /** Día del mes en que el banco pasa el cargo. */
+  diaLiquidacion?: number
+  cuentaCargoId?: ID
+  /** % de consumo a partir del cual avisar. Por defecto 75. */
+  umbralAviso?: number
+  notas?: string
 }
 
 /**
@@ -582,6 +626,7 @@ export interface DatosOperativos {
   deudas: Deuda[]
   rentings: Renting[]
   polizas: Poliza[]
+  tarjetasCredito: TarjetaCredito[]
   deudores: DeudorVario[]
   presupuestos: Presupuesto[]
   logsSync: LogSync[]
