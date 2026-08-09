@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 410 tests (Vitest) del motor
+npm test         # 417 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -292,7 +292,14 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
     «Efectivo» · tarjeta = «Tarjeta» + «Otros» (se avisa de que «Otros» se cuenta como tarjeta) ·
     tickets = «Transacciones de ventas» (exacto, que «Transacciones de impuestos» también contiene
     «impuestos»). Un día a 0 se descarta como día cerrado, no se registra una venta vacía.
-  · El fichero no dice de qué tienda es → selector «para todos los días» en la previsualización.
+  · El fichero no dice de qué tienda es → selector único en la previsualización.
+- **Segunda variante: «Resumen de ventas - Resumen»** (un día, una tienda, UNA sola columna de
+  valores). Misma regla: la fecha sale del nombre y **solo se importa si el periodo es de un día**;
+  si agrega varios, no se reparte. Comprobado que cuadra con la columna del sábado del informe
+  semanal, lo que valida de paso el cruce día-de-la-semana → fecha.
+  · **«Origen del pago desconocido» es un detalle DENTRO de «Otros»**, no un cobro aparte:
+    sumarlos duplicaría el importe (569,40 + 569,40). Solo se leen «Tarjeta» y «Otros».
+    Que Square lo marque como desconocido apunta a un datáfono ajeno a Square; se avisa.
 - **BUG de `detectarSeparador` que esto destapó**: miraba solo la primera línea no vacía. En el
   fichero de Square esa línea es el principio de un campo entrecomillado de dos líneas y no tiene
   separadores, así que ganaba el `;` por descarte y el CSV entero se leía como UNA columna. Ahora

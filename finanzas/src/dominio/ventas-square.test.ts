@@ -119,3 +119,94 @@ describe('resumen semanal de Square', () => {
     expect(r.descartadas.some((d) => /Sin ventas/.test(d.motivo))).toBe(true)
   })
 })
+
+/**
+ * Segunda variante REAL: «Resumen de ventas - Resumen», de UN día y UNA
+ * tienda. Una sola columna de valores. Cuadra con la columna del sábado del
+ * informe semanal, lo que confirma que el cruce día-de-la-semana → fecha
+ * estaba bien hecho.
+ */
+const SQUARE_DIA = `"Resumen de ventas - Resumen
+Todo el día (0:00-23:59 CET)",
+Ventas de productos,"802,18 €"
+Artículos,"802,18 €"
+Costes del servicio brutos,"0,00 €"
+Devoluciones,"-19,05 €"
+Descuentos y artículos gratuitos,"-7,70 €"
+Descuentos,"-7,70 €"
+Artículos gratuitos,"0,00 €"
+Ventas netas,"775,43 €"
+Ventas diferidas,"0,00 €"
+Ventas de tarjetas regalo,"0,00 €"
+Impuestos,"162,77 €"
+Ventas brutas,"938,20 €"
+Propinas,"0,00 €"
+Total de las ventas,"938,20 €"
+Total de pagos cobrados,"938,20 €"
+Efectivo,"368,80 €"
+Otros,"569,40 €"
+Origen del pago desconocido,"569,40 €"
+Comisiones,"0,00 €"
+Total neto,"938,20 €"
+Número total de ventas,49
+Transacciones de ventas de productos,48
+Transacciones de ventas de artículos,48
+Transacciones de devoluciones detalladas,1
+Transacciones de descuentos,5
+Transacciones de ventas,49
+Transacciones de impuestos,49
+Total de transacciones de ventas,48
+Total de transacciones de pagos cobrados,49
+`
+
+describe('resumen de Square de un solo día', () => {
+  const r = leerVentasCsv(SQUARE_DIA, 'resumenventas2026080120260801_1.csv')
+
+  it('toma la fecha del periodo del nombre', () => {
+    expect(r.origen).toBe('SQUARE_RESUMEN')
+    expect(r.filas).toHaveLength(1)
+    expect(r.filas[0].fecha).toBe('2026-08-01')
+  })
+
+  it('lee los importes y cuadran', () => {
+    expect(r.filas[0]).toMatchObject({ base: 775.43, cuota: 162.77, total: 938.2, numTickets: 49 })
+    expect(r.filas[0].base! + r.filas[0].cuota!).toBeCloseTo(r.filas[0].total!, 2)
+  })
+
+  it('coincide con la columna del sábado del informe semanal', () => {
+    const semanal = leerVentasCsv(SQUARE, NOMBRE).filas.find((f) => f.fecha === '2026-08-01')!
+    expect(r.filas[0].base).toBe(semanal.base)
+    expect(r.filas[0].total).toBe(semanal.total)
+    expect(r.filas[0].cobros).toEqual(semanal.cobros)
+  })
+
+  it('«Origen del pago desconocido» va DENTRO de «Otros»: no se suma dos veces', () => {
+    // Otros = 569,40 y el detalle repite 569,40. Sumarlos daría 1.138,80.
+    expect(r.filas[0].cobros).toEqual([
+      { forma: 'EFECTIVO', importe: 368.8 },
+      { forma: 'TARJETA', importe: 569.4 },
+    ])
+    const cobrado = r.filas[0].cobros.reduce((s, c) => s + c.importe, 0)
+    expect(cobrado).toBeCloseTo(938.2, 2)
+  })
+
+  it('explica que Square no sabe el origen de ese cobro', () => {
+    expect(r.avisos.some((a) => /Origen del pago desconocido/.test(a))).toBe(true)
+  })
+
+  it('si el resumen agrega varios días, no lo reparte', () => {
+    const r2 = leerVentasCsv(SQUARE_DIA, 'resumenventas2026080120260807.csv')
+    expect(r2.filas).toEqual([])
+    expect(r2.avisos[0]).toMatch(/agrega todo el periodo/)
+  })
+
+  it('un día sin ventas no se registra', () => {
+    const cero = SQUARE_DIA.replace('Ventas netas,"775,43 €"', 'Ventas netas,"0,00 €"').replace(
+      'Ventas brutas,"938,20 €"',
+      'Ventas brutas,"0,00 €"',
+    )
+    const r2 = leerVentasCsv(cero, 'resumenventas2026080120260801_1.csv')
+    expect(r2.filas).toEqual([])
+    expect(r2.avisos[0]).toMatch(/no tiene ventas/)
+  })
+})
