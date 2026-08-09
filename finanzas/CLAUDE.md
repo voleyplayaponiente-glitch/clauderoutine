@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 424 tests (Vitest) del motor
+npm test         # 433 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -393,6 +393,16 @@ accionariado · **Conectores** (Fase 11).
 - **Pendiente para Square real:** levantar el servicio en el Umbrel **con HTTPS** (Tailscale /
   túnel de Cloudflare / reverse proxy), porque la app es HTTPS y bloquea http:// (contenido mixto).
   Luego: Conexiones → Square → modo Servidor → URL del Umbrel + secreto.
+- **`servidor/agregar.mjs`** (puro, probado desde `src/dominio/square-agregacion.test.ts`):
+  agrupa los pedidos de Square en ventas diarias por tienda. **Escrito pero AÚN NO ENCHUFADO**:
+  el servidor solo expone hoy `payouts` (liquidaciones), no ventas. Es el cimiento para cuando
+  se decida ir por el conector en vez de por CSV.
+  · La fecha es la del **cierre** del pedido, no la de creación (un ticket cobrado pasada la
+    medianoche es del día siguiente), con desfase horario configurable para que cuadre con los
+    informes de Square.
+  · `EXTERNAL` y `THIRD_PARTY_CARD` → TARJETA: es el datáfono ajeno a Square, lo que en los
+    informes sale como «Otros / origen del pago desconocido».
+  · Los importes se suman en **céntimos** y se pasan a euros una sola vez.
 
 ## Seguridad (auditoría 2026-07-31 — informe completo en `SEGURIDAD.md`)
 Invariantes que **no** se deben romper al tocar el código:
