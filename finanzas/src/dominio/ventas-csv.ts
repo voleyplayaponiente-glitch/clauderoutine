@@ -32,7 +32,7 @@ export interface FilaVentaCsv {
 }
 
 /** Origen reconocido del fichero, para poder decirlo en la previsualización. */
-export type OrigenVentasCsv = 'COLUMNAS' | 'SQUARE_SEMANAL'
+export type OrigenVentasCsv = 'COLUMNAS' | 'SQUARE_SEMANAL' | 'SQUARE_RESUMEN'
 
 export interface LecturaVentasCsv {
   origen: OrigenVentasCsv
@@ -120,9 +120,10 @@ export function leerVentasCsv(texto: string, nombreFichero = ''): LecturaVentasC
   const filas = parsearCSV(texto, detectarSeparador(texto))
   if (filas.length === 0) return { origen: 'COLUMNAS', filas: [], descartadas, columnas: [], avisos: ['El fichero está vacío.'] }
 
-  // Square exporta el resumen TRANSPUESTO y por día de la semana: se reconoce
+  // Square exporta el resumen TRANSPUESTO (una fila por métrica): se reconoce
   // y se lee aparte, porque no tiene nada que ver con un CSV por columnas.
   if (esResumenSemanalSquare(filas)) return leerResumenSemanalSquare(filas, nombreFichero)
+  if (esResumenSquare(filas)) return leerResumenSquare(filas, nombreFichero)
 
   const iCab = filaCabecera(filas)
   if (iCab === -1) {
@@ -425,4 +426,120 @@ export function leerResumenSemanalSquare(filas: string[][], nombreFichero: strin
   ].filter(Boolean) as string[]
 
   return { origen: 'SQUARE_SEMANAL', filas: salida, descartadas, columnas, avisos }
+}
+
+/**
+ * Variante «Resumen» de Square: el mismo informe transpuesto pero con **una
+ * sola columna de valores** — un periodo y una tienda. La fecha vuelve a salir
+ * del nombre del fichero, y solo se importa si el periodo es **de un día**:
+ * un resumen de varios días agregados no es una venta diaria y repartirlo
+ * sería inventarse las cifras.
+ */
+export function esResumenSquare(filas: string[][]): boolean {
+  const titulo = normalizar(filas[0]?.[0] ?? '')
+  const tieneMetricas = metrica(filas, 'ventas netas') !== undefined || metrica(filas, 'ventas brutas') !== undefined
+  return tieneMetricas && (titulo.startsWith('resumen de ventas') || tieneMetricas)
+}
+
+export function leerResumenSquare(filas: string[][], nombreFichero: string): LecturaVentasCsv {
+  const descartadas: LecturaVentasCsv['descartadas'] = []
+  const rango = rangoDeNombre(nombreFichero)
+
+  if (!rango) {
+    return {
+      origen: 'SQUARE_RESUMEN',
+      filas: [],
+      descartadas,
+      columnas: [],
+      avisos: [
+        'Es un «Resumen de ventas» de Square, pero no lleva la fecha dentro y el nombre del fichero no dice el periodo. ' +
+          'Vuelve a descargarlo sin renombrarlo (viene como resumenventasAAAAMMDDAAAAMMDD.csv).',
+      ],
+    }
+  }
+  if (rango.desde !== rango.hasta) {
+    return {
+      origen: 'SQUARE_RESUMEN',
+      filas: [],
+      descartadas,
+      columnas: [],
+      avisos: [
+        `Este resumen agrega todo el periodo ${rango.desde} a ${rango.hasta} en una sola columna, así que no se puede repartir ` +
+          'por días sin inventar cifras. Descárgalo de un solo día, o usa el resumen por día de la semana (una semana justa).',
+      ],
+    }
+  }
+
+  const fNetas = metrica(filas, 'ventas netas')
+  const fImpuestos = metrica(filas, 'impuestos')
+  const fBrutas = metrica(filas, 'ventas brutas') ?? metrica(filas, 'total de las ventas')
+  const fEfectivo = metrica(filas, 'efectivo')
+  const fTarjeta = metrica(filas, 'tarjeta')
+  const fOtros = metrica(filas, 'otros')
+  const fDesconocido = metrica(filas, 'origen del pago desconocido')
+  const fTickets = metrica(filas, 'transacciones de ventas') ?? metrica(filas, 'numero total de ventas')
+
+  // La columna de valores es la primera que trae algo detrás de la etiqueta.
+  const i = 1
+  const muestras: string[] = []
+  for (const f of [fNetas, fImpuestos, fBrutas, fEfectivo, fTarjeta, fOtros]) if (f?.[i]) muestras.push(f[i])
+  const convencion = detectarConvencionNumerica(muestras)
+  const val = (f: string[] | undefined) => (f ? numero(f[i], convencion) : undefined)
+
+  const base = val(fNetas)
+  const cuota = val(fImpuestos)
+  const total = val(fBrutas)
+  if (base === undefined && total === undefined) {
+    return {
+      origen: 'SQUARE_RESUMEN',
+      filas: [],
+      descartadas,
+      columnas: [],
+      avisos: ['No se han podido leer «Ventas netas» ni «Ventas brutas» del resumen.'],
+    }
+  }
+  if ((total ?? base ?? 0) === 0) {
+    return {
+      origen: 'SQUARE_RESUMEN',
+      filas: [],
+      descartadas: [{ linea: 1, texto: rango.desde, motivo: 'Sin ventas ese día' }],
+      columnas: [],
+      avisos: [`El ${rango.desde} no tiene ventas: no se registra un día vacío.`],
+    }
+  }
+
+  const cobros: { forma: FormaCobro; importe: number }[] = []
+  const efectivo = val(fEfectivo) ?? 0
+  if (efectivo !== 0) cobros.push({ forma: 'EFECTIVO', importe: efectivo })
+  // «Origen del pago desconocido» es un detalle DENTRO de «Otros»: sumarlo
+  // aparte duplicaría el cobro.
+  const tarjeta = (val(fTarjeta) ?? 0) + (val(fOtros) ?? 0)
+  if (tarjeta !== 0) cobros.push({ forma: 'TARJETA', importe: tarjeta })
+
+  const avisos = [`Resumen de Square de un solo día (${rango.desde}). El fichero no dice de qué tienda es: elígela abajo.`]
+  if (fOtros) {
+    avisos.push(
+      fDesconocido
+        ? 'Square clasifica ese cobro como «Otros / Origen del pago desconocido» (normalmente, un datáfono ajeno a Square). ' +
+          'Se ha contado como cobro con tarjeta; corrígelo en el día si no es así.'
+        : 'La fila «Otros» de Square se ha contado como cobro con tarjeta. Si en tu caso es otra cosa, corrígelo en el día.',
+    )
+  }
+
+  const columnas = [
+    fNetas && 'base: «Ventas netas»',
+    fImpuestos && 'IVA: «Impuestos»',
+    fBrutas && 'total: «Ventas brutas»',
+    fEfectivo && 'efectivo: «Efectivo»',
+    fOtros && 'tarjeta: «Otros»',
+    fTickets && 'tickets: «Transacciones de ventas»',
+  ].filter(Boolean) as string[]
+
+  return {
+    origen: 'SQUARE_RESUMEN',
+    filas: [{ fecha: rango.desde, base, cuota, total, numTickets: val(fTickets), cobros }],
+    descartadas,
+    columnas,
+    avisos,
+  }
 }

@@ -101,6 +101,9 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
             {lectura.origen === 'SQUARE_SEMANAL' && (
               <p className="text-xs font-medium">Informe «Resumen de ventas» de Square, por día de la semana.</p>
             )}
+            {lectura.origen === 'SQUARE_RESUMEN' && (
+              <p className="text-xs font-medium">Resumen de ventas de Square, de un solo día.</p>
+            )}
             {lectura.columnas.length > 0 && (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Columnas reconocidas — {lectura.columnas.join(' · ')}
@@ -109,9 +112,9 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
 
             {/* El informe de Square no dice de qué tienda es y todos los días
                 son de la misma: se elige una vez, no siete. */}
-            {listas.length > 1 && (
+            {listas.length > 0 && (
               <div className="flex items-center gap-2 rounded-xl p-2.5" style={{ background: 'var(--surface-2)' }}>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Punto de venta para todos los días:</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Punto de venta:</span>
                 <select
                   value={todos}
                   onChange={(e) => { setTodos(e.target.value); if (e.target.value) setPuntos((p) => p.map(() => e.target.value)) }}
