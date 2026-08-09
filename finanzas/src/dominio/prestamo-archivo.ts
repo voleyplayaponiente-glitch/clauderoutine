@@ -234,11 +234,18 @@ export function tipoDeCuadro(cuotas: CuotaLeida[], periodicidad: 'MENSUAL' | 'TR
  * contrato: pone «Número de cuenta: ES97 0128…» en la primera línea, y ahí el
  * código de entidad son las cuatro cifras que siguen al dígito de control.
  */
-function ibanDelFichero(filas: Celda[][]): { iban: string; entidad?: string } | undefined {
+function ibanDelFichero(filas: Celda[][]): { iban: string; entidad?: string; esCuentaCargo: boolean } | undefined {
   for (const f of filas.slice(0, 12)) {
     const linea = f.map(texto).join(' ')
     const m = /\b(ES\d{2})\s?(\d{4})[\d\s]{10,}/i.exec(linea)
-    if (m) return { iban: linea.slice(m.index, m.index + m[0].length).trim(), entidad: ENTIDADES[m[2]] }
+    if (!m) continue
+    return {
+      iban: linea.slice(m.index, m.index + m[0].length).trim(),
+      entidad: ENTIDADES[m[2]],
+      // La «cuenta de cargo» es de dónde se paga la cuota, no el préstamo: sirve
+      // para saber el banco, pero no es su número de contrato.
+      esCuentaCargo: normalizar(linea).includes('cuenta de cargo'),
+    }
   }
   return undefined
 }
@@ -255,11 +262,14 @@ export function leerCondicionesPrestamo(filas: Celda[][]): DatosPrestamo | undef
   for (let i = 0; i < Math.min(filas.length, 30); i++) {
     const n = (filas[i] ?? []).map((c) => normalizar(texto(c)))
     const col = (...claves: string[]) => n.findIndex((c) => c !== '' && claves.some((k) => c === k || c.startsWith(k)))
-    const iInicio = col('fecha inicio', 'fecha de inicio')
-    const iImporte = col('importe inicial')
+    const iInicio = col('fecha inicio', 'fecha de inicio', 'f. inicio')
+    const iImporte = col('importe inicial', 'imp. inicial')
     if (iInicio === -1 || iImporte === -1) continue
 
-    const valores = filas.slice(i + 1).find((f) => f.some((c) => texto(c) !== ''))
+    // La fila de valores es la primera que trae cifras: en el PDF los rótulos
+    // largos se parten en dos líneas («F. Inicio /» arriba, «F. Vencimiento»
+    // debajo) y esa segunda línea no es un valor.
+    const valores = filas.slice(i + 1).find((f) => f.some((c) => /^\d/.test(texto(c))))
     if (!valores) continue
 
     const datos: DatosPrestamo = { cuotas: [], avisos, encontrados }
@@ -277,7 +287,7 @@ export function leerCondicionesPrestamo(filas: Celda[][]): DatosPrestamo | undef
 
     marca('fechaInicio', fechaDeCelda(valores[iInicio]))
     marca('importeOriginal', cifra(iImporte))
-    marca('tipoInteres', cifra(col('tipo interes', 'tipo de interes')))
+    marca('tipoInteres', cifra(col('tipo interes', 'tipo de interes', 'tipo intere')))
 
     const clase = normalizar(texto(valores[col('clases de cuota', 'clase de cuota')] ?? ''))
     // «CUOTAS AMORT CTE» = amortización constante, es decir, sistema lineal.
@@ -285,11 +295,11 @@ export function leerCondicionesPrestamo(filas: Celda[][]): DatosPrestamo | undef
 
     const iban = ibanDelFichero(filas)
     if (iban) {
-      marca('numeroContrato', iban.iban.replace(/^.*?(ES)/i, '$1'))
+      if (!iban.esCuentaCargo) marca('numeroContrato', iban.iban.replace(/^.*?(ES)/i, '$1'))
       marca('entidad', iban.entidad)
     }
 
-    const vencimiento = fechaDeCelda(valores[col('fecha vencimiento', 'fecha de vencimiento')])
+    const vencimiento = fechaDeCelda(valores[col('fecha vencimiento', 'fecha de vencimiento', 'f. vencimiento')])
     if (datos.fechaInicio && vencimiento) {
       avisos.push(`El préstamo vence el ${vencimiento}; el nº de cuotas sale del cuadro de amortización.`)
     }

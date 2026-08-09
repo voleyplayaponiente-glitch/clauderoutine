@@ -4,6 +4,7 @@ import { generarAlertas, type MetricasAlerta } from './alertas'
 const cero: MetricasAlerta = {
   tensionLiquidez: false, facturasVencidas: 0, importeVencido: 0, descuadresCaja: 0,
   stockBajo: 0, impuestosProximos: 0, conciliacionesPendientes: 0, puntosBajoObjetivo: 0,
+  polizasSobreUmbral: 0, polizasMediaAlta: 0,
 }
 const fmt = (n: number) => `${n} €`
 
@@ -25,5 +26,20 @@ describe('centro de alertas', () => {
   it('incluye el importe vencido en el detalle', () => {
     const a = generarAlertas({ ...cero, facturasVencidas: 2, importeVencido: 1500 }, fmt)
     expect(a[0].detalle).toContain('1500')
+  })
+})
+
+describe('alertas de la póliza de crédito', () => {
+  it('avisa cuando se pasa del umbral de consumo', () => {
+    const a = generarAlertas({ ...cero, polizasSobreUmbral: 1 }, fmt)
+    expect(a[0].id).toBe('poliza-consumo')
+    expect(a[0].ruta).toBe('/deudas')
+  })
+
+  it('el saldo medio alto es crítico: compromete la renovación', () => {
+    const a = generarAlertas({ ...cero, polizasMediaAlta: 2, polizasSobreUmbral: 1 }, fmt)
+    expect(a[0].id).toBe('poliza-media')
+    expect(a[0].nivel).toBe('critico')
+    expect(a[0].titulo).toContain('2 pólizas')
   })
 })

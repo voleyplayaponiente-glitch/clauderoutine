@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 528 tests (Vitest) del motor
+npm test         # 544 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -406,6 +406,16 @@ Bankinter reparte el préstamo en dos descargas distintas de las de BBVA:
   decir, si el cuadro trae todas las cuotas). Si no cuadra, no se rellena.
 - Un préstamo al **0 %** es legítimo (este lo es): se lee y se dice en un aviso.
 
+**Los MISMOS dos ficheros en PDF** cambian bastante y también están de regresión:
+- Los rótulos van **abreviados y partidos en dos líneas** («F. Inicio /» arriba, «F. Vencimiento»
+  debajo). La fila de valores es **la primera que trae cifras**, no la siguiente sin más: si no,
+  se leía la segunda línea del rótulo como si fueran los datos.
+- Los importes llegan como «5.000,00 EUR». `nucleoNumerico` (parseo-es) quita ahora también el
+  código `EUR`, igual que ya quitaba el «€».
+- El IBAN del PDF es la **cuenta de cargo**, no la del préstamo: sirve para saber el banco pero
+  **no se usa como número de contrato**.
+- El test comprueba campo a campo que **el PDF da exactamente el mismo préstamo que el Excel**.
+
 ## Renting y póliza de crédito: financiación que NO es un cuadro de cuotas
 Los dos viven en la pantalla de Deudas, en secciones aparte, porque ninguno encaja en `Deuda`
 (que reparte un principal en cuotas con intereses). El mismo botón «Subir fichero del banco»
@@ -442,6 +452,23 @@ y otro por el capital no dispuesto, con liquidación mensual de intereses.*
 - Al presupuesto: intereses y comisiones como GASTO, mes a mes. Si `seRenueva` es falso, la
   devolución del dispuesto va en **línea aparte de FINANCIACION** en el mes del vencimiento.
 - Sin fechas de liquidación, el calendario se cuenta desde la constitución (dato del contrato).
+
+#### La póliza en cuenta corriente: lo dispuesto NO se teclea
+Pedido por el usuario: *yo pongo el límite concedido y el saldo real consumido tiene que
+recogerlo del saldo negativo de la cuenta bancaria.*
+- `Poliza.origenDispuesto = 'CUENTA'` + `cuentaTesoreriaId`: `dispuestoDeCuenta` toma el **saldo
+  negativo** de esa cuenta (en positivo, la póliza no está dispuesta) y `polizaConCuenta`
+  recalcula la póliza en cada pintada. Así el dispuesto se actualiza **solo al importar el
+  extracto**, sin mantener un número a mano. Si la cuenta no existe, se deja lo que hubiera:
+  nunca se pone un 0 por no encontrarla.
+- **Alarma al 75 %** (`umbralAviso`, editable por póliza): la barra de uso lleva la marca del
+  umbral, y pasado de ahí el aviso salta en la ficha **y en el centro de alertas del Dashboard**.
+- **Renovación**: lo que la decide no es la foto de hoy sino el **saldo medio del año**.
+  `consumoMedio` lo calcula **ponderado por días** (un pico de un día no cuenta como dos meses al
+  límite) y devuelve también el máximo. Si la media pasa del umbral, alerta **crítica**: una
+  póliza que vive dispuesta el banco la lee como financiación estructural, no como tesorería.
+- Las dos métricas van a `MetricasAlerta` (`polizasSobreUmbral`, `polizasMediaAlta`), que es lo
+  que hace que el aviso llegue sin entrar en Deudas.
 
 ### Lectura de fichas del banco (`dominio/ficha-banco.ts`)
 Las fichas de contrato de la banca digital son **rótulo → valor**, no tablas. `leerFicha` recorre
@@ -488,7 +515,7 @@ camino evidente y el que produce un cuadro de cuotas inexistente. Para que no vu
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (528 tests en verde, desplegado)
+## Estado (544 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.

@@ -477,10 +477,19 @@ export interface Poliza extends Trazable {
   limiteConcedido: number
   /** Límite vigente hoy (el banco lo puede reducir en la renovación). */
   limiteActual: number
-  /** Saldo del capital dispuesto. */
+  /**
+   * De dónde sale lo dispuesto:
+   *  · CUENTA — del **saldo negativo de la cuenta** asociada, que es como
+   *    funciona una póliza instrumentada en cuenta corriente. Se recalcula solo.
+   *  · MANUAL — se teclea (o se lee de la ficha del banco).
+   */
+  origenDispuesto?: 'CUENTA' | 'MANUAL'
+  /** Saldo del capital dispuesto. Con origen CUENTA es un valor calculado. */
   dispuesto: number
   /** Saldo contable: es el que el banco usa para calcular el disponible. */
   saldoContable?: number
+  /** % de consumo a partir del cual avisar. Por defecto 75. */
+  umbralAviso?: number
   importeExcedido?: number
   /** % anual sobre el capital dispuesto. */
   tipoInteresDispuesto: number

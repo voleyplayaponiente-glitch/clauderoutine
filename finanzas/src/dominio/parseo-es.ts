@@ -22,7 +22,8 @@ export function parsearNumeroEs(entrada: string | number | null | undefined): nu
 
   let s = entrada.trim()
   if (s === '') return null
-  s = s.replace(/€/g, '').replace(/\s/g, '')
+  // Símbolo o código de moneda pegado al importe: «1.234,56 €», «15000 EUR».
+  s = s.replace(/€/g, '').replace(/eur\b/gi, '').replace(/\s/g, '')
 
   // Signo
   let signo = 1
@@ -87,7 +88,8 @@ export type ConvencionNumerica = 'ES' | 'EN' | 'AUTO'
 function nucleoNumerico(entrada: string): { cuerpo: string; signo: number } | null {
   let s = (entrada ?? '').trim()
   if (s === '') return null
-  s = s.replace(/€/g, '').replace(/\s/g, '')
+  // Símbolo o código de moneda pegado al importe: «1.234,56 €», «15000 EUR».
+  s = s.replace(/€/g, '').replace(/eur\b/gi, '').replace(/\s/g, '')
 
   let signo = 1
   if (/^-/.test(s)) {

@@ -12,6 +12,7 @@ import { existenciaTotal } from '../dominio/valoracion'
 import { resumenArticulo } from '../dominio/stock'
 import { proyectarSaldoDiario, detectarTension, type Flujo } from '../dominio/prevision'
 import { evaluarArqueo } from '../dominio/tesoreria'
+import { UMBRAL_CONSUMO, consumoMedio, polizaConCuenta, situacionPoliza } from '../dominio/poliza'
 import type { MetricasAlerta } from '../dominio/alertas'
 import type { Configuracion, DatosOperativos, TipoPuntoVenta } from '../dominio/tipos'
 import { construirFlujosPrevistos } from './flujos'
@@ -39,6 +40,28 @@ export interface DashboardData {
 
 function mesDe(iso: string): string {
   return iso.slice(0, 7)
+}
+
+/**
+ * Pólizas que se han pasado del consumo marcado, hoy y de media en el año.
+ * La media es la que decide la renovación, por eso van contadas aparte.
+ */
+function alertasPoliza(datos: DatosOperativos, hoy: string): { polizasSobreUmbral: number; polizasMediaAlta: number } {
+  const cuentas = datos.cuentasTesoreria.filter((c) => !c.anuladoEn)
+  let sobreUmbral = 0
+  let mediaAlta = 0
+  for (const guardada of datos.polizas ?? []) {
+    if (guardada.anuladoEn) continue
+    const p = polizaConCuenta(guardada, cuentas, datos.movimientos, hoy)
+    const s = situacionPoliza(p)
+    const umbral = p.umbralAviso ?? UMBRAL_CONSUMO
+    if (s.porcentajeDispuesto > umbral) sobreUmbral++
+    const cuenta = cuentas.find((c) => c.id === p.cuentaTesoreriaId)
+    if (!cuenta) continue
+    const consumo = consumoMedio(cuenta, datos.movimientos, `${hoy.slice(0, 4)}-01-01`, hoy, s.limite)
+    if (consumo.porcentajeMedio > umbral) mediaAlta++
+  }
+  return { polizasSobreUmbral: sobreUmbral, polizasMediaAlta: mediaAlta }
 }
 
 export function calcularDashboard(datos: DatosOperativos, config: Configuracion, hoy: string): DashboardData {
@@ -136,6 +159,7 @@ export function calcularDashboard(datos: DatosOperativos, config: Configuracion,
     impuestosProximos,
     conciliacionesPendientes,
     puntosBajoObjetivo,
+    ...alertasPoliza(datos, hoy),
   }
 
   return { tesoreria, ventaMes, objetivoMes, margenBrutoPct, resultadoMes, deudaTotal, stockValorado, serieTesoreria, ventasPorCanal: { rows, canales }, ranking, waterfall: { ventas: ventaBaseMes, coste: costeMes, gastos: gastosMes, resultado: resultadoMes }, vencimientos, metricas }
