@@ -184,21 +184,25 @@ export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
   // ya devengada; sale dinero, pero no es gasto de P&G. Va como financiación.
   { id: 'cat-bco-tributos-trimestre', nombre: 'Tributos: trimestre corriente (303, 111, 115…)', cuentaPGC: '475', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 29 },
   { id: 'cat-bco-tributos-aplazamiento', nombre: 'Tributos: cuota de aplazamiento', cuentaPGC: '475', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 30 },
-  { id: 'cat-bco-seg-social', nombre: 'Seguridad Social', cuentaPGC: '476', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 31 },
+  // Las nóminas SÍ son gasto: es el coste del personal. Con el pago por banco
+  // como único registro (aquí no hay módulo de nóminas), si no contara como
+  // gasto la partida más grande del negocio no aparecería en el presupuesto.
+  { id: 'cat-bco-nominas', nombre: 'Nóminas', cuentaPGC: '640', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 31 },
+  { id: 'cat-bco-seg-social', nombre: 'Seguridad Social', cuentaPGC: '476', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 32 },
   // Inversión: el dinero no se consume, se cambia por un activo. No es gasto y
   // no resta del resultado; en el presupuesto va como INVERSIÓN.
   // Ojo: clasificar el cargo aquí NO da de alta la inversión — eso se hace en
   // la pantalla de Inversiones, que es la que lleva coste, valor y asientos.
-  { id: 'cat-bco-inv-grupo', nombre: 'Inversiones en empresas del grupo', cuentaPGC: '2403', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 32 },
-  { id: 'cat-bco-inv-financiera', nombre: 'Inversiones financieras', cuentaPGC: '250', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 33 },
+  { id: 'cat-bco-inv-grupo', nombre: 'Inversiones en empresas del grupo', cuentaPGC: '2403', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 33 },
+  { id: 'cat-bco-inv-financiera', nombre: 'Inversiones financieras', cuentaPGC: '250', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 34 },
   // Prestar a un socio NO es gasto ni retribución: nace un derecho de cobro.
   // Ojo, es lo contrario de «Préstamos de socios», que es deuda de la empresa.
-  { id: 'cat-bco-prestamo-socios', nombre: 'Préstamos a socios (dinero que se presta)', cuentaPGC: '253', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 34 },
+  { id: 'cat-bco-prestamo-socios', nombre: 'Préstamos a socios (dinero que se presta)', cuentaPGC: '253', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'INVERSION', orden: 35 },
   // La cuota del préstamo ya entra en el presupuesto por el cuadro de deuda:
   // si además se contase aquí, se presupuestaría dos veces.
-  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 35 },
-  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 36 },
-  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 37 },
+  { id: 'cat-bco-cuota-prestamo', nombre: 'Cuota de préstamo (ya en Deudas)', cuentaPGC: '520', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 36 },
+  { id: 'cat-bco-traspaso', nombre: 'Traspaso entre cuentas propias', cuentaPGC: '572', deduciblePorDefecto: false, ambito: 'BANCO', efectoPresupuesto: 'NINGUNO', orden: 37 },
+  { id: 'cat-bco-otros', nombre: 'Otros gastos sin factura', cuentaPGC: '629', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 38 },
 
   // ── Abonos del banco (ámbito BANCO, flujo ENTRADA) ──
   // Un extracto también tiene entradas y no todas son ingreso: una ampliación

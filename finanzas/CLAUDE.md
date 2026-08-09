@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 433 tests (Vitest) del motor
+npm test         # 434 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -158,8 +158,9 @@ Cuatro reglas del PGC que **no se negocian**:
     `flujo`. **Cargos** (`flujo: 'SALIDA'`, el valor por defecto):
     Facturas de proveedores (ya en Compras) · Comisiones de TPV · Comisiones bancarias · Gastos
     de mantenimiento · Intereses y gastos financieros · Seguro de RC · Seguro de vida · Seguro
-    de salud · Tributos: trimestre corriente · Tributos: cuota de aplazamiento · Seguridad
-    Social · Inversiones en empresas del grupo (2403) · Inversiones financieras (250) ·
+    de salud · Tributos: trimestre corriente · Tributos: cuota de aplazamiento · **Nóminas
+    (640, GASTO)** · Seguridad Social · Inversiones en empresas del grupo (2403) · Inversiones
+    financieras (250) ·
     **Préstamos a socios (253)** — ojo, es lo contrario de «Préstamos de socios», que es deuda ·
     Cuota de préstamo (ya en Deudas) · Traspaso entre cuentas propias · Otros gastos sin factura.
     **Abonos** (`flujo: 'ENTRADA'`): Cobros de clientes (ya en Ventas) · Dividendos recibidos ·
@@ -182,6 +183,11 @@ Cuatro reglas del PGC que **no se negocian**:
     coste, valor y asientos. La app lo avisa bajo el panel.
   · `FINANCIACION` — tributos del trimestre, cuotas de aplazamiento y Seguridad Social: sale
     dinero pero se salda una deuda ya devengada, no es gasto de P&G.
+    **OJO, incoherencia conocida**: las **nóminas** sí son GASTO (640) porque aquí no hay módulo
+    de personal y el pago por banco es el único registro que queda; si no contaran, la partida
+    más grande del negocio no aparecería en el presupuesto. Por el mismo razonamiento, la
+    Seguridad Social **a cargo de la empresa** (642) es coste real y hoy no se cuenta. Planteado
+    al usuario; **pendiente de su decisión** (ver «Decisiones abiertas»).
   · `GASTO` — comisiones, mantenimiento, seguros, intereses. Sin indicar, se trata como gasto.
   Banderas restantes: `esStock`, `esInternacional`, `esBancaria`, `deduciblePorDefecto`.
 - `fusionarCategorias` (store) añade a los datos ya guardados las categorías nuevas del catálogo
@@ -442,6 +448,10 @@ Invariantes que **no** se deben romper al tocar el código:
 - **Tributos y Seguridad Social como FINANCIACIÓN, no como gasto** en el presupuesto (pagar el
   303 salda IVA ya recaudado). Se le planteó; si prefiere verlos como gasto, es un cambio de
   `efectoPresupuesto` en `defaults.ts`.
+- **Seguridad Social: caso aparte desde que existen las Nóminas.** Las nóminas se registran como
+  GASTO y la SS como FINANCIACIÓN, así que la cuota patronal —que es coste real— no aparece en el
+  presupuesto. Recomendado pasarla a GASTO (642); **pendiente de su decisión**. Lo mismo, en
+  menor medida, con el IRPF del modelo 111, que va dentro de «Tributos: trimestre».
 - **Las entradas se presupuestan en negativo** en las líneas que restan (inversión y
   financiación). Alternativa si no le convence: vista de cash flow con entradas y salidas en
   columnas separadas.
