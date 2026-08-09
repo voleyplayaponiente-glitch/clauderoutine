@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 417 tests (Vitest) del motor
+npm test         # 424 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -258,9 +258,12 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
 `DATAFONOS_DEFECTO`: uno por tienda física/stand (no en la web), todos CaixaBank de partida.
 - **`Venta.cobros` es `CobroVenta[]`** (antes `{forma, importe}`): el cobro con TARJETA lleva
   `datafonoId`. Sin saber por qué terminal entró, la liquidación del banco no se puede cuadrar.
-- **Se propone el datáfono de esa tienda** (`centroCosteId` del datáfono) en cuanto se teclea un
-  importe en Tarjeta, y se cambia con un clic si ese día cobró otro. El selector marca cuál es
-  «(el de esta tienda)».
+- **Se propone el datáfono PRINCIPAL de esa tienda** en cuanto se teclea un importe en Tarjeta,
+  y se cambia con un clic si ese día cobró otro. El selector marca cuál es «(el principal)».
+- **`dominio/datafonos.ts`** (puro): `datafonoPrincipal` (el marcado `principal`, y si no hay
+  ninguno el primero activo de esa tienda; **nunca el de otra tienda**), `marcarPrincipal` (solo
+  puede haber uno por tienda: al marcar uno se desmarcan sus compañeros, los de otras tiendas no
+  se tocan) y `tiendasSinDatafono` (la web no cuenta). En Configuración se marca con un clic.
 - **El datáfono es el que viaja, no la tienda**: la asignación vive en `Datafono.centroCosteId`,
   y en Configuración → Tarjetas y datáfonos se mueve de tienda con un desplegable, sin abrir
   nada. Una tienda sin datáfono se avisa allí mismo.
@@ -299,7 +302,10 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
   semanal, lo que valida de paso el cruce día-de-la-semana → fecha.
   · **«Origen del pago desconocido» es un detalle DENTRO de «Otros»**, no un cobro aparte:
     sumarlos duplicaría el importe (569,40 + 569,40). Solo se leen «Tarjeta» y «Otros».
-    Que Square lo marque como desconocido apunta a un datáfono ajeno a Square; se avisa.
+    **CONFIRMADO por el usuario: «Otros» es el cobro por datáfono.** Square lo llama «origen
+    desconocido» porque el terminal no es suyo. Entra como cobro con TARJETA y se asigna al
+    **datáfono principal** de la tienda elegida; en la previsualización se ve cuál y se puede
+    cambiar antes de importar.
 - **BUG de `detectarSeparador` que esto destapó**: miraba solo la primera línea no vacía. En el
   fichero de Square esa línea es el principio de un campo entrecomillado de dos líneas y no tiene
   separadores, así que ganaba el `;` por descarte y el CSV entero se leía como UNA columna. Ahora

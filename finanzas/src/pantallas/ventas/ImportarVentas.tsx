@@ -13,6 +13,7 @@ import { leerVentasCsv, baseYCuota, emparejarPunto, type LecturaVentasCsv } from
 import { decodificarTextoBancario } from '../../dominio/texto'
 import { formatearFecha } from '../../lib/fechas'
 import { nuevoId } from '../../dominio/id'
+import { datafonoPrincipal, datafonosDe } from '../../dominio/datafonos'
 import type { CentroCoste, Configuracion, Venta } from '../../dominio/tipos'
 
 interface Props {
@@ -28,6 +29,7 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
   const [puntos, setPuntos] = useState<(string | undefined)[]>([])
   const [error, setError] = useState<string | null>(null)
   const [todos, setTodos] = useState('')
+  const [datafonoElegido, setDatafonoElegido] = useState('')
 
   const centros = useMemo(
     () => config.centrosCoste.filter((c) => c.tipo === 'PUNTO_VENTA' && !c.activoHasta),
@@ -44,6 +46,7 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
       setNombre(f.name)
       // Cada fila se empareja sola con su tienda; lo que no case queda vacío.
       setTodos('')
+      setDatafonoElegido('')
       setPuntos(r.filas.map((fila) => emparejarPunto(fila.puntoTexto, centros) ?? (centros.length === 1 ? centros[0].id : undefined)))
     } catch (e) {
       setError(`No se ha podido leer el fichero: ${e instanceof Error ? e.message : 'error desconocido'}`)
@@ -62,6 +65,9 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
     duplicada: puntos[i] ? yaExiste(puntos[i]!, f.fecha) : false,
   }))
   const importables = listas.filter((l) => l.centroCosteId && !l.duplicada)
+  const hayTarjeta = listas.some((l) => l.fila.cobros.some((c) => c.forma === 'TARJETA'))
+  const datafonosTienda = datafonosDe(config.datafonos, todos || undefined)
+  const principal = datafonoPrincipal(config.datafonos, todos || undefined)
   const sinPunto = listas.filter((l) => !l.centroCosteId).length
   const duplicadas = listas.filter((l) => l.duplicada).length
 
@@ -69,7 +75,7 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
     const tIva = config.tiposIva.find((t) => t.porDefecto) ?? config.tiposIva[0]
     const ventas: Venta[] = importables.map(({ fila, centroCosteId }) => {
       const { base, cuota } = baseYCuota(fila, tipoDefecto)
-      const datafono = config.datafonos.find((d) => d.activo && d.centroCosteId === centroCosteId)
+      const datafono = datafonoElegido ? config.datafonos.find((d) => d.id === datafonoElegido) : datafonoPrincipal(config.datafonos, centroCosteId)
       return {
         id: nuevoId(),
         creadoEn: new Date().toISOString(),
@@ -128,6 +134,32 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
                 </select>
               </div>
             )}
+            {/* Con qué datáfono entran los cobros con tarjeta. Se propone el
+                principal de la tienda elegida y se puede cambiar aquí. */}
+            {hayTarjeta && todos && (
+              <div className="flex items-center gap-2 rounded-xl p-2.5" style={{ background: 'var(--surface-2)' }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Los cobros con tarjeta entran por:</span>
+                {datafonosTienda.length === 0 ? (
+                  <span className="text-xs" style={{ color: 'var(--warn)' }}>
+                    esa tienda no tiene datáfono; quedarán sin asignar
+                  </span>
+                ) : (
+                  <select
+                    value={datafonoElegido || (principal?.id ?? '')}
+                    onChange={(e) => setDatafonoElegido(e.target.value)}
+                    className="rounded-lg px-2 py-1 text-xs"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    {datafonosTienda.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.nombre} · {d.banco}{d.principal ? ' (principal)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+
             {lectura.avisos.map((a) => (
               <p key={a} className="text-xs" style={{ color: 'var(--warn)' }}>· {a}</p>
             ))}
