@@ -27,6 +27,7 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
   const [nombre, setNombre] = useState('')
   const [puntos, setPuntos] = useState<(string | undefined)[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [todos, setTodos] = useState('')
 
   const centros = useMemo(
     () => config.centrosCoste.filter((c) => c.tipo === 'PUNTO_VENTA' && !c.activoHasta),
@@ -38,10 +39,11 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
     setError(null)
     try {
       const texto = decodificarTextoBancario(await f.arrayBuffer())
-      const r = leerVentasCsv(texto)
+      const r = leerVentasCsv(texto, f.name)
       setLectura(r)
       setNombre(f.name)
       // Cada fila se empareja sola con su tienda; lo que no case queda vacío.
+      setTodos('')
       setPuntos(r.filas.map((fila) => emparejarPunto(fila.puntoTexto, centros) ?? (centros.length === 1 ? centros[0].id : undefined)))
     } catch (e) {
       setError(`No se ha podido leer el fichero: ${e instanceof Error ? e.message : 'error desconocido'}`)
@@ -96,10 +98,32 @@ export function ImportarVentas({ config, ventasExistentes, onImportar }: Props) 
       {lectura && (
         <Modal titulo={`Importar ventas · ${nombre}`} onCerrar={() => setLectura(null)}>
           <div className="space-y-3">
+            {lectura.origen === 'SQUARE_SEMANAL' && (
+              <p className="text-xs font-medium">Informe «Resumen de ventas» de Square, por día de la semana.</p>
+            )}
             {lectura.columnas.length > 0 && (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Columnas reconocidas — {lectura.columnas.join(' · ')}
               </p>
+            )}
+
+            {/* El informe de Square no dice de qué tienda es y todos los días
+                son de la misma: se elige una vez, no siete. */}
+            {listas.length > 1 && (
+              <div className="flex items-center gap-2 rounded-xl p-2.5" style={{ background: 'var(--surface-2)' }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Punto de venta para todos los días:</span>
+                <select
+                  value={todos}
+                  onChange={(e) => { setTodos(e.target.value); if (e.target.value) setPuntos((p) => p.map(() => e.target.value)) }}
+                  className="rounded-lg px-2 py-1 text-xs"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                >
+                  <option value="">— elegir —</option>
+                  {centros.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+              </div>
             )}
             {lectura.avisos.map((a) => (
               <p key={a} className="text-xs" style={{ color: 'var(--warn)' }}>· {a}</p>

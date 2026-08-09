@@ -4,16 +4,44 @@
  * ficheros españoles, donde el punto y coma es habitual (la coma es decimal).
  */
 
-/** Detecta el separador más probable en la primera línea no vacía. */
+/**
+ * Detecta el separador contando cuántas veces aparece **fuera de comillas** en
+ * el principio del fichero.
+ *
+ * Mirar solo la primera línea no vale: Square abre el fichero con un título
+ * entrecomillado que ocupa dos líneas y no lleva ningún separador, así que
+ * ganaba el `;` por descarte y el CSV entero se leía como una sola columna.
+ * Y contar sin respetar las comillas tampoco: `"556,99 €"` está lleno de comas
+ * decimales que no separan nada.
+ */
 export function detectarSeparador(texto: string): string {
-  const primera = texto.split(/\r?\n/).find((l) => l.trim() !== '') ?? ''
   const candidatos = [';', '\t', ',']
+  const cuenta: Record<string, number> = { ';': 0, '\t': 0, ',': 0 }
+  const t = texto.slice(0, 20_000)
+  let enComillas = false
+  let lineas = 0
+
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i]
+    if (c === '"') {
+      // Comilla doblada dentro de un campo: no cambia el estado.
+      if (enComillas && t[i + 1] === '"') i++
+      else enComillas = !enComillas
+      continue
+    }
+    if (enComillas) continue
+    if (c === '\n') {
+      if (++lineas >= 12) break
+      continue
+    }
+    if (c in cuenta) cuenta[c]++
+  }
+
   let mejor = ';'
-  let max = -1
+  let max = 0
   for (const sep of candidatos) {
-    const n = primera.split(sep).length
-    if (n > max) {
-      max = n
+    if (cuenta[sep] > max) {
+      max = cuenta[sep]
       mejor = sep
     }
   }

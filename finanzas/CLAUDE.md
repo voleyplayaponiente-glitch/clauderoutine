@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 398 tests (Vitest) del motor
+npm test         # 410 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -280,8 +280,24 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
   días a importar, sin punto de venta, **ya registrados** (mismo día y tienda → no se duplica) y
   descartadas con motivo. Entran como **borrador**, sin cerrar.
 - Si el CSV no trae desglose de cobros se avisa; **no se supone que se cobró todo en efectivo**.
-- **Pendiente**: no hay test con un CSV real del usuario. Cuando lo pase, convertirlo en
-  regresión como `factura-real.test.ts`.
+- **Informe «Resumen de ventas» de Square** (`ventas-square.test.ts`, con el fichero REAL):
+  · Viene **transpuesto**: una fila por métrica («Ventas netas», «Impuestos», «Efectivo»…) y una
+    columna por **día de la semana**. Nada que ver con un CSV por columnas: se detecta por los
+    nombres de los días en la cabecera y se lee aparte.
+  · **NO lleva fechas dentro**: el periodo va en el nombre (`resumenventas2026080120260807.csv`).
+    La fecha de cada columna sale de cruzar el día de la semana con ese rango, y **solo vale si el
+    rango es de 7 días justos**. Con más, «lunes» es la suma de varios lunes: no se importa nada y
+    se explica por qué. Sin fechas en el nombre, tampoco se inventa el periodo.
+  · Mapeo: base = «Ventas netas» · IVA = «Impuestos» · total = «Ventas brutas» · efectivo =
+    «Efectivo» · tarjeta = «Tarjeta» + «Otros» (se avisa de que «Otros» se cuenta como tarjeta) ·
+    tickets = «Transacciones de ventas» (exacto, que «Transacciones de impuestos» también contiene
+    «impuestos»). Un día a 0 se descarta como día cerrado, no se registra una venta vacía.
+  · El fichero no dice de qué tienda es → selector «para todos los días» en la previsualización.
+- **BUG de `detectarSeparador` que esto destapó**: miraba solo la primera línea no vacía. En el
+  fichero de Square esa línea es el principio de un campo entrecomillado de dos líneas y no tiene
+  separadores, así que ganaba el `;` por descarte y el CSV entero se leía como UNA columna. Ahora
+  cuenta los separadores **fuera de comillas** en las primeras 12 líneas. Afecta a todos los
+  importadores, no solo a ventas.
 
 ## Archivo de documentos y carpeta para la gestoría
 - **`lib/adjuntos.ts`**: cada PDF vive en su propia clave (`finanzas:adjunto:<empresa>:<id>`),
