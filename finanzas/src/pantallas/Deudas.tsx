@@ -13,13 +13,13 @@ import { leerPrestamo, fusionarPrestamos, type DatosPrestamo } from '../dominio/
 import { esFichaRenting, leerRenting, type DatosRenting } from '../dominio/renting-archivo'
 import { esFichaPoliza, leerPoliza, type DatosPoliza } from '../dominio/poliza-archivo'
 import { filasDePrestamo } from '../lib/extracto'
-import { SeccionRentings } from './deudas/SeccionRentings'
-import { SeccionPolizas } from './deudas/SeccionPolizas'
-import type { Deuda, TipoDeuda } from '../dominio/tipos'
+import { SeccionRentings, rentingNuevo } from './deudas/SeccionRentings'
+import { SeccionPolizas, polizaNueva } from './deudas/SeccionPolizas'
+import type { Deuda, Poliza, Renting, TipoDeuda } from '../dominio/tipos'
 
 const TIPOS: { valor: TipoDeuda; texto: string; grupo: 'financiera' | 'comercial' | 'fiscal' | 'otra' }[] = [
   { valor: 'PRESTAMO', texto: 'Préstamo bancario', grupo: 'financiera' },
-  { valor: 'POLIZA', texto: 'Póliza de crédito', grupo: 'financiera' },
+  { valor: 'POLIZA', texto: 'Póliza de crédito (usa la sección de Pólizas)', grupo: 'financiera' },
   { valor: 'LEASING', texto: 'Leasing', grupo: 'financiera' },
   // El renting tiene su propia sección (no es deuda); se deja el tipo para no
   // romper lo ya guardado, pero se avisa de dónde va lo nuevo.
@@ -53,6 +53,10 @@ export function Deudas() {
   const [lectura, setLectura] = useState<DatosPrestamo | null>(null)
   const [lecturaRenting, setLecturaRenting] = useState<DatosRenting | null>(null)
   const [lecturaPoliza, setLecturaPoliza] = useState<DatosPoliza | null>(null)
+  // Alta de renting o póliza pedida desde la cabecera o desde el modal de deuda.
+  const [nuevoRenting, setNuevoRenting] = useState<Renting | null>(null)
+  const [nuevaPoliza, setNuevaPoliza] = useState<Poliza | null>(null)
+  const ivaDefecto = useStore((s) => s.config.tiposIva).find((t) => t.porDefecto)?.tipo ?? 21
   const [leyendo, setLeyendo] = useState(false)
   const [errorArchivo, setErrorArchivo] = useState<string | null>(null)
 
@@ -129,6 +133,8 @@ export function Deudas() {
             className="hidden"
             onChange={(e) => { const f = e.target.files; if (f?.length) void leerArchivos([...f]) }}
           />
+          <Boton variante="secundario" onClick={() => setNuevoRenting(rentingNuevo(ivaDefecto))}>+ Renting</Boton>
+          <Boton variante="secundario" onClick={() => setNuevaPoliza(polizaNueva())}>+ Póliza</Boton>
           <Boton onClick={() => setEdit(deudaNueva())}>+ Deuda</Boton>
         </div>
       </div>
@@ -212,24 +218,83 @@ export function Deudas() {
       {/* Renting y póliza viven aquí porque es donde se mira «qué pago cada mes»,
           pero se presentan aparte: ninguno de los dos es deuda con cuadro. */}
       <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-        <SeccionRentings lectura={lecturaRenting} onCerrarLectura={() => setLecturaRenting(null)} />
+        <SeccionRentings
+          lectura={lecturaRenting}
+          onCerrarLectura={() => setLecturaRenting(null)}
+          plantilla={nuevoRenting}
+          onCerrarPlantilla={() => setNuevoRenting(null)}
+        />
       </div>
       <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-        <SeccionPolizas lectura={lecturaPoliza} onCerrarLectura={() => setLecturaPoliza(null)} />
+        <SeccionPolizas
+          lectura={lecturaPoliza}
+          onCerrarLectura={() => setLecturaPoliza(null)}
+          plantilla={nuevaPoliza}
+          onCerrarPlantilla={() => setNuevaPoliza(null)}
+        />
       </div>
 
-      {edit && <ModalDeuda deuda={edit} setDeuda={setEdit} onGuardar={(d) => { if (d.acreedor.trim()) { guardar(d); setEdit(null) } }} />}
+      {edit && (
+        <ModalDeuda
+          deuda={edit}
+          setDeuda={setEdit}
+          onGuardar={(d) => { if (d.acreedor.trim()) { guardar(d); setEdit(null) } }}
+          onLlevarASeccion={(d) => {
+            // Ni el renting ni la póliza se reparten en cuotas: se llevan a su
+            // sección con lo poco que ya se haya tecleado, no se pierde nada.
+            if (d.tipo === 'RENTING') {
+              setNuevoRenting({ ...rentingNuevo(ivaDefecto), arrendador: d.acreedor, fechaInicio: d.fechaInicio })
+            } else {
+              setNuevaPoliza({
+                ...polizaNueva(),
+                entidad: d.acreedor,
+                limiteConcedido: d.importeOriginal,
+                limiteActual: d.importeOriginal,
+                tipoInteresDispuesto: d.tipoInteres,
+                fechaConstitucion: d.fechaInicio,
+              })
+            }
+            setEdit(null)
+          }}
+        />
+      )}
     </>
   )
 }
 
-function ModalDeuda({ deuda, setDeuda, onGuardar }: { deuda: Deuda; setDeuda: (d: Deuda | null) => void; onGuardar: (d: Deuda) => void }) {
+function ModalDeuda({
+  deuda,
+  setDeuda,
+  onGuardar,
+  onLlevarASeccion,
+}: {
+  deuda: Deuda
+  setDeuda: (d: Deuda | null) => void
+  onGuardar: (d: Deuda) => void
+  onLlevarASeccion: (d: Deuda) => void
+}) {
   const cuadro = cuadroDe(deuda)
   const resumen = resumenCuadro(cuadro)
   const financiera = ['PRESTAMO', 'POLIZA', 'LEASING', 'RENTING'].includes(deuda.tipo)
+  // Un renting y una póliza NO se reparten en cuotas: registrarlos aquí daría un
+  // cuadro de amortización que no existe. Se avisa y se lleva a su sección.
+  const otraSeccion = deuda.tipo === 'RENTING' || deuda.tipo === 'POLIZA'
   return (
     <Modal titulo={deuda.acreedor ? 'Editar deuda' : 'Nueva deuda'} onCerrar={() => setDeuda(null)}>
       <div className="space-y-4">
+        {otraSeccion && (
+          <div className="rounded-xl p-3 text-sm space-y-2" style={{ background: 'var(--surface-2)' }}>
+            <p style={{ color: 'var(--warn)' }}>
+              {deuda.tipo === 'RENTING'
+                ? 'Un renting no es una deuda con cuotas: es un gasto mensual y al final se devuelve el bien.'
+                : 'Una póliza de crédito no tiene cuadro de cuotas: se dispone y se devuelve hasta un límite, y se liquidan intereses cada periodo.'}{' '}
+              Aquí saldría un cuadro de amortización que no existe.
+            </p>
+            <Boton variante="secundario" onClick={() => onLlevarASeccion(deuda)}>
+              {deuda.tipo === 'RENTING' ? 'Darlo de alta como renting' : 'Darla de alta como póliza de crédito'}
+            </Boton>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Select etiqueta="Tipo" valor={deuda.tipo} onChange={(v) => setDeuda({ ...deuda, tipo: v })} opciones={TIPOS.map((t) => ({ valor: t.valor, texto: t.texto }))} />
           <Campo etiqueta="Acreedor" valor={deuda.acreedor} onChange={(v) => setDeuda({ ...deuda, acreedor: v })} autoFocus />
