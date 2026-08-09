@@ -88,11 +88,21 @@ describe('la naturaleza del gasto es de Compras; el banco tiene su propia lista'
     expect(banco).not.toContain('Alquileres')
   })
 
+  it('las nóminas son gasto: es el coste del personal', () => {
+    const n = CATS.find((c) => c.id === 'cat-bco-nominas')!
+    expect(efectoPresupuestoDe(n)).toBe('GASTO')
+    expect(n.cuentaPGC).toBe('640')
+    expect(categoriasDe(CATS, 'BANCO').map((c) => c.nombre)).toContain('Nóminas')
+    // No es un concepto de Compras: la nómina no llega con factura.
+    expect(categoriasDe(CATS, 'COMPRAS').map((c) => c.nombre)).not.toContain('Nóminas')
+  })
+
   it('el banco ofrece lo que no lleva factura', () => {
     for (const n of [
       'Inversiones en empresas del grupo',
       'Inversiones financieras',
       'Comisiones de TPV',
+      'Nóminas',
       'Gastos de mantenimiento',
       'Seguro de responsabilidad civil',
       'Seguro de vida',
