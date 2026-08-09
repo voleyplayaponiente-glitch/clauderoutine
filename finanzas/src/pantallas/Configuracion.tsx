@@ -5,6 +5,7 @@ import { PanelCentrosCoste } from './config/PanelCentrosCoste'
 import { PanelPlanContable } from './config/PanelPlanContable'
 import { PanelImpuestos } from './config/PanelImpuestos'
 import { PanelCategorias } from './config/PanelCategorias'
+import { PanelCobros } from './config/PanelCobros'
 import { PanelUmbrales } from './config/PanelUmbrales'
 import { PanelApariencia } from './config/PanelApariencia'
 import { PanelDatos } from './config/PanelDatos'
@@ -16,6 +17,7 @@ const PESTANAS = [
   { id: 'plan', texto: 'Plan contable', panel: PanelPlanContable },
   { id: 'impuestos', texto: 'Impuestos', panel: PanelImpuestos },
   { id: 'categorias', texto: 'Categorías', panel: PanelCategorias },
+  { id: 'cobros', texto: 'Tarjetas y datáfonos', panel: PanelCobros },
   { id: 'umbrales', texto: 'Umbrales', panel: PanelUmbrales },
   { id: 'apariencia', texto: 'Apariencia', panel: PanelApariencia },
   { id: 'conexiones', texto: 'Conexiones', panel: PanelConexiones },

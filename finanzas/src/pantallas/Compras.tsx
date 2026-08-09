@@ -74,6 +74,8 @@ function ListaCompras() {
   const nombreProv = (id: string) => terceros.find((t) => t.id === id)?.nombre ?? '—'
   const puntos = config.centrosCoste.filter((c) => !c.activoHasta)
   const tarjetas = config.tarjetas.filter((t) => t.activa)
+  const cuentasBanco = useStore((s) => s.datos.cuentasTesoreria).filter((c) => c.tipo !== 'CAJA' && !c.anuladoEn)
+  const nombreCuenta = (id?: string) => cuentasBanco.find((c) => c.id === id)?.nombre
   const nombreTarjeta = (id?: string) => config.tarjetas.find((t) => t.id === id)?.nombre
 
   /**
@@ -263,6 +265,10 @@ function ListaCompras() {
                               {c.formaPago === 'TARJETA' && !c.tarjetaId && (
                                 <span className="block text-xs" style={{ color: 'var(--warn)' }}>tarjeta sin indicar</span>
                               )}
+                              {nombreCuenta(c.cuentaPagoId) && <span className="block text-xs">{nombreCuenta(c.cuentaPagoId)}</span>}
+                              {c.estadoPago === 'PAGADA' && !c.cuentaPagoId && c.formaPago !== 'EFECTIVO' && c.formaPago !== 'TARJETA' && (
+                                <span className="block text-xs" style={{ color: 'var(--warn)' }}>banco sin indicar</span>
+                              )}
                             </td>
                             <td className="px-4 py-2.5 text-right"><ImporteEuro valor={t.total} /></td>
                             <td className="px-4 py-2.5 text-center">
@@ -373,8 +379,33 @@ function ListaCompras() {
               <Select etiqueta="Estado" valor={editando.estadoPago} onChange={(v) => setEditando({ ...editando, estadoPago: v })} opciones={ESTADOS} />
             </div>
 
-            {/* Con qué tarjeta: sin esto el cargo no se puede cuadrar con el
-                extracto del banco que la emite. */}
+            {/* De qué banco sale el dinero. Al marcarla PAGADA es obligatorio
+                saberlo: si no, el pago no se puede cuadrar con el extracto. */}
+            {(editando.formaPago === 'TRANSFERENCIA' || editando.formaPago === 'DOMICILIADO') && (
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  etiqueta={editando.estadoPago === 'PAGADA' ? '¿De qué banco se ha pagado?' : '¿De qué banco se pagará?'}
+                  valor={editando.cuentaPagoId ?? ''}
+                  onChange={(v) => setEditando({ ...editando, cuentaPagoId: v || undefined })}
+                  opciones={[
+                    { valor: '', texto: cuentasBanco.length ? '— Indica el banco —' : '— No hay cuentas dadas de alta —' },
+                    ...cuentasBanco.map((c) => ({ valor: c.id, texto: c.nombre })),
+                  ]}
+                />
+                <Campo
+                  etiqueta="Fecha de pago"
+                  tipo="date"
+                  valor={editando.fechaPago ?? ''}
+                  onChange={(v) => setEditando({ ...editando, fechaPago: v || undefined })}
+                />
+              </div>
+            )}
+            {editando.estadoPago === 'PAGADA' && !editando.cuentaPagoId && editando.formaPago !== 'EFECTIVO' && editando.formaPago !== 'TARJETA' && (
+              <p className="text-xs" style={{ color: 'var(--warn)' }}>
+                Está marcada como pagada pero no dice de qué banco ha salido el dinero. Sin eso no se puede cuadrar con el extracto.
+              </p>
+            )}
+
             {editando.formaPago === 'TARJETA' && (
               <Select
                 etiqueta="¿Con qué tarjeta?"

@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 384 tests (Vitest) del motor
+npm test         # 398 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -250,6 +250,38 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
   listado sale la tarjeta o un «tarjeta sin indicar» en ámbar.
 - `Compra.tarjetaId` solo tiene sentido con `formaPago === 'TARJETA'`; al cambiar de forma de
   pago se limpia.
+- **`Compra.cuentaPagoId` + `fechaPago`**: con TRANSFERENCIA o DOMICILIADO se despliega el
+  selector de cuenta de tesorería. Al marcarla **PAGADA sin decir el banco**, la app avisa en
+  ámbar (en el formulario y en el listado): un pago sin banco no se puede cuadrar con el extracto.
+
+## Datáfonos y cobros con tarjeta
+`DATAFONOS_DEFECTO`: uno por tienda física/stand (no en la web), todos CaixaBank de partida.
+- **`Venta.cobros` es `CobroVenta[]`** (antes `{forma, importe}`): el cobro con TARJETA lleva
+  `datafonoId`. Sin saber por qué terminal entró, la liquidación del banco no se puede cuadrar.
+- **Se propone el datáfono de esa tienda** (`centroCosteId` del datáfono) en cuanto se teclea un
+  importe en Tarjeta, y se cambia con un clic si ese día cobró otro. El selector marca cuál es
+  «(el de esta tienda)».
+- **El datáfono es el que viaja, no la tienda**: la asignación vive en `Datafono.centroCosteId`,
+  y en Configuración → Tarjetas y datáfonos se mueve de tienda con un desplegable, sin abrir
+  nada. Una tienda sin datáfono se avisa allí mismo.
+
+## Importación de ventas en CSV (`dominio/ventas-csv.ts`)
+- **Columnas por cabecera, no por posición** (cada TPV exporta a su manera): fecha · tienda ·
+  base · IVA · total · tipo · tickets · unidades · efectivo/tarjeta/bizum/transferencia/pasarela.
+  Coincidencia exacta primero: si no, «Total» se llevaría por delante a «Total tarjeta».
+- La **convención numérica se deduce del fichero** (igual que en los extractos), y la cabecera se
+  busca aunque haya rótulos encima.
+- `baseYCuota`: con base y cuota no calcula nada; con base y tipo calcula la cuota; solo con el
+  total lo desglosa hacia atrás y lo **marca como «desglosado»** en la previsualización.
+- `emparejarPunto` casa el texto de la tienda con los centros por código o nombre (y admite que
+  uno contenga al otro). **Si es ambiguo o no aparece, devuelve undefined**: la fila queda en
+  ámbar para elegir la tienda a mano. Nunca adivina.
+- Previsualización obligatoria (`pantallas/ventas/ImportarVentas.tsx`): columnas reconocidas,
+  días a importar, sin punto de venta, **ya registrados** (mismo día y tienda → no se duplica) y
+  descartadas con motivo. Entran como **borrador**, sin cerrar.
+- Si el CSV no trae desglose de cobros se avisa; **no se supone que se cobró todo en efectivo**.
+- **Pendiente**: no hay test con un CSV real del usuario. Cuando lo pase, convertirlo en
+  regresión como `factura-real.test.ts`.
 
 ## Archivo de documentos y carpeta para la gestoría
 - **`lib/adjuntos.ts`**: cada PDF vive en su propia clave (`finanzas:adjunto:<empresa>:<id>`),
@@ -354,8 +386,9 @@ Invariantes que **no** se deben romper al tocar el código:
   escribir directamente en IndexedDB (`keyval-store`): ojo, en un navegador limpio la clave
   `finanzas:datos:<id>` **aún no existe** —el store solo la escribe al primer cambio— así que hay
   que partir de `{}`; el store completa el resto con `datosIniciales()`. Borrar el script después.
-- **Nunca `pkill -f "vite preview"`**: la propia línea de comando contiene ese texto y el shell se
-  mata a sí mismo (exit 144), dejando a medias lo que viniera detrás.
+- **Nunca `pkill -f "<algo>"` si `<algo>` aparece en la propia línea de comando** (p. ej.
+  `pkill -f "vite preview"` o `pkill -f "port 4197"`): el shell se mata a sí mismo (exit 144) y
+  deja a medias lo que viniera detrás. Mejor levantar la previsualización en otro puerto.
 
 ## Decisiones abiertas (esperan respuesta del usuario, NO decidir por él)
 - **Tributos y Seguridad Social como FINANCIACIÓN, no como gasto** en el presupuesto (pagar el

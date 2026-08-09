@@ -44,6 +44,24 @@ export interface Tarjeta {
   activa: boolean
 }
 
+/**
+ * Datáfono (TPV físico) de una tienda. Cada uno liquida en el banco que lo
+ * emite, así que sin saber cuál cobró no se puede cuadrar la liquidación.
+ * Un datáfono se puede mover de tienda: por eso `centroCosteId` es del datáfono
+ * y no al revés.
+ */
+export interface Datafono {
+  id: ID
+  nombre: string
+  banco: string
+  /** Tienda donde está instalado ahora mismo. Vacío = sin asignar. */
+  centroCosteId?: ID
+  /** Cuenta de tesorería donde liquida, si está dada de alta. */
+  cuentaTesoreriaId?: ID
+  numeroTerminal?: string
+  activo: boolean
+}
+
 export type TipoCentroCoste = 'PUNTO_VENTA' | 'ESTRUCTURA' | 'PROYECTO'
 export type TipoPuntoVenta =
   | 'TIENDA'
@@ -190,12 +208,22 @@ export interface LineaIva {
   cuota: number
 }
 
+/**
+ * Un cobro del día. Si es con tarjeta, `datafonoId` dice por qué terminal
+ * entró: es lo que permite cuadrar después con la liquidación del banco.
+ */
+export interface CobroVenta {
+  forma: FormaCobro
+  importe: number
+  datafonoId?: ID
+}
+
 /** Registro diario de ventas: único por punto de venta y fecha. */
 export interface Venta extends Trazable {
   centroCosteId: ID
   fecha: string // yyyy-mm-dd
   lineasIva: LineaIva[]
-  cobros: { forma: FormaCobro; importe: number }[]
+  cobros: CobroVenta[]
   numTickets: number
   unidades: number
   cerrado: boolean // cierre diario
@@ -225,6 +253,13 @@ export interface Compra extends Trazable {
   motivoNoDeducible?: string
   /** Con qué tarjeta se pagó. Solo tiene sentido si `formaPago === 'TARJETA'`. */
   tarjetaId?: ID
+  /**
+   * Cuenta de tesorería desde la que se pagó (transferencia o domiciliación).
+   * Al marcar la factura como PAGADA hay que decirlo: si no, no se sabe de qué
+   * banco ha salido el dinero y no se puede cuadrar con el extracto.
+   */
+  cuentaPagoId?: ID
+  fechaPago?: string
   adjuntoNombre?: string
   /**
    * Clave del fichero guardado (la factura en PDF). El contenido NO vive aquí:
@@ -516,6 +551,7 @@ export interface Configuracion {
   empresa: DatosEmpresa
   centrosCoste: CentroCoste[]
   tarjetas: Tarjeta[]
+  datafonos: Datafono[]
   planContable: CuentaPGC[]
   tiposIva: TipoIva[]
   impuestosEspeciales: ImpuestoEspecial[]
