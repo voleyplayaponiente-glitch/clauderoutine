@@ -53,14 +53,29 @@ export function polizaDesdeFichero(d: DatosPoliza): Poliza {
   }
 }
 
-export function SeccionPolizas({ lectura, onCerrarLectura }: { lectura: DatosPoliza | null; onCerrarLectura: () => void }) {
+export function SeccionPolizas({
+  lectura,
+  onCerrarLectura,
+  plantilla,
+  onCerrarPlantilla,
+}: {
+  lectura: DatosPoliza | null
+  onCerrarLectura: () => void
+  /** Póliza a medio empezar que llega desde fuera (p. ej. del modal de deuda). */
+  plantilla?: Poliza | null
+  onCerrarPlantilla?: () => void
+}) {
   const polizas = useStore((s) => s.datos.polizas).filter((p) => !p.anuladoEn)
   const guardar = useStore((s) => s.guardarPoliza)
   const anular = useStore((s) => s.anularPoliza)
   const hoy = hoyISO()
   const [edit, setEdit] = useState<Poliza | null>(null)
 
-  const revisar = useMemo(() => (lectura ? polizaDesdeFichero(lectura) : null), [lectura])
+  const revisar = useMemo(() => (lectura ? polizaDesdeFichero(lectura) : (plantilla ?? null)), [lectura, plantilla])
+  const cerrarRevision = () => {
+    onCerrarLectura()
+    onCerrarPlantilla?.()
+  }
 
   const totalDispuesto = polizas.reduce((s, p) => s + p.dispuesto, 0)
   const totalDisponible = polizas.reduce((s, p) => s + situacionPoliza(p).disponible, 0)
@@ -80,11 +95,11 @@ export function SeccionPolizas({ lectura, onCerrarLectura }: { lectura: DatosPol
       {revisar && (
         <ModalPoliza
           poliza={revisar}
-          titulo="Alta de póliza desde la ficha del banco"
+          titulo={lectura ? 'Alta de póliza desde la ficha del banco' : 'Nueva póliza de crédito'}
           leido={lectura?.encontrados ?? []}
           avisos={lectura?.avisos ?? []}
-          onCerrar={onCerrarLectura}
-          onGuardar={(p) => { guardar(p); onCerrarLectura() }}
+          onCerrar={cerrarRevision}
+          onGuardar={(p) => { guardar(p); cerrarRevision() }}
         />
       )}
 
@@ -221,6 +236,7 @@ function ModalPoliza({
 }) {
   const [p, setP] = useState<Poliza>(poliza)
   const s = situacionPoliza(p)
+  const listo = p.entidad.trim() !== '' && (p.limiteActual || p.limiteConcedido) > 0
 
   return (
     <Modal titulo={titulo} onCerrar={onCerrar}>
@@ -289,10 +305,14 @@ function ModalPoliza({
 
         <div className="flex justify-end gap-2 pt-1">
           <Boton variante="secundario" onClick={onCerrar}>Cancelar</Boton>
-          <Boton onClick={() => { if (p.entidad.trim() && p.limiteActual > 0) onGuardar(p) }}>Guardar</Boton>
+          {/* El límite actual puede quedarse vacío: si solo se rellena el
+              capital concedido, se toma ese. */}
+          <Boton onClick={() => { if (listo) onGuardar({ ...p, limiteActual: p.limiteActual || p.limiteConcedido }) }}>Guardar</Boton>
         </div>
-        {(!p.entidad.trim() || p.limiteActual <= 0) && (
-          <p className="text-xs text-right" style={{ color: 'var(--warn)' }}>Indica la entidad y el límite de la póliza.</p>
+        {!listo && (
+          <p className="text-xs text-right" style={{ color: 'var(--warn)' }}>
+            Indica la entidad y el capital concedido de la póliza.
+          </p>
         )}
       </div>
     </Modal>

@@ -55,7 +55,18 @@ export function rentingDesdeFichero(d: DatosRenting, tipoIva: number): Renting {
   }
 }
 
-export function SeccionRentings({ lectura, onCerrarLectura }: { lectura: DatosRenting | null; onCerrarLectura: () => void }) {
+export function SeccionRentings({
+  lectura,
+  onCerrarLectura,
+  plantilla,
+  onCerrarPlantilla,
+}: {
+  lectura: DatosRenting | null
+  onCerrarLectura: () => void
+  /** Renting a medio empezar que llega desde fuera (p. ej. del modal de deuda). */
+  plantilla?: Renting | null
+  onCerrarPlantilla?: () => void
+}) {
   const rentings = useStore((s) => s.datos.rentings).filter((r) => !r.anuladoEn)
   const tiposIva = useStore((s) => s.config.tiposIva)
   const centros = useStore((s) => s.config.centrosCoste)
@@ -67,7 +78,14 @@ export function SeccionRentings({ lectura, onCerrarLectura }: { lectura: DatosRe
   const ivaDefecto = ivaPorDefecto(tiposIva)
 
   // La revisión del fichero se monta en cuanto llega la lectura.
-  const revisar = useMemo(() => (lectura ? rentingDesdeFichero(lectura, ivaDefecto) : null), [lectura, ivaDefecto])
+  const revisar = useMemo(
+    () => (lectura ? rentingDesdeFichero(lectura, ivaDefecto) : (plantilla ?? null)),
+    [lectura, ivaDefecto, plantilla],
+  )
+  const cerrarRevision = () => {
+    onCerrarLectura()
+    onCerrarPlantilla?.()
+  }
 
   const conResumen = rentings.map((r) => ({ renting: r, res: resumenRenting(r, hoy), avisos: avisosRenting(r, hoy) }))
   const gastoAnual = conResumen.reduce((s, x) => s + x.res.cuotas.filter((c) => c.fecha.slice(0, 4) === hoy.slice(0, 4)).reduce((t, c) => t + c.base, 0), 0)
@@ -89,13 +107,13 @@ export function SeccionRentings({ lectura, onCerrarLectura }: { lectura: DatosRe
       {revisar && (
         <ModalRenting
           renting={revisar}
-          titulo="Alta de renting desde el fichero del banco"
+          titulo={lectura ? 'Alta de renting desde el fichero del banco' : 'Nuevo renting'}
           avisos={lectura?.avisos ?? []}
           leido={lectura?.encontrados ?? []}
           centros={centros}
           tiposIva={tiposIva}
-          onCerrar={onCerrarLectura}
-          onGuardar={(r) => { guardar(r); onCerrarLectura() }}
+          onCerrar={cerrarRevision}
+          onGuardar={(r) => { guardar(r); cerrarRevision() }}
         />
       )}
 

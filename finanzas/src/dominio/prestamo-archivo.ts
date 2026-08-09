@@ -127,36 +127,68 @@ function etiqueta(filas: Celda[][], clave: string): string | undefined {
   return undefined
 }
 
+/**
+ * Cada banco rotula sus columnas a su manera. Estos son los nombres vistos en
+ * ficheros reales: BBVA («IMPORTE DE CUOTA», «CAPITAL PENDIENTE») y Bankinter
+ * («IMPORTE CUOTA», «AMORTIZACION», «IMPORTE PENDIENTE DE AMORTIZACIÓN»).
+ */
+const COLUMNAS_VENCIMIENTO = ['fecha de vencimiento', 'fecha cuota', 'fecha de la cuota', 'fecha de pago']
+const COLUMNAS_IMPORTE = ['importe de cuota', 'importe cuota', 'importe del movimiento']
+const COLUMNAS_PRINCIPAL = ['importe principal', 'amortizacion']
+const COLUMNAS_INTERESES = ['importe de intereses', 'intereses']
+const COLUMNAS_PENDIENTE = ['capital pendiente', 'importe pendiente de amortizacion', 'pendiente de amortizacion']
+
 /** Índice de la fila de cabeceras de la tabla y sus columnas. */
 function cabeceraTabla(filas: Celda[][]): { i: number; col: Record<string, number> } | undefined {
   for (let i = 0; i < Math.min(filas.length, 30); i++) {
     const n = (filas[i] ?? []).map((c) => normalizar(texto(c)))
-    if (!n.some((c) => c.startsWith('fecha de vencimiento'))) continue
     const buscar = (...claves: string[]) => n.findIndex((c) => c !== '' && claves.some((k) => c === k || c.startsWith(k)))
-    // «Fecha de vencimiento» a secas no basta: la ficha del préstamo la usa
-    // como rótulo de un dato suelto («Importe pendiente · Cuota a pagar · Fecha
-    // de vencimiento»). Para ser una tabla tiene que traer además las columnas
-    // de importe del cuadro; si no, se lee por texto.
-    const columnasCuadro = ['importe de cuota', 'importe del movimiento', 'importe principal', 'importe de intereses', 'capital pendiente']
+    if (buscar(...COLUMNAS_VENCIMIENTO) === -1) continue
+    // La columna de fecha a secas no basta: la ficha del préstamo la usa como
+    // rótulo de un dato suelto («Importe pendiente · Cuota a pagar · Fecha de
+    // vencimiento»). Para ser una tabla tiene que traer además las columnas de
+    // importe del cuadro; si no, se lee por texto.
+    const columnasCuadro = [...COLUMNAS_IMPORTE, ...COLUMNAS_PRINCIPAL, ...COLUMNAS_INTERESES, ...COLUMNAS_PENDIENTE]
     if (columnasCuadro.filter((k) => buscar(k) !== -1).length < 2) continue
     return {
       i,
       col: {
-        vencimiento: buscar('fecha de vencimiento'),
+        vencimiento: buscar(...COLUMNAS_VENCIMIENTO),
         operacion: buscar('fecha de operacion'),
         tipoMovimiento: buscar('tipo de movimiento'),
-        // «Importe del movimiento» en amortizaciones, «Importe de cuota» en próximas.
-        importe: buscar('importe de cuota', 'importe del movimiento'),
-        principal: buscar('importe principal'),
-        intereses: buscar('importe de intereses'),
+        importe: buscar(...COLUMNAS_IMPORTE),
+        principal: buscar(...COLUMNAS_PRINCIPAL),
+        intereses: buscar(...COLUMNAS_INTERESES),
         comisiones: buscar('comisiones'),
         estado: buscar('estado'),
-        pendiente: buscar('capital pendiente'),
+        pendiente: buscar(...COLUMNAS_PENDIENTE),
         amortizado: buscar('capital amortizado'),
       },
     }
   }
   return undefined
+}
+
+/**
+ * Excel guarda las fechas como número de días desde el 30/12/1899, y SheetJS
+ * las devuelve así cuando se lee con `header: 1`. El cuadro de Bankinter llega
+ * entero en ese formato (46247 = 13/08/2026).
+ */
+export function fechaDeSerieExcel(serie: number): string | undefined {
+  // Se acota a un rango razonable (1982-2119) para no confundir un importe con
+  // una fecha: fuera de ahí, mejor no leer nada.
+  if (!Number.isFinite(serie) || serie < 30000 || serie > 80000) return undefined
+  return new Date(Date.UTC(1899, 11, 30) + Math.round(serie) * 86_400_000).toISOString().slice(0, 10)
+}
+
+/** Fecha de una celda, venga como texto o como número de serie de Excel. */
+function fechaDeCelda(c: Celda): string | undefined {
+  if (typeof c === 'number') return fechaDeSerieExcel(c)
+  // Bankinter escribe las fechas con puntos («13.07.2026»); el resto de la app
+  // trabaja con barras. Solo se cambia cuando la forma es inequívocamente una
+  // fecha, para no tocar un importe.
+  const t = texto(c).replace(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/, '$1/$2/$3')
+  return parsearFechaFlexible(t) ?? undefined
 }
 
 /** Meses entre dos fechas ISO, redondeado. */
@@ -197,6 +229,77 @@ export function tipoDeCuadro(cuotas: CuotaLeida[], periodicidad: 'MENSUAL' | 'TR
   return Math.round(mediana * 1000) / 1000
 }
 
+/**
+ * Entidad a partir del IBAN que aparezca en el fichero. Bankinter no rotula el
+ * contrato: pone «Número de cuenta: ES97 0128…» en la primera línea, y ahí el
+ * código de entidad son las cuatro cifras que siguen al dígito de control.
+ */
+function ibanDelFichero(filas: Celda[][]): { iban: string; entidad?: string } | undefined {
+  for (const f of filas.slice(0, 12)) {
+    const linea = f.map(texto).join(' ')
+    const m = /\b(ES\d{2})\s?(\d{4})[\d\s]{10,}/i.exec(linea)
+    if (m) return { iban: linea.slice(m.index, m.index + m[0].length).trim(), entidad: ENTIDADES[m[2]] }
+  }
+  return undefined
+}
+
+/**
+ * Ficha «Condiciones» de Bankinter: una fila de rótulos y una sola fila de
+ * valores, sin cuadro de cuotas. Trae lo que el cuadro no dice —importe
+ * inicial, fechas, tipo y clase de cuota—, así que se sube junto al cuadro.
+ */
+export function leerCondicionesPrestamo(filas: Celda[][]): DatosPrestamo | undefined {
+  const avisos: string[] = []
+  const encontrados: string[] = []
+
+  for (let i = 0; i < Math.min(filas.length, 30); i++) {
+    const n = (filas[i] ?? []).map((c) => normalizar(texto(c)))
+    const col = (...claves: string[]) => n.findIndex((c) => c !== '' && claves.some((k) => c === k || c.startsWith(k)))
+    const iInicio = col('fecha inicio', 'fecha de inicio')
+    const iImporte = col('importe inicial')
+    if (iInicio === -1 || iImporte === -1) continue
+
+    const valores = filas.slice(i + 1).find((f) => f.some((c) => texto(c) !== ''))
+    if (!valores) continue
+
+    const datos: DatosPrestamo = { cuotas: [], avisos, encontrados }
+    const marca = <K extends keyof DatosPrestamo>(campo: K, valor: DatosPrestamo[K]) => {
+      if (valor === undefined) return
+      datos[campo] = valor
+      encontrados.push(String(campo))
+    }
+    /** Importes de esta ficha vienen como «15000 EUR» y «0 %». */
+    const cifra = (j: number) => {
+      if (j === -1) return undefined
+      const v = numero(texto(valores[j]).replace(/eur|€|%/gi, '').trim(), 'ES')
+      return v
+    }
+
+    marca('fechaInicio', fechaDeCelda(valores[iInicio]))
+    marca('importeOriginal', cifra(iImporte))
+    marca('tipoInteres', cifra(col('tipo interes', 'tipo de interes')))
+
+    const clase = normalizar(texto(valores[col('clases de cuota', 'clase de cuota')] ?? ''))
+    // «CUOTAS AMORT CTE» = amortización constante, es decir, sistema lineal.
+    if (clase.includes('amort') && (clase.includes('cte') || clase.includes('constante'))) marca('sistema', 'LINEAL')
+
+    const iban = ibanDelFichero(filas)
+    if (iban) {
+      marca('numeroContrato', iban.iban.replace(/^.*?(ES)/i, '$1'))
+      marca('entidad', iban.entidad)
+    }
+
+    const vencimiento = fechaDeCelda(valores[col('fecha vencimiento', 'fecha de vencimiento')])
+    if (datos.fechaInicio && vencimiento) {
+      avisos.push(`El préstamo vence el ${vencimiento}; el nº de cuotas sale del cuadro de amortización.`)
+    }
+    if (datos.tipoInteres === 0) avisos.push('El fichero dice tipo de interés 0 %: es un préstamo sin intereses.')
+
+    return datos
+  }
+  return undefined
+}
+
 /** Lee un fichero del banco (ya convertido a filas). */
 export function leerPrestamo(filas: Celda[][]): DatosPrestamo {
   const avisos: string[] = []
@@ -205,9 +308,21 @@ export function leerPrestamo(filas: Celda[][]): DatosPrestamo {
 
   const cab = cabeceraTabla(filas)
   if (!cab) {
+    // Antes de darlo por texto: puede ser la ficha de condiciones, que no trae
+    // cuadro pero sí el importe, las fechas y el tipo.
+    const condiciones = leerCondicionesPrestamo(filas)
+    if (condiciones) return condiciones
     // El Excel del banco viene en columnas; un PDF, en líneas de texto. Si no
     // hay tabla por columnas se intenta leer el texto tal cual.
     return leerTextoPrestamo(filas.map((f) => f.map(texto).filter((c) => c !== '').join(' ')))
+  }
+
+  // Bankinter identifica el préstamo por el IBAN de su cuenta, no por un
+  // rótulo «Contrato».
+  const iban = ibanDelFichero(filas)
+  if (iban?.entidad) {
+    datos.entidad = iban.entidad
+    encontrados.push('entidad')
   }
 
   // ── Cabecera: contrato, producto, titular ──
@@ -243,7 +358,7 @@ export function leerPrestamo(filas: Celda[][]): DatosPrestamo {
 
   const cuotas: CuotaLeida[] = []
   for (const f of cuerpo) {
-    const fecha = parsearFechaFlexible(texto(f[cab.col.vencimiento]))
+    const fecha = fechaDeCelda(f[cab.col.vencimiento])
     if (!fecha) continue
     const tipoMov = normalizar(texto(f[cab.col.tipoMovimiento]))
     const estado = normalizar(texto(f[cab.col.estado]))
@@ -256,7 +371,7 @@ export function leerPrestamo(filas: Celda[][]): DatosPrestamo {
         datos.importeOriginal = principal
         encontrados.push('importeOriginal')
       }
-      const fOper = parsearFechaFlexible(texto(f[cab.col.operacion])) ?? fecha
+      const fOper = fechaDeCelda(f[cab.col.operacion]) ?? fecha
       datos.fechaInicio = fOper
       encontrados.push('fechaInicio')
       const com = val(f, cab.col.comisiones)
@@ -332,13 +447,25 @@ export function leerPrestamo(filas: Celda[][]): DatosPrestamo {
   // amortizado. Sirve cuando solo se tiene el fichero de próximas cuotas.
   if (datos.importeOriginal === undefined) {
     const cab2 = cabeceraTabla(filas)!
-    const primera = cuerpo.find((f) => parsearFechaFlexible(texto(f[cab2.col.vencimiento])))
+    const primera = cuerpo.find((f) => fechaDeCelda(f[cab2.col.vencimiento]))
     const pend = primera ? val(primera, cab2.col.pendiente) : undefined
     const amort = primera ? val(primera, cab2.col.amortizado) : undefined
     if (pend !== undefined && amort !== undefined) {
       datos.importeOriginal = Math.round((pend + amort) * 100) / 100
       encontrados.push('importeOriginal')
       avisos.push('El importe inicial se ha reconstruido sumando capital pendiente y amortizado; confírmalo.')
+    } else if (pend !== undefined && cuotas[0]?.principal !== undefined) {
+      // Sin columna de capital amortizado (Bankinter), el capital vivo antes de
+      // la primera cuota es pendiente + su principal. Eso solo es el importe
+      // inicial si el cuadro trae TODAS las cuotas, y se comprueba: la suma de
+      // los principales tiene que dar lo mismo. Si no cuadra, no se rellena.
+      const vivo = Math.round((pend + cuotas[0].principal) * 100) / 100
+      const suma = Math.round(cuotas.reduce((s, c) => s + (c.principal ?? 0), 0) * 100) / 100
+      if (Math.abs(vivo - suma) < 0.02) {
+        datos.importeOriginal = vivo
+        encontrados.push('importeOriginal')
+        avisos.push('El importe inicial se ha reconstruido con el cuadro completo; confírmalo.')
+      }
     }
   }
 

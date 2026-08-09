@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 516 tests (Vitest) del motor
+npm test         # 528 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -388,6 +388,24 @@ Cuando `cabeceraTabla` no encuentra columnas, `leerPrestamo` cae a **`leerTextoP
 - El banco **alterna los céntimos** entre cuotas (527,43 / 527,44): la diferencia con la cuota que
   calcula la app es de 1 cts, por debajo del umbral de aviso. No es un error.
 
+### Tercer formato: Excel de Bankinter (`prestamo-bankinter.test.ts`)
+Bankinter reparte el préstamo en dos descargas distintas de las de BBVA:
+- **«Cuadro Amortizacion»** — rotula a su manera (`FECHA CUOTA`, `IMPORTE CUOTA`, `AMORTIZACION`,
+  `IMPORTE PENDIENTE DE AMORTIZACIÓN`), así que los nombres de columna viven en las constantes
+  `COLUMNAS_*` y se admiten los de los dos bancos.
+- **Las fechas llegan como número de serie de Excel** (46247 = 13/08/2026): `fechaDeSerieExcel`
+  las convierte, acotado a 1982-2119 para no tomar un importe por una fecha.
+- **«Condiciones»** — no trae cuadro: una fila de rótulos y **una sola fila de valores** con
+  importe inicial, fechas, tipo y clase de cuota. Lo lee `leerCondicionesPrestamo`, que se
+  intenta antes de caer al camino por texto. `CUOTAS AMORT CTE` = amortización constante →
+  sistema **LINEAL**. Los importes vienen como «15000 EUR» y «0 %», y las fechas con puntos
+  (`13.07.2026`), que se normalizan solo cuando la forma es inequívocamente una fecha.
+- **La entidad sale del IBAN** («Número de cuenta: ES97 0128…»): Bankinter no rotula el contrato.
+- **Reconstrucción del importe inicial sin columna de capital amortizado**: capital pendiente de
+  la primera fila + su principal, **solo si la suma de todos los principales da lo mismo** (es
+  decir, si el cuadro trae todas las cuotas). Si no cuadra, no se rellena.
+- Un préstamo al **0 %** es legítimo (este lo es): se lee y se dice en un aviso.
+
 ## Renting y póliza de crédito: financiación que NO es un cuadro de cuotas
 Los dos viven en la pantalla de Deudas, en secciones aparte, porque ninguno encaja en `Deuda`
 (que reparte un principal en cuotas con intereses). El mismo botón «Subir fichero del banco»
@@ -448,6 +466,15 @@ un rótulo). `filasDePrestamo` usa esta versión para los PDF.
   como cabecera de cuadro y el fichero dejó de aportar importe, fecha y entidad. `cabeceraTabla`
   exige ahora **al menos dos columnas de importe** además de la fecha de vencimiento.
 
+### Que no se pueda registrar en el sitio equivocado
+El usuario intentó dar de alta la póliza desde «+ Deuda» → tipo «Póliza de crédito», que es el
+camino evidente y el que produce un cuadro de cuotas inexistente. Para que no vuelva a pasar:
+- La cabecera de Deudas tiene **«+ Renting» y «+ Póliza»** junto a «+ Deuda».
+- Los tipos `RENTING` y `POLIZA` siguen en la lista de `Deuda` (para no romper lo ya guardado)
+  pero se llaman «(usa la sección de …)», y al elegirlos el modal **explica por qué no van ahí y
+  ofrece un botón que lleva lo tecleado a la sección correcta**.
+- La póliza se guarda con solo entidad + capital concedido; el límite actual se rellena solo.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -461,7 +488,7 @@ un rótulo). `filasDePrestamo` usa esta versión para los PDF.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (516 tests en verde, desplegado)
+## Estado (528 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.
