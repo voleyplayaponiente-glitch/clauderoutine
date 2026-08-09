@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { leerPrestamo, fusionarPrestamos, tipoDeCuadro, type Celda } from './prestamo-archivo'
+import {
+  leerPrestamo,
+  fusionarPrestamos,
+  tipoDeCuadro,
+  leerTextoPrestamo,
+  ordenColumnas,
+  nPeriodosPorCuota,
+  type Celda,
+} from './prestamo-archivo'
 
 /**
  * Ficheros REALES de BBVA para un préstamo de 50.000 € a 84 meses. El banco
@@ -115,7 +123,10 @@ describe('los dos ficheros juntos', () => {
   it('junta lo pagado con lo pendiente sin repetir cuotas', () => {
     expect(r.nPagadas).toBe(6)
     expect(r.nPendientes).toBe(5)
-    expect(r.nPeriodos).toBe(11)
+    // El fixture está recortado (5 pendientes de 78), pero el plazo real del
+    // préstamo se deduce del importe, el tipo y la cuota: 84 mensualidades.
+    expect(r.nPeriodos).toBe(84)
+    expect(r.avisos.some((a) => /el resto no venía impreso/.test(a))).toBe(true)
     expect(r.cuotas[0].fecha).toBe('2026-02-28')
     expect(r.cuotas[r.cuotas.length - 1].fecha).toBe('2026-12-30')
   })
@@ -151,7 +162,7 @@ describe('lo que no se puede leer', () => {
   it('un fichero que no es un cuadro se rechaza con motivo', () => {
     const r = leerPrestamo([['Hoja de cálculo cualquiera'], ['a', 'b']])
     expect(r.cuotas).toEqual([])
-    expect(r.avisos[0]).toMatch(/No se reconoce el cuadro/)
+    expect(r.avisos[0]).toMatch(/No se reconoce (el cuadro|el préstamo)/)
   })
 
   it('un contrato de otra entidad desconocida no inventa el banco', () => {
@@ -172,5 +183,142 @@ describe('lo que no se puede leer', () => {
       { fecha: '2026-10-30', cuota: 681.14, principal: 532.28, intereses: 900, pendiente: 45271.09, pagada: false },
     ]
     expect(tipoDeCuadro(cuotas, 'MENSUAL')).toBeCloseTo(3.9, 1)
+  })
+})
+
+/**
+ * PDF REAL de CaixaBank. Nada que ver con el Excel de BBVA: el cuadro son
+ * líneas de texto con un solo espacio y la cabecera entera en una línea, y los
+ * datos del préstamo (tipo, fecha, importe) están en OTRO fichero, la ficha.
+ */
+const CAIXA_CUADRO = [
+  '9/8/26, 18:05 CaixaBank | banca digital CaixaBankNow',
+  'Fecha impresión: 09/08/2026',
+  'Préstamos - Consulta del cuadro previsto',
+  'Tipo de contrato : Microcr. financ.',
+  'Número de contrato : 9620.802-415223-56',
+  'Cuenta relacionada : 3985 0200365748',
+  'Importes expresados en euros',
+  'Relación de amortizaciones futuras',
+  'Recibos pendientes Vencimiento Amortización Intereses Total Capital pendiente',
+  '14 01/09/2026 494,43 33,01 527,44 7.150,34',
+  '13 01/10/2026 496,55 30,88 527,43 6.653,79',
+  '12 01/11/2026 498,71 28,73 527,44 6.155,08',
+  '11 01/12/2026 500,85 26,58 527,43 5.654,23',
+  '10 01/01/2027 503,01 24,42 527,43 5.151,22',
+  '9 01/02/2027 505,20 22,24 527,44 4.646,02',
+  '8 01/03/2027 507,37 20,06 527,43 4.138,65',
+  '7 01/04/2027 509,56 17,87 527,43 3.629,09',
+  '6 01/05/2027 511,77 15,67 527,44 3.117,32',
+  '5 01/06/2027 513,97 13,46 527,43 2.603,35',
+  'Cuadro confeccionado por los vencimientos pendientes de facturarse.',
+]
+
+const CAIXA_FICHA = [
+  '9/8/26, 18:02 CaixaBank | banca digital CaixaBankNow',
+  'Fecha impresión: 09/08/2026',
+  'Microcr. financ. de 12.000€',
+  'Importe pendiente Cuota a pagar Fecha de vencimiento',
+  '527,44 € 01/11/2027',
+  '7.644,77 €',
+  'Recibos pendientes de vencer',
+  '15',
+  'Datos del préstamo contrato',
+  'Tipo de préstamo Titulares Número de ',
+  'Microcr. financ. BESPAIN 7777, contrato',
+  'SL 9620.802-',
+  'Cuenta vinculada 415223-56',
+  'ES31 2100 3985 Fecha',
+  '5902 0036 5748 constitución Tipo de interés',
+  '16/10/2025 5,182%',
+]
+
+describe('cuadro en PDF de CaixaBank', () => {
+  const r = leerTextoPrestamo(CAIXA_CUADRO)
+
+  it('lee las filas aunque no haya columnas, solo texto', () => {
+    expect(r.cuotas).toHaveLength(10)
+    expect(r.cuotas[0].fecha).toBe('2026-09-01')
+    expect(r.cuota).toBe(527.43) // la más repetida; alterna con 527,44
+  })
+
+  it('el orden de las columnas se toma de la cabecera, no se supone', () => {
+    expect(ordenColumnas('Recibos pendientes Vencimiento Amortización Intereses Total Capital pendiente')).toEqual([
+      'principal',
+      'intereses',
+      'cuota',
+      'pendiente',
+    ])
+    const primera = r.cuotas[0]
+    expect(primera.principal).toBe(494.43)
+    expect(primera.intereses).toBe(33.01)
+    expect(primera.cuota).toBe(527.44)
+    expect(primera.pendiente).toBe(7150.34)
+  })
+
+  it('«capital pendiente» no se confunde con «amortización»', () => {
+    // Si «capital» ganara, el pendiente iría a principal y el cuadro saldría mal.
+    expect(ordenColumnas('Vencimiento Capital pendiente Amortización')).toEqual(['pendiente', 'principal'])
+  })
+
+  it('calcula el tipo con el cuadro: coincide con el que dice el banco', () => {
+    // 33,01 sobre 7.644,77 de capital vivo → 5,18 % anual. La ficha dice 5,182 %.
+    expect(r.tipoInteres).toBeCloseTo(5.18, 1)
+  })
+
+  it('lee el contrato y el producto de las líneas «Etiqueta : valor»', () => {
+    expect(r.numeroContrato).toBe('9620.802-415223-56')
+    expect(r.nombreProducto).toBe('Microcr. financ.')
+  })
+})
+
+describe('ficha del préstamo de CaixaBank', () => {
+  const r = leerTextoPrestamo(CAIXA_FICHA)
+
+  it('lee el tipo, la fecha de constitución y el importe concedido', () => {
+    expect(r.tipoInteres).toBe(5.182)
+    expect(r.fechaInicio).toBe('2025-10-16')
+    expect(r.importeOriginal).toBe(12000)
+  })
+
+  it('deduce la entidad por el IBAN de la cuenta vinculada', () => {
+    // ES31 2100 … → 2100 es CaixaBank.
+    expect(r.entidad).toBe('CaixaBank')
+  })
+})
+
+describe('los dos PDF de CaixaBank juntos', () => {
+  const r = fusionarPrestamos([leerTextoPrestamo(CAIXA_FICHA), leerTextoPrestamo(CAIXA_CUADRO)])
+
+  it('junta la ficha con el cuadro', () => {
+    expect(r.entidad).toBe('CaixaBank')
+    expect(r.importeOriginal).toBe(12000)
+    expect(r.fechaInicio).toBe('2025-10-16')
+    expect(r.tipoInteres).toBe(5.182)
+    // El banco alterna 527,43 y 527,44 por redondeo: vale cualquiera de las dos.
+    expect([527.43, 527.44]).toContain(r.cuota)
+  })
+
+  it('deduce el nº de cuotas del importe, el tipo y la cuota', () => {
+    // 12.000 € al 5,182 % con cuota de 527,44 € → 24 mensualidades.
+    expect(r.nPeriodos).toBe(24)
+  })
+})
+
+describe('deducir el nº de cuotas', () => {
+  it('acierta con el préstamo real de CaixaBank', () => {
+    expect(nPeriodosPorCuota(12000, 5.182, 527.44, 'MENSUAL')).toBe(24)
+  })
+
+  it('acierta con el de BBVA', () => {
+    expect(nPeriodosPorCuota(50000, 3.9, 681.14, 'MENSUAL')).toBe(84)
+  })
+
+  it('sin intereses es una división', () => {
+    expect(nPeriodosPorCuota(1200, 0, 100, 'MENSUAL')).toBe(12)
+  })
+
+  it('una cuota que no cubre ni los intereses no da resultado', () => {
+    expect(nPeriodosPorCuota(100000, 10, 100, 'MENSUAL')).toBeUndefined()
   })
 })
