@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 458 tests (Vitest) del motor
+npm test         # 471 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -364,8 +364,29 @@ parte la información en dos descargas, y las dos hacen falta:
   si se apartan más de 1 €: si no coinciden, el cuadro de la app no sería el del banco. Con los
   ficheros reales coinciden al céntimo (681,14 €), lo que valida de paso que la convención de
   «primera cuota un periodo después de `fechaInicio`» es la del banco.
-- `prestamo-archivo.test.ts` es la regresión con los DOS ficheros reales de BBVA.
+- `prestamo-archivo.test.ts` es la regresión con los ficheros reales de BBVA **y de CaixaBank**.
 - `lib/extracto.ts` → `filasDePrestamo`: Excel (SheetJS), PDF (columnas por 2+ espacios) y CSV.
+
+### Segundo formato: PDF de CaixaBank (lectura por texto)
+El PDF de CaixaBank no tiene tabla de columnas separables: las filas del cuadro van con **un
+solo espacio** (`14 01/09/2026 494,43 33,01 527,44 7.150,34`) y la cabecera entera en una línea.
+Cuando `cabeceraTabla` no encuentra columnas, `leerPrestamo` cae a **`leerTextoPrestamo`**:
+- **`aplanar`** normaliza a minúsculas y quita acentos **conservando la longitud** (mapa 1:1). Se
+  hizo así porque `normalize('NFD')` cambia el número de caracteres y las posiciones encontradas
+  en el texto normalizado ya no casaban con los cortes del original.
+- **`ordenColumnas`** deduce del rótulo qué importe es cada uno; busca `capital pendiente`
+  **antes** que `capital`, si no «amortización» se lo tragaba.
+- Los rótulos del banco se parten entre líneas por el interleaving de columnas
+  («Fecha» / «constitución»), así que hay respaldos de una sola palabra
+  (`constitucion`, `formalizacion`).
+- **La entidad también se saca del IBAN** (`\bES\d{2}\s?(\d{4})\b`) cuando el nº de contrato no
+  empieza por código de banco.
+- **`nPeriodosPorCuota`** despeja la *n* de la fórmula francesa a partir de importe, tipo y cuota:
+  el PDF puede imprimir **solo las cuotas pendientes** (10 de 24) y tomar `cuotas.length` como
+  plazo daba un préstamo falso. `fusionarPrestamos` prefiere el plazo deducido y avisa: «el
+  fichero lista N cuotas, pero el préstamo son M: el resto no venía impreso».
+- El banco **alterna los céntimos** entre cuotas (527,43 / 527,44): la diferencia con la cuota que
+  calcula la app es de 1 cts, por debajo del umbral de aviso. No es un error.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
@@ -380,7 +401,7 @@ parte la información en dos descargas, y las dos hacen falta:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (384 tests en verde, desplegado)
+## Estado (471 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.

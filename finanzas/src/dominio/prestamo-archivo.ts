@@ -81,6 +81,23 @@ function texto(c: Celda): string {
   return c === null || c === undefined ? '' : String(c).trim()
 }
 
+/**
+ * Minúsculas y sin tildes **conservando la longitud**: hay que buscar en el
+ * texto normalizado y cortar en el original, y con `NFD` las posiciones se
+ * desplazan (cada tilde añade un carácter).
+ */
+const ACENTUADAS = 'áàäâéèëêíìïîóòöôúùüûñçÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÑÇ'
+const LLANAS = 'aaaaeeeeiiiioooouuuuncaaaaeeeeiiiioooouuuunc'
+
+export function aplanar(s: string): string {
+  let r = ''
+  for (const c of s.toLowerCase()) {
+    const i = ACENTUADAS.indexOf(c)
+    r += i === -1 ? c : LLANAS[i]
+  }
+  return r
+}
+
 function normalizar(s: string): string {
   return s
     .toLowerCase()
@@ -182,14 +199,9 @@ export function leerPrestamo(filas: Celda[][]): DatosPrestamo {
 
   const cab = cabeceraTabla(filas)
   if (!cab) {
-    return {
-      cuotas: [],
-      avisos: [
-        'No se reconoce el cuadro del préstamo: falta una tabla con la columna «Fecha de vencimiento». ' +
-          'Descarga del banco el cuadro de amortización o las próximas cuotas en Excel.',
-      ],
-      encontrados: [],
-    }
+    // El Excel del banco viene en columnas; un PDF, en líneas de texto. Si no
+    // hay tabla por columnas se intenta leer el texto tal cual.
+    return leerTextoPrestamo(filas.map((f) => f.map(texto).filter((c) => c !== '').join(' ')))
   }
 
   // ── Cabecera: contrato, producto, titular ──
@@ -357,21 +369,30 @@ export function fusionarPrestamos(lecturas: DatosPrestamo[]): DatosPrestamo {
 
   const nPagadas = cuotas.filter((c) => c.pagada).length
   const periodicidad = primero((l) => l.periodicidad) ?? periodicidadDe(cuotas.map((c) => c.fecha))
+  const importeOriginal = primero((l) => l.importeOriginal)
+  const cuota = primero((l) => l.cuota)
+  const tipoInteres = primero((l) => l.tipoInteres) ?? (periodicidad ? tipoDeCuadro(cuotas, periodicidad) : undefined)
+  // El fichero puede listar solo parte del cuadro (CaixaBank imprime 10 filas):
+  // el plazo real se deduce del importe, el tipo y la cuota.
+  const deducido =
+    importeOriginal !== undefined && tipoInteres !== undefined && cuota !== undefined
+      ? nPeriodosPorCuota(importeOriginal, tipoInteres, cuota, periodicidad ?? 'MENSUAL')
+      : undefined
   const fusion: DatosPrestamo = {
     numeroContrato: primero((l) => l.numeroContrato),
     entidad: primero((l) => l.entidad),
     nombreProducto: primero((l) => l.nombreProducto),
     cifTitular: primero((l) => l.cifTitular),
-    importeOriginal: primero((l) => l.importeOriginal),
+    importeOriginal,
     fechaInicio: primero((l) => l.fechaInicio),
     comisionApertura: primero((l) => l.comisionApertura),
-    cuota: primero((l) => l.cuota),
+    cuota,
     nPagadas,
     nPendientes: cuotas.length - nPagadas,
-    nPeriodos: cuotas.length,
+    nPeriodos: primero((l) => l.nPeriodos) ?? deducido ?? cuotas.length,
     periodicidad,
     sistema: primero((l) => l.sistema),
-    tipoInteres: primero((l) => l.tipoInteres) ?? (periodicidad ? tipoDeCuadro(cuotas, periodicidad) : undefined),
+    tipoInteres,
     capitalPendiente: primero((l) => l.capitalPendiente),
     cuotas,
     avisos: [...new Set(validas.flatMap((l) => l.avisos))],
@@ -383,6 +404,13 @@ export function fusionarPrestamos(lecturas: DatosPrestamo[]): DatosPrestamo {
   const hayFormalizacion = validas.some((l) => l.importeOriginal !== undefined && l.fechaInicio !== undefined)
   if (hayFormalizacion) fusion.avisos = fusion.avisos.filter((a) => !/reconstruido/.test(a))
 
+  if (deducido !== undefined && deducido > cuotas.length) {
+    fusion.avisos.push(
+      `El fichero lista ${cuotas.length} cuotas, pero el préstamo son ${deducido}: el resto no venía impreso. ` +
+        'Se ha tomado el plazo completo; compruébalo.',
+    )
+  }
+
   // Con un solo fichero, el nº total de cuotas es solo el de ese fichero: se
   // dice, porque de ahí sale la duración del préstamo.
   if (!hayFormalizacion) {
@@ -392,4 +420,205 @@ export function fusionarPrestamos(lecturas: DatosPrestamo[]): DatosPrestamo {
     )
   }
   return fusion
+}
+
+// ─────────────── Lectura por texto (PDF y hojas sin columnas) ───────────────
+
+/**
+ * No todos los bancos dan una tabla con columnas. CaixaBank imprime el cuadro
+ * como líneas de texto —«14 01/09/2026 494,43 33,01 527,44 7.150,34»— y la
+ * cabecera entera en una sola línea. Aquí se lee eso:
+ *  · el **orden de las columnas se toma de la propia cabecera**, no se supone;
+ *  · una fila es cualquier línea con una fecha y al menos dos importes.
+ * Y de la ficha del préstamo se sacan tipo de interés, fecha de constitución
+ * e importe, que en ese banco no están en el cuadro.
+ */
+const RE_IMPORTE_TXT = /-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}/g
+const RE_FECHA_TXT = /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/
+
+/** Columnas de importe en el orden en que aparecen en la línea de cabecera. */
+export function ordenColumnas(cabecera: string): ('principal' | 'intereses' | 'cuota' | 'pendiente')[] {
+  const n = normalizar(cabecera)
+  const marcas: { pos: number; col: 'principal' | 'intereses' | 'cuota' | 'pendiente' }[] = []
+  const buscar = (col: 'principal' | 'intereses' | 'cuota' | 'pendiente', ...frases: string[]) => {
+    for (const f of frases) {
+      const pos = n.indexOf(f)
+      if (pos !== -1) {
+        marcas.push({ pos, col })
+        return
+      }
+    }
+  }
+  // «capital pendiente» primero: si no, «capital» se lo llevaría amortización.
+  buscar('pendiente', 'capital pendiente', 'saldo pendiente')
+  buscar('principal', 'amortizacion', 'importe principal', 'capital amortizado', 'capital')
+  buscar('intereses', 'intereses', 'interes')
+  buscar('cuota', 'importe de cuota', 'importe del movimiento', 'total', 'cuota')
+  return marcas.sort((a, b) => a.pos - b.pos).map((m) => m.col)
+}
+
+/** Nº de cuotas que hace que la cuota calculada coincida con la del banco. */
+export function nPeriodosPorCuota(
+  principal: number,
+  tipoAnual: number,
+  cuota: number,
+  periodicidad: 'MENSUAL' | 'TRIMESTRAL' | 'ANUAL',
+): number | undefined {
+  if (principal <= 0 || cuota <= 0) return undefined
+  if (tipoAnual === 0) return Math.round(principal / cuota)
+  const i = tipoAnual / 100 / PERIODOS_ANIO[periodicidad]
+  const x = 1 - (principal * i) / cuota
+  // Con una cuota que no cubre ni los intereses, el préstamo no se amortiza.
+  if (x <= 0) return undefined
+  const n = -Math.log(x) / Math.log(1 + i)
+  return Number.isFinite(n) && n > 0 && n < 1000 ? Math.round(n) : undefined
+}
+
+export function leerTextoPrestamo(lineas: string[]): DatosPrestamo {
+  const avisos: string[] = []
+  const encontrados: string[] = []
+  const datos: DatosPrestamo = { cuotas: [], avisos, encontrados }
+  const texto = lineas.join('\n')
+  // Mismo largo que `texto`, así una posición vale para los dos.
+  const plano = aplanar(texto)
+
+  // ── Cabecera del cuadro y orden de sus columnas ──
+  const iCab = lineas.findIndex((l) => {
+    const x = normalizar(l)
+    return x.includes('vencimiento') && (x.includes('amortizacion') || x.includes('intereses') || x.includes('capital'))
+  })
+  const orden = iCab >= 0 ? ordenColumnas(lineas[iCab]) : []
+
+  const cuotas: CuotaLeida[] = []
+  for (const l of lineas) {
+    const mf = RE_FECHA_TXT.exec(l)
+    if (!mf) continue
+    const fecha = parsearFechaFlexible(mf[1])
+    if (!fecha) continue
+    // Los importes que van DESPUÉS de la fecha son los de la fila.
+    const resto = l.slice(l.indexOf(mf[1]) + mf[1].length)
+    const importes = [...resto.matchAll(RE_IMPORTE_TXT)].map((m) => parsearImporte(m[0], 'ES')).filter((v): v is number => v !== null)
+    if (importes.length < 2) continue
+
+    const fila: CuotaLeida = { fecha, cuota: 0, pagada: false }
+    if (orden.length === importes.length) {
+      orden.forEach((col, i) => {
+        if (col === 'cuota') fila.cuota = importes[i]
+        else fila[col] = importes[i]
+      })
+    } else {
+      // Sin cabecera fiable: el último importe es el capital pendiente y el
+      // mayor de los demás, la cuota.
+      fila.pendiente = importes[importes.length - 1]
+      fila.cuota = Math.max(...importes.slice(0, -1))
+    }
+    if (fila.cuota > 0) cuotas.push(fila)
+  }
+
+  cuotas.sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+  // ── Datos de la ficha del préstamo ──
+  // Las etiquetas pueden estar partidas en dos líneas («Fecha» / «constitución»),
+  // así que el salto de línea cuenta como un espacio más al buscarlas.
+  const trasEtiqueta = (etiquetas: string[], patron: RegExp): string | undefined => {
+    for (const e of etiquetas) {
+      const re = new RegExp(e.replace(/ /g, '\\s+'), 'g')
+      let m: RegExpExecArray | null
+      while ((m = re.exec(plano)) !== null) {
+        const trozo = texto.slice(m.index, m.index + 220)
+        const v = patron.exec(trozo)
+        if (v) return v[1]
+      }
+    }
+    return undefined
+  }
+
+  const contrato = trasEtiqueta(['numero de contrato', 'nº de contrato', 'contrato'], /[:\s]\s*([0-9][0-9.\-/ ]{6,30}[0-9])/)
+  if (contrato) {
+    datos.numeroContrato = contrato.trim()
+    encontrados.push('numeroContrato')
+  }
+  const producto = trasEtiqueta(['tipo de contrato', 'tipo de prestamo', 'nombre comercial'], /:\s*([^\n]{3,60})/)
+  if (producto) {
+    datos.nombreProducto = producto.trim()
+    encontrados.push('nombreProducto')
+  }
+
+  // La entidad, por el IBAN de la cuenta vinculada (4 cifras tras «ES»+control).
+  const iban = /\bES\d{2}\s?(\d{4})\b/.exec(texto)
+  if (iban && ENTIDADES[iban[1]]) {
+    datos.entidad = ENTIDADES[iban[1]]
+    encontrados.push('entidad')
+  }
+
+  const tipo = trasEtiqueta(['tipo de interes'], /(\d{1,2}[,.]\d{1,3})\s*%/)
+  if (tipo) {
+    datos.tipoInteres = parsearImporte(tipo, 'ES') ?? undefined
+    if (datos.tipoInteres !== undefined) encontrados.push('tipoInteres')
+  }
+
+  // «Fecha» y «constitución» pueden acabar en líneas distintas porque el PDF
+  // entrelaza columnas, así que también se busca la palabra suelta.
+  const constitucion = trasEtiqueta(
+    ['fecha constitucion', 'fecha de constitucion', 'fecha de formalizacion', 'constitucion', 'formalizacion'],
+    /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
+  )
+  if (constitucion) {
+    datos.fechaInicio = parsearFechaFlexible(constitucion) ?? undefined
+    if (datos.fechaInicio) encontrados.push('fechaInicio')
+  }
+
+  // Importe concedido: el que va en el título del producto («… de 12.000€»).
+  const concedido = /\bde\s+(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€/.exec(texto)
+  if (concedido) {
+    datos.importeOriginal = parsearImporte(concedido[1], 'ES') ?? undefined
+    if (datos.importeOriginal !== undefined) encontrados.push('importeOriginal')
+  }
+
+  if (cuotas.length > 0) {
+    datos.cuotas = cuotas
+    encontrados.push('cuotas')
+    datos.nPagadas = 0
+    datos.nPendientes = cuotas.length
+    const frecuencia = new Map<number, number>()
+    for (const c of cuotas) frecuencia.set(c.cuota, (frecuencia.get(c.cuota) ?? 0) + 1)
+    datos.cuota = [...frecuencia.entries()].sort((a, b) => b[1] - a[1])[0][0]
+    encontrados.push('cuota')
+    datos.periodicidad = periodicidadDe(cuotas.map((c) => c.fecha))
+    if (datos.periodicidad) encontrados.push('periodicidad')
+    datos.sistema = new Set(cuotas.map((c) => c.cuota)).size <= 3 ? 'FRANCES' : 'LINEAL'
+    const primera = cuotas[0]
+    if (primera.pendiente !== undefined && primera.principal !== undefined) {
+      datos.capitalPendiente = Math.round((primera.pendiente + primera.principal) * 100) / 100
+    }
+    if (datos.tipoInteres === undefined && datos.periodicidad) {
+      const t = tipoDeCuadro(cuotas, datos.periodicidad)
+      if (t !== undefined) {
+        datos.tipoInteres = t
+        encontrados.push('tipoInteres')
+        avisos.push(`El tipo de interés (${t} % anual) se ha calculado con el propio cuadro. Confírmalo con la escritura.`)
+      }
+    }
+  }
+
+  // El nº de cuotas rara vez viene escrito: se deduce del importe, el tipo y la
+  // cuota, y la pantalla comprueba después que la cuota resultante coincide.
+  const per = datos.periodicidad ?? 'MENSUAL'
+  if (datos.importeOriginal !== undefined && datos.tipoInteres !== undefined && datos.cuota !== undefined) {
+    const nP = nPeriodosPorCuota(datos.importeOriginal, datos.tipoInteres, datos.cuota, per)
+    if (nP !== undefined) {
+      datos.nPeriodos = nP
+      datos.periodicidad = per
+      encontrados.push('nPeriodos')
+      avisos.push(`El nº de cuotas (${nP}) se ha deducido del importe, el tipo y la cuota. Comprueba que cuadra.`)
+    }
+  }
+
+  if (datos.encontrados.length === 0) {
+    avisos.push(
+      'No se reconoce el préstamo en este fichero. Sube el cuadro de amortización y la ficha del préstamo que descarga el ' +
+        'banco (Excel o PDF).',
+    )
+  }
+  return datos
 }
