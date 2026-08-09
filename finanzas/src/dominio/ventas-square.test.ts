@@ -88,10 +88,10 @@ describe('resumen semanal de Square', () => {
     expect(cobrado).toBeCloseTo(domingo.total!, 2)
   })
 
-  it('avisa de que «Otros» se ha tomado como tarjeta y de que falta la tienda', () => {
+  it('dice que «Otros» es el datáfono y que falta elegir la tienda', () => {
     const r = leerVentasCsv(SQUARE, NOMBRE)
     expect(r.origen).toBe('SQUARE_SEMANAL')
-    expect(r.avisos.some((a) => /«Otros»/.test(a))).toBe(true)
+    expect(r.avisos.some((a) => /«Otros».*datáfono/.test(a))).toBe(true)
     expect(r.avisos.some((a) => /de qué tienda/.test(a))).toBe(true)
   })
 
@@ -190,8 +190,9 @@ describe('resumen de Square de un solo día', () => {
     expect(cobrado).toBeCloseTo(938.2, 2)
   })
 
-  it('explica que Square no sabe el origen de ese cobro', () => {
+  it('explica que Square lo llama desconocido porque el datáfono no es suyo', () => {
     expect(r.avisos.some((a) => /Origen del pago desconocido/.test(a))).toBe(true)
+    expect(r.avisos.some((a) => /datáfono principal/.test(a))).toBe(true)
   })
 
   it('si el resumen agrega varios días, no lo reparte', () => {

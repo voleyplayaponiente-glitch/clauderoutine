@@ -10,6 +10,7 @@ import { nuevoId } from '../dominio/id'
 import { brutoVenta, ticketMedio, cuadreVenta, totalCobros } from '../dominio/ventas'
 import { formatearEuro } from '../dominio/dinero'
 import { ImportarVentas } from './ventas/ImportarVentas'
+import { datafonoPrincipal } from '../dominio/datafonos'
 import type { Venta, FormaCobro, LineaIva } from '../dominio/tipos'
 
 const FORMAS: { forma: FormaCobro; texto: string }[] = [
@@ -40,9 +41,8 @@ export function Ventas() {
 
   const nombrePunto = (id: string) => config.centrosCoste.find((c) => c.id === id)?.nombre ?? '—'
 
-  /** Datáfono asignado hoy a una tienda; es el que se propone por defecto. */
-  const datafonoDe = (centroCosteId: string) =>
-    config.datafonos.find((d) => d.activo && d.centroCosteId === centroCosteId)
+  /** El principal de esa tienda: es el que se propone por defecto. */
+  const datafonoDe = (centroCosteId: string) => datafonoPrincipal(config.datafonos, centroCosteId)
   const nombreDatafono = (id?: string) => config.datafonos.find((d) => d.id === id)?.nombre
 
   const porMes = useMemo(() => {
@@ -208,7 +208,7 @@ export function Ventas() {
                       { valor: '', texto: datafonos.length ? '— Indica el datáfono —' : '— No hay datáfonos dados de alta —' },
                       ...datafonos.map((d) => ({
                         valor: d.id,
-                        texto: `${d.nombre} · ${d.banco}${d.centroCosteId === editando.centroCosteId ? ' (el de esta tienda)' : ''}`,
+                        texto: `${d.nombre} · ${d.banco}${d.id === datafonoDe(editando.centroCosteId)?.id ? ' (el principal de esta tienda)' : ''}`,
                       })),
                     ]}
                   />

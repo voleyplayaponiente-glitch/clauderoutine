@@ -411,7 +411,9 @@ export function leerResumenSemanalSquare(filas: string[][], nombreFichero: strin
       'cruzado con el día de la semana de cada columna.',
   )
   if (fOtros) {
-    avisos.push('La fila «Otros» de Square se ha contado como cobro con tarjeta. Si en tu caso es otra cosa, corrígelo en el día.')
+    avisos.push(
+      'La fila «Otros» de Square es el cobro por datáfono: entra como cobro con tarjeta y se asigna al datáfono principal de la tienda.',
+    )
   }
   avisos.push('El fichero no dice de qué tienda es: elígela abajo.')
 
@@ -520,9 +522,9 @@ export function leerResumenSquare(filas: string[][], nombreFichero: string): Lec
   if (fOtros) {
     avisos.push(
       fDesconocido
-        ? 'Square clasifica ese cobro como «Otros / Origen del pago desconocido» (normalmente, un datáfono ajeno a Square). ' +
-          'Se ha contado como cobro con tarjeta; corrígelo en el día si no es así.'
-        : 'La fila «Otros» de Square se ha contado como cobro con tarjeta. Si en tu caso es otra cosa, corrígelo en el día.',
+        ? 'Square lo llama «Otros / Origen del pago desconocido» porque el datáfono no es suyo. Entra como cobro con tarjeta y ' +
+          'se asigna al datáfono principal de la tienda.'
+        : 'La fila «Otros» de Square es el cobro por datáfono: entra como cobro con tarjeta y se asigna al datáfono principal de la tienda.',
     )
   }
 

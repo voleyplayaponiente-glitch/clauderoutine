@@ -56,6 +56,11 @@ export interface Datafono {
   banco: string
   /** Tienda donde está instalado ahora mismo. Vacío = sin asignar. */
   centroCosteId?: ID
+  /**
+   * El principal de esa tienda: es el que se aplica solo a los cobros con
+   * tarjeta. Con varios datáfonos en la misma tienda, manda este.
+   */
+  principal?: boolean
   /** Cuenta de tesorería donde liquida, si está dada de alta. */
   cuentaTesoreriaId?: ID
   numeroTerminal?: string

@@ -13,6 +13,7 @@ import { useStore } from '../../store/store'
 import { Tarjeta as TarjetaUI, Boton, EstadoVacio, Semaforo } from '../../componentes/ui'
 import { Campo, Select, Toggle, Modal } from '../../componentes/formularios'
 import { nuevoId } from '../../dominio/id'
+import { marcarPrincipal, tiendasSinDatafono } from '../../dominio/datafonos'
 import type { Tarjeta, Datafono } from '../../dominio/tipos'
 
 const tarjetaNueva = (): Tarjeta => ({ id: nuevoId(), nombre: '', banco: '', activa: true })
@@ -124,6 +125,7 @@ export function PanelCobros() {
                 <th className="py-2 pr-3 font-medium">Datáfono</th>
                 <th className="py-2 pr-3 font-medium">Banco</th>
                 <th className="py-2 pr-3 font-medium">Tienda donde está</th>
+                <th className="py-2 pr-3 font-medium text-center">Principal</th>
                 <th className="py-2 font-medium"></th>
               </tr>
             </thead>
@@ -149,6 +151,23 @@ export function PanelCobros() {
                       ))}
                     </select>
                   </td>
+                  <td className="py-2 pr-3 text-center">
+                    {/* El principal es el que se aplica solo a los cobros con
+                        tarjeta de esa tienda. Un clic y ya. */}
+                    {d.principal ? (
+                      <Semaforo estado="positivo" texto="Principal" />
+                    ) : d.centroCosteId ? (
+                      <button
+                        className="text-xs underline"
+                        style={{ color: 'var(--color-brand-500)' }}
+                        onClick={() => actualizar({ datafonos: marcarPrincipal(config.datafonos, d.id) })}
+                      >
+                        Hacer principal
+                      </button>
+                    ) : (
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
+                    )}
+                  </td>
                   <td className="py-2 text-right">
                     <button className="text-xs underline" style={{ color: 'var(--color-brand-500)' }} onClick={() => setDatafono({ ...d })}>Editar</button>
                   </td>
@@ -159,7 +178,7 @@ export function PanelCobros() {
         )}
 
         {/* Una tienda sin datáfono no puede cuadrar sus cobros con tarjeta. */}
-        {puntos.filter((p) => p.tipoPuntoVenta !== 'WEB' && !config.datafonos.some((d) => d.activo && d.centroCosteId === p.id)).map((p) => (
+        {tiendasSinDatafono(config.datafonos, puntos).map((p) => (
           <p key={p.id} className="text-xs mt-2" style={{ color: 'var(--warn)' }}>
             {p.nombre} no tiene datáfono asignado: sus cobros con tarjeta quedarán sin banco.
           </p>
