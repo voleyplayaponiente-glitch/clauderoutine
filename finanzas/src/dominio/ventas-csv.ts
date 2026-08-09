@@ -31,7 +31,11 @@ export interface FilaVentaCsv {
   cobros: { forma: FormaCobro; importe: number }[]
 }
 
+/** Origen reconocido del fichero, para poder decirlo en la previsualización. */
+export type OrigenVentasCsv = 'COLUMNAS' | 'SQUARE_SEMANAL'
+
 export interface LecturaVentasCsv {
+  origen: OrigenVentasCsv
   filas: FilaVentaCsv[]
   descartadas: { linea: number; texto: string; motivo: string }[]
   /** Cabeceras que se han reconocido, para enseñarlas antes de importar. */
@@ -107,17 +111,23 @@ function numero(v: string | undefined, convencion: ConvencionNumerica): number |
 }
 
 /**
- * Lee el CSV completo. `texto` es el fichero ya decodificado.
+ * Lee el CSV completo. `texto` es el fichero ya decodificado; `nombreFichero`
+ * hace falta para los informes de Square, que no llevan las fechas dentro.
  */
-export function leerVentasCsv(texto: string): LecturaVentasCsv {
+export function leerVentasCsv(texto: string, nombreFichero = ''): LecturaVentasCsv {
   const descartadas: LecturaVentasCsv['descartadas'] = []
   const avisos: string[] = []
   const filas = parsearCSV(texto, detectarSeparador(texto))
-  if (filas.length === 0) return { filas: [], descartadas, columnas: [], avisos: ['El fichero está vacío.'] }
+  if (filas.length === 0) return { origen: 'COLUMNAS', filas: [], descartadas, columnas: [], avisos: ['El fichero está vacío.'] }
+
+  // Square exporta el resumen TRANSPUESTO y por día de la semana: se reconoce
+  // y se lee aparte, porque no tiene nada que ver con un CSV por columnas.
+  if (esResumenSemanalSquare(filas)) return leerResumenSemanalSquare(filas, nombreFichero)
 
   const iCab = filaCabecera(filas)
   if (iCab === -1) {
     return {
+      origen: 'COLUMNAS',
       filas: [],
       descartadas,
       columnas: [],
@@ -200,7 +210,7 @@ export function leerVentasCsv(texto: string): LecturaVentasCsv {
   if (colCobros.length === 0) {
     avisos.push('El fichero no trae desglose de cobros (efectivo, tarjeta…). Habrá que repartirlos a mano en cada día.')
   }
-  return { filas: salida, descartadas, columnas: reconocidas, avisos }
+  return { origen: 'COLUMNAS', filas: salida, descartadas, columnas: reconocidas, avisos }
 }
 
 /**
@@ -239,4 +249,180 @@ export function emparejarPunto(
     return n.includes(t) || t.includes(n)
   })
   return contiene.length === 1 ? contiene[0].id : undefined
+}
+
+// ───────────────── Informe «Resumen de ventas» de Square ─────────────────
+
+/**
+ * Square exporta el resumen **transpuesto**: cada fila es una métrica («Ventas
+ * netas», «Impuestos», «Efectivo»…) y cada columna un **día de la semana**.
+ * Y no lleva fechas dentro: el periodo va en el nombre del fichero
+ * (`resumenventas2026080120260807.csv`).
+ *
+ * Eso obliga a dos cosas, y ninguna es negociable:
+ *  · La fecha de cada columna sale de cruzar el día de la semana con el rango
+ *    del nombre. **Solo vale si el rango es de 7 días justos**; si abarca más,
+ *    «lunes» es la suma de varios lunes y convertirlo en un día concreto sería
+ *    inventarse las cifras. En ese caso no se importa nada y se explica.
+ *  · El fichero no dice de qué tienda es: se elige en la previsualización.
+ */
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+
+export function esResumenSemanalSquare(filas: string[][]): boolean {
+  const tope = Math.min(filas.length, 6)
+  for (let i = 0; i < tope; i++) {
+    const n = (filas[i] ?? []).map(normalizar)
+    if (n.filter((c) => DIAS_SEMANA.includes(c)).length >= 5) return true
+  }
+  return false
+}
+
+/** Rango `AAAAMMDD`+`AAAAMMDD` incrustado en el nombre del fichero. */
+export function rangoDeNombre(nombre: string): { desde: string; hasta: string } | undefined {
+  const m = /(\d{4})(\d{2})(\d{2})\D?(\d{4})(\d{2})(\d{2})/.exec(nombre)
+  if (!m) return undefined
+  const desde = `${m[1]}-${m[2]}-${m[3]}`
+  const hasta = `${m[4]}-${m[5]}-${m[6]}`
+  if (Number.isNaN(Date.parse(desde)) || Number.isNaN(Date.parse(hasta)) || desde > hasta) return undefined
+  return { desde, hasta }
+}
+
+/** Las fechas del rango, una por día. Vacío si el rango es absurdo. */
+function fechasDelRango(desde: string, hasta: string): string[] {
+  const fechas: string[] = []
+  const fin = Date.parse(hasta)
+  for (let t = Date.parse(desde); t <= fin && fechas.length <= 40; t += 86_400_000) {
+    fechas.push(new Date(t).toISOString().slice(0, 10))
+  }
+  return fechas
+}
+
+/** Fila cuya primera celda es exactamente esa métrica. */
+function metrica(filas: string[][], nombre: string): string[] | undefined {
+  return filas.find((f) => normalizar(f[0] ?? '') === nombre)
+}
+
+export function leerResumenSemanalSquare(filas: string[][], nombreFichero: string): LecturaVentasCsv {
+  const avisos: string[] = []
+  const descartadas: LecturaVentasCsv['descartadas'] = []
+
+  const iCab = filas.findIndex((f) => f.map(normalizar).filter((c) => DIAS_SEMANA.includes(c)).length >= 5)
+  const cabecera = filas[iCab].map(normalizar)
+
+  const rango = rangoDeNombre(nombreFichero)
+  if (!rango) {
+    return {
+      origen: 'SQUARE_SEMANAL',
+      filas: [],
+      descartadas,
+      columnas: [],
+      avisos: [
+        'Es un «Resumen de ventas» de Square por día de la semana, pero no lleva las fechas dentro y el nombre del fichero no ' +
+          'dice el periodo. Vuelve a descargarlo sin renombrarlo (viene como resumenventasAAAAMMDDAAAAMMDD.csv).',
+      ],
+    }
+  }
+
+  const fechas = fechasDelRango(rango.desde, rango.hasta)
+  if (fechas.length !== 7) {
+    return {
+      origen: 'SQUARE_SEMANAL',
+      filas: [],
+      descartadas,
+      columnas: [],
+      avisos: [
+        `Este informe agrupa por día de la semana y el periodo del fichero es de ${fechas.length} días ` +
+          `(${rango.desde} a ${rango.hasta}). Con más de una semana, «lunes» es la suma de varios lunes y no se puede repartir ` +
+          'por fechas sin inventar cifras. Descarga el resumen de UNA semana, o mejor el informe por días.',
+      ],
+    }
+  }
+
+  // Cada día de la semana aparece una sola vez en 7 días: la fecha es única.
+  const fechaDe = new Map<string, string>()
+  for (const f of fechas) fechaDe.set(DIAS_SEMANA[new Date(f + 'T00:00:00Z').getUTCDay()], f)
+
+  const fNetas = metrica(filas, 'ventas netas')
+  const fImpuestos = metrica(filas, 'impuestos')
+  const fBrutas = metrica(filas, 'ventas brutas') ?? metrica(filas, 'total de las ventas')
+  const fEfectivo = metrica(filas, 'efectivo')
+  const fTarjeta = metrica(filas, 'tarjeta')
+  const fOtros = metrica(filas, 'otros')
+  const fTickets = metrica(filas, 'transacciones de ventas')
+
+  if (!fNetas && !fBrutas) {
+    return {
+      origen: 'SQUARE_SEMANAL',
+      filas: [],
+      descartadas,
+      columnas: [],
+      avisos: ['No se encuentran las filas «Ventas netas» ni «Ventas brutas». ¿Es un resumen de ventas de Square?'],
+    }
+  }
+
+  // Los importes de Square vienen en formato español y con el símbolo €.
+  const muestras: string[] = []
+  for (const f of [fNetas, fImpuestos, fBrutas, fEfectivo, fTarjeta, fOtros]) {
+    if (f) muestras.push(...f.slice(1))
+  }
+  const convencion = detectarConvencionNumerica(muestras)
+  const val = (f: string[] | undefined, i: number) => (f ? numero(f[i], convencion) : undefined)
+
+  const salida: FilaVentaCsv[] = []
+  cabecera.forEach((dia, i) => {
+    if (!DIAS_SEMANA.includes(dia)) return
+    const fecha = fechaDe.get(dia)
+    if (!fecha) return
+
+    const base = val(fNetas, i)
+    const cuota = val(fImpuestos, i)
+    const total = val(fBrutas, i)
+    if (base === undefined && total === undefined) {
+      descartadas.push({ linea: iCab + 1, texto: dia, motivo: 'Sin importe legible' })
+      return
+    }
+    // Un día a cero es un día cerrado: no se registra una venta vacía.
+    if ((total ?? base ?? 0) === 0) {
+      descartadas.push({ linea: iCab + 1, texto: `${dia} (${fecha})`, motivo: 'Sin ventas ese día' })
+      return
+    }
+
+    const cobros: { forma: FormaCobro; importe: number }[] = []
+    const efectivo = val(fEfectivo, i) ?? 0
+    if (efectivo !== 0) cobros.push({ forma: 'EFECTIVO', importe: efectivo })
+    const tarjeta = (val(fTarjeta, i) ?? 0) + (val(fOtros, i) ?? 0)
+    if (tarjeta !== 0) cobros.push({ forma: 'TARJETA', importe: tarjeta })
+
+    salida.push({
+      fecha,
+      base,
+      cuota,
+      total,
+      numTickets: val(fTickets, i),
+      cobros,
+    })
+  })
+
+  salida.sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+  avisos.push(
+    `Resumen semanal de Square. Las fechas salen del periodo del nombre del fichero (${rango.desde} a ${rango.hasta}) ` +
+      'cruzado con el día de la semana de cada columna.',
+  )
+  if (fOtros) {
+    avisos.push('La fila «Otros» de Square se ha contado como cobro con tarjeta. Si en tu caso es otra cosa, corrígelo en el día.')
+  }
+  avisos.push('El fichero no dice de qué tienda es: elígela abajo.')
+
+  const columnas = [
+    fNetas && 'base: «Ventas netas»',
+    fImpuestos && 'IVA: «Impuestos»',
+    fBrutas && 'total: «Ventas brutas»',
+    fEfectivo && 'efectivo: «Efectivo»',
+    fTarjeta && 'tarjeta: «Tarjeta»',
+    fOtros && 'tarjeta: «Otros»',
+    fTickets && 'tickets: «Transacciones de ventas»',
+  ].filter(Boolean) as string[]
+
+  return { origen: 'SQUARE_SEMANAL', filas: salida, descartadas, columnas, avisos }
 }
