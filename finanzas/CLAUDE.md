@@ -301,7 +301,10 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
     «Efectivo» · tarjeta = «Tarjeta» + «Otros» (se avisa de que «Otros» se cuenta como tarjeta) ·
     tickets = «Transacciones de ventas» (exacto, que «Transacciones de impuestos» también contiene
     «impuestos»). Un día a 0 se descarta como día cerrado, no se registra una venta vacía.
-  · El fichero no dice de qué tienda es → selector único en la previsualización.
+  · El fichero no dice de qué tienda es → selector único en la previsualización. **Confirmado
+    por el usuario: los informes se sacan SIEMPRE tienda por tienda**, nunca agregados, así que
+    una sola tienda para todo el fichero es lo correcto. Con la tienda ya elegida, la columna por
+    fila se oculta (si no, la tabla no cabe).
 - **Segunda variante: «Resumen de ventas - Resumen»** (un día, una tienda, UNA sola columna de
   valores). Misma regla: la fecha sale del nombre y **solo se importa si el periodo es de un día**;
   si agrega varios, no se reparte. Comprobado que cuadra con la columna del sábado del informe
