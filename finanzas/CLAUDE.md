@@ -12,7 +12,7 @@ y venta online. Estética estilo Apple, modo claro/oscuro, responsive.
 - **Rama de desarrollo (finanzas):** `claude/preparar-aplicacion-c947u8`
 - **Rama de publicación:** `claude/tournament-bracket-manager-gvrcdt` (ver «Despliegue»).
 - **Convive con** la app de vóley (raíz del repo) y una de gestión laboral; **no se tocan**.
-- **Último despliegue verificado:** `8ed73b2` (08/08/2026) — 384 tests, build y Pages en verde.
+- **Último despliegue verificado:** `6d66eb8` (09/08/2026) — 565 tests, build y Pages en verde.
 
 ## Decisión de arquitectura (deliberada)
 **Client-first** como la app de vóley: Vite + React 19 + TypeScript + Tailwind v4 + Zustand +
@@ -549,6 +549,41 @@ Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en De
 - **Enlazable con las tarjetas de `Configuracion.tarjetas`**: entonces la app suma las compras
   pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
   bueno es el del extracto, no lo que haya metido en Compras.
+
+## POR DÓNDE SEGUIR (sesión del 10/08/2026)
+**El usuario lo dijo tal cual: «mañana seguimos con el presupuesto».** Empezar por ahí.
+
+Lo que hay hoy en `pantallas/Presupuesto.tsx` y qué queda pendiente:
+- El botón **«Traer deuda y gastos del banco»** ya trae: cuotas de deuda (FINANCIACION),
+  cargos y abonos del banco por concepto, **rentings** (GASTO por la base) y **pólizas**
+  (GASTO por intereses y comisiones, + línea de devolución si no se renuevan). Es idempotente.
+- **Las tarjetas de crédito NO se traen todavía** al presupuesto: son lo último que se ha
+  añadido y solo están en Deudas y en el total. Habrá que decidir cómo entran (el saldo a fin
+  de mes no es gasto nuevo —las compras ya están en Compras—, pero el **interés del aplazado
+  sí** es gasto financiero).
+- **Los aplazamientos con `cuadroFijo` ya llegan bien** al presupuesto: `cuotasDeudaPorMes` usa
+  `cuadroDeuda`, que respeta el calendario leído.
+- Preguntar antes de tocar nada: qué le falta al presupuesto tal y como lo usa. Hay decisiones
+  abiertas que le afectan de lleno (ver «Decisiones abiertas»): tributos y Seguridad Social como
+  FINANCIACIÓN o como GASTO, y el criterio de signo de las entradas.
+
+### Sesión del 09/08/2026 — lo que se cerró y desplegó
+1. Préstamos de **CaixaBank en PDF** (lectura por texto) y de **Bankinter** en Excel **y en PDF**.
+2. **Renting** con su sección, lector del contrato y paso al presupuesto.
+3. **Póliza de crédito**: sección propia, lector de la ficha, dispuesto tomado del **saldo
+   negativo de la cuenta**, alarma al 75 % y control del **saldo medio del año** para la
+   renovación (alerta crítica en el Dashboard).
+4. **Tarjetas de crédito** como deuda financiera a corto plazo.
+5. **Aplazamiento de Hacienda / Seguridad Social** por PDF, con `Deuda.cuadroFijo`.
+6. **«Lo que se debe en total»**: un total por bloque y el sumatorio general.
+
+### Pendiente concreto, con nombre y apellidos
+- **PDF real del aplazamiento de la AEAT**: el lector está hecho con la disposición habitual del
+  acuerdo de concesión, pero **sin un documento suyo delante**. En cuanto lo mande, convertirlo en
+  regresión (`financiacion.test.ts`) como se hizo con `factura-real.test.ts`.
+- **Ficha real de la póliza en PDF**: el lector se escribió con la captura de pantalla del banco.
+  Igual que arriba, pedirla y convertirla en test.
+- Decidir cómo entran las **tarjetas de crédito** en el presupuesto.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
