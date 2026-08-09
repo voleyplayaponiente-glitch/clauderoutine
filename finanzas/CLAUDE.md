@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 434 tests (Vitest) del motor
+npm test         # 458 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -343,6 +343,29 @@ ALICANTE** (stand) · **VAPESPACE SAN JUAN** (tienda) · **VAPESSENCE ALFAFAR** 
   con punto, Excel en español los trata como texto y no se pueden sumar.
 - **Aviso pendiente**: los PDF NO viajan en el backup JSON (los volvería enormes). El archivo se
   lleva de un equipo a otro con el ZIP mensual.
+
+## Alta de préstamos desde el fichero del banco (`dominio/prestamo-archivo.ts`)
+Botón «Subir cuadro del banco» en Deudas. Admite **varios ficheros a la vez** porque el banco
+parte la información en dos descargas, y las dos hacen falta:
+- **«Amortizaciones y movimientos»** → la fila **Formalización** da importe inicial, fecha y
+  comisión de apertura; el resto son las cuotas ya pagadas. La formalización **NO es una cuota**.
+- **«Próximas cuotas»** → el cuadro pendiente. Si solo se sube este, el importe inicial se
+  **reconstruye** sumando capital pendiente + amortizado de la primera fila (y se avisa de que es
+  una reconstrucción; con el otro fichero delante ese aviso se quita, porque entonces es un dato
+  leído).
+- **El tipo de interés se CALCULA del propio cuadro**: intereses del periodo entre el capital
+  vivo ANTES de esa cuota (= pendiente después + principal de la cuota), por la mediana de varias
+  cuotas para que un redondeo no lo tuerza. Con el préstamo real de BBVA da 3,90 %. Se avisa de
+  que es un cálculo y hay que confirmarlo con la escritura.
+- La **entidad se propone por el código de contrato** (4 primeras cifras: 0182 BBVA, 2100
+  CaixaBank, 0081 Sabadell, 0128 Bankinter…). Un código desconocido no inventa banco.
+- Periodicidad por la distancia entre vencimientos; sistema FRANCÉS si la cuota es constante.
+- **La previsualización compara la cuota del banco con la que calcula la app** y avisa en ámbar
+  si se apartan más de 1 €: si no coinciden, el cuadro de la app no sería el del banco. Con los
+  ficheros reales coinciden al céntimo (681,14 €), lo que valida de paso que la convención de
+  «primera cuota un periodo después de `fechaInicio`» es la del banco.
+- `prestamo-archivo.test.ts` es la regresión con los DOS ficheros reales de BBVA.
+- `lib/extracto.ts` → `filasDePrestamo`: Excel (SheetJS), PDF (columnas por 2+ espacios) y CSV.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.

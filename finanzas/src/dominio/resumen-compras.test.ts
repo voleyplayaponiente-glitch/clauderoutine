@@ -121,10 +121,18 @@ describe('la naturaleza del gasto es de Compras; el banco tiene su propia lista'
     expect(efectoPresupuestoDe(facturas)).toBe('NINGUNO')
   })
 
-  it('los tributos y la Seguridad Social son financiación, no gasto de P&G', () => {
-    for (const id of ['cat-bco-tributos-trimestre', 'cat-bco-tributos-aplazamiento', 'cat-bco-seg-social']) {
+  it('los tributos son financiación: saldan una deuda ya devengada', () => {
+    for (const id of ['cat-bco-tributos-trimestre', 'cat-bco-tributos-aplazamiento']) {
       expect(efectoPresupuestoDe(CATS.find((c) => c.id === id))).toBe('FINANCIACION')
     }
+  })
+
+  it('la Seguridad Social es GASTO, como las nóminas', () => {
+    // Decisión del usuario: sin módulo de personal, el pago a la TGSS es el
+    // único registro de la cuota patronal, que es coste real de la empresa.
+    const ss = CATS.find((c) => c.id === 'cat-bco-seg-social')!
+    expect(efectoPresupuestoDe(ss)).toBe('GASTO')
+    expect(ss.cuentaPGC).toBe('642')
   })
 
   it('comprar participaciones o inversiones financieras es inversión, no gasto', () => {

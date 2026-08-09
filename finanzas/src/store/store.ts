@@ -646,18 +646,43 @@ export const useStore = create<Estado>((set, get) => ({
 }))
 
 /**
+ * Correcciones de criterio que SÍ deben llegar a los datos ya guardados.
+ *
+ * Cambiar un valor por defecto no basta: `fusionarCategorias` respeta la copia
+ * guardada del usuario, así que una categoría que ya existe se queda como
+ * estaba. Para un cambio de criterio contable hay que corregirla expresamente,
+ * y **solo si sigue teniendo el valor antiguo**: si el usuario la ha tocado,
+ * manda lo suyo.
+ */
+const CORRECCIONES: { id: string; de: Partial<Configuracion['categoriasGasto'][number]>; a: Partial<Configuracion['categoriasGasto'][number]> }[] = [
+  // La Seguridad Social pasó de financiación a gasto: sin módulo de personal,
+  // el pago a la TGSS es el único registro de la cuota patronal, que es coste.
+  { id: 'cat-bco-seg-social', de: { efectoPresupuesto: 'FINANCIACION', cuentaPGC: '476' }, a: { efectoPresupuesto: 'GASTO', cuentaPGC: '642' } },
+]
+
+function aplicarCorrecciones(cats: Configuracion['categoriasGasto']): Configuracion['categoriasGasto'] {
+  return cats.map((c) => {
+    const corr = CORRECCIONES.find((x) => x.id === c.id)
+    if (!corr) return c
+    const sigueIgual = Object.entries(corr.de).every(([k, v]) => (c as unknown as Record<string, unknown>)[k] === v)
+    return sigueIgual ? { ...c, ...corr.a } : c
+  })
+}
+
+/**
  * Une las categorías guardadas con las de fábrica: respeta lo que el usuario
  * haya cambiado o creado (manda su versión) y añade las nuevas que aún no
  * tenga. Así una lista ampliada llega a quien ya tenía datos sin pisar nada.
  */
-function fusionarCategorias(
+export function fusionarCategorias(
   guardadas: Configuracion['categoriasGasto'] | undefined,
   defecto: Configuracion['categoriasGasto'],
 ): Configuracion['categoriasGasto'] {
   if (!guardadas || guardadas.length === 0) return defecto
-  const porId = new Map(guardadas.map((c) => [c.id, c]))
+  const corregidas = aplicarCorrecciones(guardadas)
+  const porId = new Map(corregidas.map((c) => [c.id, c]))
   const nuevas = defecto.filter((c) => !porId.has(c.id))
-  return [...guardadas, ...nuevas].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+  return [...corregidas, ...nuevas].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
 }
 
 /**

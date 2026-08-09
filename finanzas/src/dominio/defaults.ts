@@ -188,7 +188,9 @@ export const CATEGORIAS_GASTO_DEFECTO: CategoriaGasto[] = [
   // como único registro (aquí no hay módulo de nóminas), si no contara como
   // gasto la partida más grande del negocio no aparecería en el presupuesto.
   { id: 'cat-bco-nominas', nombre: 'Nóminas', cuentaPGC: '640', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 31 },
-  { id: 'cat-bco-seg-social', nombre: 'Seguridad Social', cuentaPGC: '476', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'FINANCIACION', orden: 32 },
+  // GASTO y no financiación: sin módulo de personal, el pago a la TGSS es el
+  // único registro que queda de la cuota patronal, que es coste real (642).
+  { id: 'cat-bco-seg-social', nombre: 'Seguridad Social', cuentaPGC: '642', deduciblePorDefecto: true, ambito: 'BANCO', efectoPresupuesto: 'GASTO', orden: 32 },
   // Inversión: el dinero no se consume, se cambia por un activo. No es gasto y
   // no resta del resultado; en el presupuesto va como INVERSIÓN.
   // Ojo: clasificar el cargo aquí NO da de alta la inversión — eso se hace en
