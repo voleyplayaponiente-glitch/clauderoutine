@@ -50,11 +50,28 @@ export async function leerBackup(file: File): Promise<Backup> {
   return backup as Backup
 }
 
-/** Crea un snapshot diario si aún no existe uno de hoy, respetando la retención. */
+/** ¿Este backup tiene algo dentro? Sirve para no pisar el histórico con nada. */
+function tieneContenido(b: Backup): boolean {
+  const datos = b.datos as unknown as Record<string, unknown>
+  const hayOperaciones = Object.values(datos ?? {}).some((v) => Array.isArray(v) && v.length > 0)
+  const hayEmpresa = (b.config?.empresa?.razonSocial ?? '').trim() !== '' || (b.config?.empresa?.cif ?? '').trim() !== ''
+  return hayOperaciones || hayEmpresa
+}
+
+/**
+ * Crea un snapshot diario si aún no existe uno de hoy, respetando la retención.
+ *
+ * **Nunca guarda un snapshot vacío habiendo otros con datos.** Si la app arranca
+ * sin cargar los datos —el navegador ha limpiado el sitio, se abre en otro
+ * perfil, o falla la lectura— el snapshot de ese día sería un backup en blanco
+ * que ocupa un hueco de la retención y **empuja fuera a los buenos**. En pocos
+ * arranques así, el histórico se vacía justo cuando más falta hace.
+ */
 export async function crearSnapshotDiario(config: Configuracion, datos: DatosOperativos, fecha: string, grupo?: Grupo): Promise<void> {
   const snapshots = await cargarSnapshots()
   if (snapshots.some((s) => s.fecha.slice(0, 10) === fecha.slice(0, 10))) return
   const nuevo = construirBackup(config, datos, fecha, grupo)
+  if (!tieneContenido(nuevo) && snapshots.some(tieneContenido)) return
   const lista = [nuevo, ...snapshots].slice(0, RETENCION_DIARIOS)
   await guardarSnapshots(lista)
 }
