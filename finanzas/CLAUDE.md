@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 565 tests (Vitest) del motor
+npm test         # 572 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -534,9 +534,20 @@ El mismo botón «Subir fichero del banco» reconoce el **acuerdo de concesión*
   algún plazo por leer; no se corrige por nuestra cuenta.
 - `esAplazamiento` pide **dos señales** para no tragarse cualquier escrito de Hacienda, y
   distingue AEAT de la Tesorería General de la Seguridad Social.
-- **PENDIENTE de validar con un PDF real del usuario**: la disposición del test es la habitual
-  del acuerdo de concesión, pero no está tomada de un documento suyo. Cuando lo mande, convertirlo
-  en regresión como se hizo con las facturas.
+- **VALIDADO con el acuerdo REAL** (`aplazamiento-real.test.ts`, expediente 032640410056F del
+  Impuesto sobre Sociedades 2025). El documento de verdad era bastante distinto del supuesto:
+  · la **fecha va al final** de la fila y con guiones (`20-10-2026`);
+  · cada fila trae **cinco** importes (principal · recargo · total deuda · intereses · total del
+    plazo), no tres. La regla «el mayor es el total y el menor los intereses» aguantó;
+  · el NIF se escribe **«N.I.F.:»**, con puntos;
+  · el importe aplazado va **dentro de una frase** («…por un importe de 12.449,65 euros»), no
+    tras un rótulo;
+  · y **el ANEXO II repite los doce plazos** con sus fechas e importes, así que leer el documento
+    entero **duplicaba el calendario**. Se corta en la línea que EMPIEZA por «ANEXO II» — buscarlo
+    suelto no vale, porque la página 1 lo menciona de pasada.
+- El **tipo de demora no se lee**: en el Anexo II va en una columna cuya cabecera el PDF parte en
+  tres líneas, y su valor (`4.062`) es indistinguible de un importe. Da igual: los plazos se
+  guardan literales, y la app lo dice en un aviso en vez de inventarlo.
 
 ## Tarjetas de crédito (`dominio/tarjeta-credito.ts`)
 Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en Deudas.
@@ -578,9 +589,6 @@ Lo que hay hoy en `pantallas/Presupuesto.tsx` y qué queda pendiente:
 6. **«Lo que se debe en total»**: un total por bloque y el sumatorio general.
 
 ### Pendiente concreto, con nombre y apellidos
-- **PDF real del aplazamiento de la AEAT**: el lector está hecho con la disposición habitual del
-  acuerdo de concesión, pero **sin un documento suyo delante**. En cuanto lo mande, convertirlo en
-  regresión (`financiacion.test.ts`) como se hizo con `factura-real.test.ts`.
 - **Ficha real de la póliza en PDF**: el lector se escribió con la captura de pantalla del banco.
   Igual que arriba, pedirla y convertirla en test.
 - Decidir cómo entran las **tarjetas de crédito** en el presupuesto.
@@ -598,7 +606,7 @@ Lo que hay hoy en `pantallas/Presupuesto.tsx` y qué queda pendiente:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (565 tests en verde, desplegado)
+## Estado (572 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.

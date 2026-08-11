@@ -78,7 +78,15 @@ export function leerAplazamiento(filas: unknown[][]): DatosAplazamiento {
   const { organismo } = esAplazamiento(filas)
   const datos: DatosAplazamiento = { plazos: [], organismo, encontrados: [], avisos: [] }
 
-  const lineas = filas.map((f) => f.map((c) => String(c ?? '').trim()).filter((c) => c !== '').join(' '))
+  const todas = filas.map((f) => f.map((c) => String(c ?? '').trim()).filter((c) => c !== '').join(' '))
+
+  // **Los plazos están en el ANEXO I.** El ANEXO II es el detalle de intereses y
+  // repite cada plazo con sus fechas y sus importes: leerlo duplicaría el
+  // calendario. Se corta en su encabezado, que es la línea que EMPIEZA por
+  // «ANEXO II» (no vale buscarlo suelto: la página 1 lo menciona de pasada).
+  const finAnexoI = todas.findIndex((l) => aplanar(l).trimStart().startsWith('anexo ii'))
+  const lineas = finAnexoI === -1 ? todas : todas.slice(0, finAnexoI)
+
   const convencion = detectarConvencionNumerica(lineas.flatMap((l) => l.match(RE_IMPORTE) ?? []))
   const num = (s: string) => {
     const n = parsearImporte(s, convencion === 'AUTO' ? 'ES' : convencion)
@@ -122,7 +130,8 @@ export function leerAplazamiento(filas: unknown[][]): DatosAplazamiento {
     datos.referencia = ref.split(/\s{2,}/)[0].trim()
     datos.encontrados.push('referencia')
   }
-  const nif = trasRotulo(filas, 'nif', 'cif')
+  // La AEAT lo escribe «N.I.F.:», con puntos.
+  const nif = trasRotulo(filas, 'n.i.f', 'nif', 'cif')
   if (nif) {
     // Se quitan puntos y guiones, pero NO los espacios: sin ellos el NIF se
     // pegaría a la razón social y dejaría de reconocerse.
@@ -142,7 +151,9 @@ export function leerAplazamiento(filas: unknown[][]): DatosAplazamiento {
       datos.encontrados.push('tipoInteres')
     }
   }
-  const total = trasRotulo(filas, 'importe aplazado', 'deuda aplazada', 'importe total de la deuda', 'total deuda')
+  // El acuerdo real no dice «importe aplazado»: lo redacta en una frase
+  // («…que se relacionan en el Anexo I por un importe de 12.449,65 euros»).
+  const total = trasRotulo(filas, 'importe aplazado', 'deuda aplazada', 'importe total de la deuda', 'total deuda', 'por un importe de')
   if (total) {
     const n = num((total.match(RE_IMPORTE) ?? [''])[0])
     if (n !== undefined) {
