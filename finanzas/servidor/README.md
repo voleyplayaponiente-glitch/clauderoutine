@@ -14,8 +14,15 @@ La app llama con `Authorization: Bearer <SECRETO>`:
 
 | Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/api/estado` | `{ "ok": true }` |
+| GET | `/api/estado` | `{ "ok": true, "version": 2, "copias": true }` |
 | GET | `/api/sync/<tipo>` | `{ "movimientos": [{ "externalId", "fecha", "concepto", "importe" }] }` |
+| PUT | `/api/copias/<empresaId>` | guarda la copia del día → `{ "ok": true, "fecha", "bytes" }` |
+| GET | `/api/copias` | `{ "empresas": [{ "empresaId", "copias", "ultima", "razonSocial", "cif" }] }` |
+| GET | `/api/copias/<empresaId>` | `{ "copias": [{ "fecha", "bytes" }] }` |
+| GET | `/api/copias/<empresaId>/<fecha>` | el backup completo (`ultima` vale como fecha) |
+
+`"copias": true` en `/api/estado` es lo que mira la app para saber que el servicio
+está actualizado; una versión antigua responde sin ese campo y la app lo dice.
 
 `<tipo>` en minúsculas: `square`, `demo` (y los que añadas: `banco_psd2`, `stripe`…).
 
