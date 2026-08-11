@@ -68,3 +68,54 @@ ya sabe consumirla; no hay que tocar el núcleo.
 
 > Nota: el fallo de un conector nunca bloquea la app; los errores se devuelven con su
 > código y la app los muestra en el registro de sincronizaciones.
+
+
+## Copias de seguridad de la app (lo más importante)
+
+La app guarda todo en el navegador. **El día que el navegador limpia los datos del sitio, se
+pierde todo** — y la copia automática diaria no salva, porque vive en ese mismo navegador. Este
+servicio guarda las copias en un disco que es tuyo.
+
+### Cómo se monta
+
+```bash
+cp .env.example .env          # rellena SECRETO
+mkdir -p datos                # aquí viven las copias (montado en /datos)
+docker compose up -d --build
+```
+
+Variables:
+
+| Variable | Para qué | Por defecto |
+|---|---|---|
+| `COPIAS_DIR` | Carpeta donde se guardan | `/datos` |
+| `COPIAS_RETENCION` | Cuántas copias se conservan por empresa | `30` |
+| `COPIAS_MAX_BYTES` | Tope de una copia, para que nadie llene el disco | 50 MB |
+
+Las copias quedan en `datos/copias/<empresa>/<AAAA-MM-DD>.json`: **texto plano y con checksum**,
+así que se pueden abrir, copiar a otro disco o restaurar a mano sin depender de nada.
+
+### Cómo se conecta la app
+
+En **Copias de seguridad → Copias en tu servidor**: la URL y el mismo `SECRETO`. Botón
+«Probar conexión», y ya. Con «Subir sola tras cada cambio» sube la copia dos minutos después de
+la última modificación.
+
+**La URL tiene que ser HTTPS**, salvo que el servidor esté en tu red local (`umbrel.local`,
+`192.168.x.x`, `127.0.0.1`): la app corre en HTTPS y el navegador bloquea el contenido mixto.
+Para acceder desde fuera de casa: Tailscale, un túnel de Cloudflare o un proxy inverso con
+certificado.
+
+### Recuperar después de un desastre
+
+1. Copias de seguridad → pon la URL y el secreto → **Ver copias del servidor**.
+2. Elige la empresa **por su nombre**: tras limpiarse el navegador la app arranca con un
+   identificador nuevo, y las copias están guardadas con el viejo. Por eso el servidor devuelve
+   la razón social además del id.
+3. Restaurar. Se verifica el checksum antes de sobrescribir nada.
+
+### Lo que NO va en la copia
+
+- **Los PDF de las facturas** (harían la copia enorme): se llevan con el ZIP mensual de Compras.
+- **Los secretos** (tokens de conectores y el propio secreto del servidor): se redactan antes de
+  construir la copia. Guardar la llave dentro de la caja no protege de nada.

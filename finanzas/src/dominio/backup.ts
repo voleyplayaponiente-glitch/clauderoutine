@@ -63,10 +63,22 @@ export function calcularChecksum(obj: unknown): string {
  * Elimina las credenciales de los conectores (token, secreto del servidor) para
  * que NUNCA salgan en un fichero de backup en claro. Al restaurar se re-introducen.
  */
+/** Copia del servidor de copias sin la clave `secreto`. */
+function sinSecreto(s: NonNullable<Configuracion['servidorCopias']>): NonNullable<Configuracion['servidorCopias']> {
+  const { secreto: _secreto, ...resto } = s
+  return resto
+}
+
 export function redactarCredenciales(config: Configuracion): Configuracion {
   return {
     ...config,
     conectores: (config.conectores ?? []).map((c) => ({ ...c, token: undefined, secretoServidor: undefined })),
+    // El secreto del servidor de copias tampoco viaja: el backup se sube a ese
+    // mismo servidor y se descarga a disco, así que llevarlo dentro sería
+    // repartir la llave junto con la caja. Se QUITA la clave, no se pone a
+    // `undefined`: una clave presente con valor indefinido desaparece al pasar
+    // por JSON y el checksum dejaría de cuadrar al releer el backup.
+    ...(config.servidorCopias ? { servidorCopias: sinSecreto(config.servidorCopias) } : {}),
   }
 }
 

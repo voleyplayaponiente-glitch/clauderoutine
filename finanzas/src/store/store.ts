@@ -99,6 +99,11 @@ interface Estado {
   // Deudas y deudores
   /** Espacios de empresa que estaban huérfanos y se han recuperado al arrancar. */
   empresasRecuperadas: number
+  /** Última copia subida al servidor propio, y el motivo si falló. */
+  ultimaCopiaRemota?: string
+  errorCopiaRemota?: string
+  /** Sube ahora la copia de la empresa activa. */
+  subirCopiaAhora: () => Promise<{ ok: boolean; mensaje: string }>
   guardarDeuda: (d: Deuda) => void
   anularDeuda: (id: string) => void
   guardarRenting: (r: Renting) => void
@@ -134,6 +139,12 @@ interface Estado {
 /** Empresa cuyo espacio de datos está cargado ahora mismo. */
 let empresaActual = ''
 
+/**
+ * Acceso al store desde las funciones de módulo (el debounce vive fuera del
+ * `create`). Se rellena al construirlo.
+ */
+let almacen: { get: () => Estado; set: (parcial: Partial<Estado>) => void } | undefined
+
 let debounce: ReturnType<typeof setTimeout> | undefined
 let pendienteConfig: (() => Promise<void>) | undefined
 function persistirConDebounce(config: Configuracion) {
@@ -158,6 +169,46 @@ function persistirDatos(datos: DatosOperativos) {
     pendienteDatos = undefined
     void f?.()
   }, 400)
+  programarCopiaRemota()
+}
+
+/**
+ * Sube la copia al servidor propio, si está configurado y en automático.
+ *
+ * Con un margen largo (dos minutos desde el último cambio): la copia protege del
+ * día que el navegador limpia los datos, no hace falta ir al segundo, y así no
+ * se convierte en una petición por tecla.
+ */
+let debounceCopia: ReturnType<typeof setTimeout> | undefined
+function programarCopiaRemota() {
+  const cfg = almacen?.get().config.servidorCopias
+  if (!cfg?.activo || !cfg.automatico || !cfg.url) return
+  const empresaId = empresaActual
+  clearTimeout(debounceCopia)
+  debounceCopia = setTimeout(() => {
+    void subirCopiaSiProcede(empresaId)
+  }, 120_000)
+}
+
+/** Sube la copia de una empresa. Un fallo no interrumpe: se anota y se enseña. */
+async function subirCopiaSiProcede(empresaId: string): Promise<{ ok: boolean; mensaje: string }> {
+  const estado = almacen?.get()
+  const cfg = estado?.config.servidorCopias
+  if (!estado || !cfg?.activo || !cfg.url) return { ok: false, mensaje: 'El servidor de copias no está configurado.' }
+  try {
+    const m = await import('../lib/copias-remotas')
+    // Nunca se sube una copia vacía: machacaría la buena del día en el servidor.
+    if (!m.mereceSubirse(estado.config, estado.datos)) {
+      return { ok: false, mensaje: 'No hay nada que copiar todavía.' }
+    }
+    const r = await m.subirCopia(cfg, empresaId, estado.config, estado.datos, new Date().toISOString(), estado.grupo)
+    almacen?.set({ ultimaCopiaRemota: new Date().toISOString(), errorCopiaRemota: undefined })
+    return { ok: true, mensaje: `Copia del ${r.fecha} guardada en el servidor (${Math.round(r.bytes / 1024)} KB).` }
+  } catch (e) {
+    const mensaje = e instanceof Error ? e.message : 'No se ha podido subir la copia'
+    almacen?.set({ errorCopiaRemota: mensaje })
+    return { ok: false, mensaje }
+  }
 }
 
 /** Fuerza la escritura de lo pendiente. Obligatorio antes de cambiar de empresa. */
@@ -180,9 +231,12 @@ function upsert<T extends { id: string }>(lista: T[], item: T): T[] {
   return copia
 }
 
-export const useStore = create<Estado>((set, get) => ({
+export const useStore = create<Estado>((set, get) => {
+  almacen = { get, set }
+  return {
   loaded: false,
   empresasRecuperadas: 0,
+  subirCopiaAhora: () => subirCopiaSiProcede(empresaActual),
   tema: 'claro',
   grupo: { version: 1, nombre: 'Mi grupo', empresas: [], participaciones: [], socios: [], empresaActivaId: '' },
   config: configuracionInicial(),
@@ -719,7 +773,8 @@ export const useStore = create<Estado>((set, get) => ({
     void guardarDatos(empresaActual, d)
     sincronizarFichaGrupo(set, get, c)
   },
-}))
+  }
+})
 
 /**
  * Correcciones de criterio que SÍ deben llegar a los datos ya guardados.
@@ -822,5 +877,6 @@ function migrarConfig(c: Partial<Configuracion>): Configuracion {
     apariencia: { ...base.apariencia, ...c.apariencia },
     plantillasImportacion: c.plantillasImportacion ?? base.plantillasImportacion,
     conectores: c.conectores ?? base.conectores,
+    servidorCopias: c.servidorCopias ?? base.servidorCopias,
   }
 }

@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 576 tests (Vitest) del motor
+npm test         # 586 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -613,9 +613,36 @@ recuperar**. Lo que sí se hizo fue tapar dos agujeros que agravaban el problema
    única pregunta que importa cuando la app aparece vacía: ¿se han perdido los datos o solo no se
    están viendo?
 
-**Pendiente y urgente** (hablado con el usuario, sin decidir): la copia automática vive en el
-mismo navegador que los datos, así que no protege de que el navegador limpie el sitio. Hace falta
-o bien descargar el JSON con regularidad, o bien sincronizar contra el Umbrel.
+**Los datos NO se recuperaron**: el panel confirmó que no quedaba ningún espacio de empresa en el
+navegador. Por eso, acto seguido, se montó la copia en el servidor (abajo).
+
+## Copias en el servidor propio (Umbrel) — la protección de verdad
+Decisión del usuario tras perder los datos: *vamos a montarlo en el Umbrel para que esto no vuelva
+a ocurrir.* Reutiliza el servicio de `servidor/`, con su mismo `SECRETO`.
+
+- **Servidor** (`servidor/copias.mjs` + rutas en `server.mjs`): `PUT /api/copias/<empresa>` guarda
+  la copia del día; `GET /api/copias` lista empresas; `GET /api/copias/<empresa>[/<fecha>|/ultima]`
+  descarga. Se guarda en `COPIAS_DIR` (volumen `./datos:/datos`), una copia por día y empresa, con
+  `COPIAS_RETENCION` (30) y un tope de tamaño por petición.
+  · **`nombreSeguro` es lo que impide un salto de directorio**: el id de empresa y la fecha llegan
+    de fuera y forman una ruta; sin filtrarlos, un `../..` escribiría en cualquier sitio. Con test.
+  · Se escribe en un temporal y se renombra: un corte a media escritura no destruye la copia
+    anterior.
+- **App** (`lib/copias-remotas.ts` + panel en Copias): probar conexión, «Copiar ahora», listar y
+  restaurar. La subida automática va con **debounce de 2 minutos** desde el último cambio.
+  · **Nunca se sube una copia vacía** (`mereceSubirse`): machacaría la buena del día en el
+    servidor. Mismo cuidado que con los snapshots locales, y por el mismo susto.
+  · La copia se verifica con su checksum **antes** de restaurar.
+  · El **secreto del servidor se redacta** en `redactarCredenciales`, como los de los conectores.
+    Se QUITA la clave en vez de ponerla a `undefined`: una clave presente con valor indefinido
+    desaparece al pasar por JSON y el checksum dejaría de cuadrar.
+- **La recuperación va por el NOMBRE de la empresa, no por su id.** Lo destapó la prueba de
+  desastre: tras limpiarse el navegador la app arranca con un id nuevo y las copias están bajo el
+  viejo, así que listar por el id local no encontraba nada. El servidor devuelve la razón social y
+  el CIF de la copia más reciente, y el panel deja elegir la empresa y avisa de que los datos
+  entrarán en la empresa activa.
+- **Verificado de extremo a extremo en el navegador**: subir → borrar TODO el IndexedDB →
+  reconfigurar URL y secreto → recuperar el préstamo de 46.333,92 €.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
@@ -630,7 +657,7 @@ o bien descargar el JSON con regularidad, o bien sincronizar contra el Umbrel.
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (576 tests en verde, desplegado)
+## Estado (586 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.

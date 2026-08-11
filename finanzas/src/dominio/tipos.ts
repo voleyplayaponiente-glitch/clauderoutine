@@ -660,6 +660,21 @@ export interface Conector {
   ultimaSync?: string
 }
 
+/**
+ * Servidor propio donde guardar las copias de seguridad (p. ej. el Umbrel).
+ * Es lo único que protege de que el navegador limpie los datos del sitio: la
+ * copia automática diaria vive en el mismo IndexedDB que los datos.
+ */
+export interface ServidorCopias {
+  url?: string
+  /** Secreto compartido. Viaja en la cabecera Authorization, nunca en la URL. */
+  secreto?: string
+  activo: boolean
+  /** Subir sola la copia al arrancar y tras cada cambio. */
+  automatico: boolean
+  ultimaCopia?: string
+}
+
 export interface LogSync {
   id: ID
   conectorId: ID
@@ -691,4 +706,5 @@ export interface Configuracion {
   apariencia: Apariencia
   plantillasImportacion: PlantillaImportacion[]
   conectores: Conector[]
+  servidorCopias?: ServidorCopias
 }
