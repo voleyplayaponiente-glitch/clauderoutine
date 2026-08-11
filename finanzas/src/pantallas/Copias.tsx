@@ -47,6 +47,8 @@ export function Copias() {
     <>
       <CabeceraPantalla titulo="Copias de seguridad" descripcion="Backup completo, restauración verificada y snapshots automáticos diarios." />
 
+      <QueHayGuardado />
+
       {mensaje && <div className="mb-4"><Semaforo estado={mensaje.tipo} texto={mensaje.texto} /></div>}
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -129,5 +131,53 @@ export function Copias() {
         </Modal>
       )}
     </>
+  )
+}
+
+/**
+ * Qué hay realmente guardado en este navegador.
+ *
+ * Cuando la app aparece vacía, la primera pregunta es si los datos se han
+ * perdido o simplemente no se están viendo. Esto lo responde sin abrir las
+ * herramientas de desarrollo: lista los espacios de empresa que hay en
+ * IndexedDB, tengan o no ficha en el índice del grupo.
+ */
+function QueHayGuardado() {
+  const [espacios, setEspacios] = useState<{ empresaId: string; razonSocial: string; cif: string; tieneDatos: boolean }[] | null>(null)
+
+  useEffect(() => {
+    void import('../lib/db').then((m) => m.espaciosGuardados().then(setEspacios))
+  }, [])
+
+  if (!espacios) return null
+
+  const conDatos = espacios.filter((e) => e.tieneDatos)
+  return (
+    <Tarjeta className="mb-4">
+      <h3 className="font-semibold mb-1">Qué hay guardado en este navegador</h3>
+      {espacios.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--neg)' }}>
+          No hay ningún espacio de empresa en este navegador. O es la primera vez que abres la app aquí, o el navegador ha
+          limpiado los datos del sitio. Restaura desde un backup JSON o desde un snapshot con registros.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
+            {espacios.length} espacio(s) de empresa, {conDatos.length} con datos dentro. Se leen directamente del almacén del
+            navegador, aunque no aparezcan en el selector de empresa.
+          </p>
+          <ul className="text-sm space-y-1">
+            {espacios.map((e) => (
+              <li key={e.empresaId} className="flex justify-between gap-4">
+                <span>{e.razonSocial || '(sin razón social)'}{e.cif ? ` · ${e.cif}` : ''}</span>
+                <span style={{ color: e.tieneDatos ? 'var(--pos)' : 'var(--text-muted)' }}>
+                  {e.tieneDatos ? 'con datos' : 'vacío'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Tarjeta>
   )
 }

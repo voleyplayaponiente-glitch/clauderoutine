@@ -27,7 +27,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 572 tests (Vitest) del motor
+npm test         # 576 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -593,6 +593,30 @@ Lo que hay hoy en `pantallas/Presupuesto.tsx` y qué queda pendiente:
   Igual que arriba, pedirla y convertirla en test.
 - Decidir cómo entran las **tarjetas de crédito** en el presupuesto.
 
+## Pérdida de datos: lo que se aprendió el 11/08/2026
+Al usuario le apareció **«Sin empresa configurada»** con los datos de tres empresas dentro, y en
+Copias solo quedaba un snapshot **de ese día con 0 registros**. Los datos viven únicamente en el
+IndexedDB de su navegador: **no hay copia en ningún servidor y desde aquí no se pueden
+recuperar**. Lo que sí se hizo fue tapar dos agujeros que agravaban el problema:
+
+1. **Un snapshot vacío ya no pisa el histórico** (`crearSnapshotDiario`). La app crea el snapshot
+   del día al arrancar; un arranque en blanco guardaba un backup vacío que ocupaba el hueco de ese
+   día y **empujaba fuera a los buenos**. Con retención de 7, unos pocos arranques así se llevan
+   todo el histórico justo cuando hace falta. Regresión en `lib/copias.test.ts`.
+2. **Rescate de espacios huérfanos** (`espaciosGuardados` en `db.ts` + init del store). Si
+   `finanzas:grupo` se pierde y los espacios `finanzas:datos:<id>` siguen intactos, el índice se
+   regeneraba vacío y **nadie volvía a mirar esos datos**. Ahora, al arrancar, se buscan todos los
+   espacios guardados, se añaden al índice los que no estén, y —si el índice se acababa de
+   regenerar— **se entra en uno que tenga datos**, no en la empresa vacía recién creada.
+3. **Copias → «Qué hay guardado en este navegador»**: lista los espacios de empresa que hay en
+   IndexedDB con «con datos» / «vacío». Responde sin abrir las herramientas de desarrollo a la
+   única pregunta que importa cuando la app aparece vacía: ¿se han perdido los datos o solo no se
+   están viendo?
+
+**Pendiente y urgente** (hablado con el usuario, sin decidir): la copia automática vive en el
+mismo navegador que los datos, así que no protege de que el navegador limpie el sitio. Hace falta
+o bien descargar el JSON con regularidad, o bien sincronizar contra el Umbrel.
+
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
   El **balance de sumas y saldos cuadra por construcción** y coincide con Balance de Situación
@@ -606,7 +630,7 @@ Lo que hay hoy en `pantallas/Presupuesto.tsx` y qué queda pendiente:
 - Stock: **coste medio ponderado** por artículo y almacén; inventario → asiento 300/610.
 - Deudas: cuadro francés/lineal. Deudores: antigüedad + provisión escalonada.
 
-## Estado (572 tests en verde, desplegado)
+## Estado (576 tests en verde, desplegado)
 Fases 0–12 + auditoría de seguridad + multi-empresa + accionariado + lectura de extractos +
 inversiones + naturaleza del gasto / conceptos del banco / deuda al presupuesto + lectura de
 facturas en PDF + centros de coste + tarjetas + archivo de documentos.

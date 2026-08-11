@@ -14,6 +14,7 @@ import {
   cargarDatos,
   guardarDatos,
   cargarGrupo,
+  espaciosGuardados,
   guardarGrupo,
   borrarEspacioEmpresa,
   migrarDesdeEmpresaUnica,
@@ -96,6 +97,8 @@ interface Estado {
   aplicarImportacion: (destinoId: string, entidades: { id: string }[], nombreFichero: string) => LoteImportacion
   deshacerImportacion: (loteId: string) => void
   // Deudas y deudores
+  /** Espacios de empresa que estaban huérfanos y se han recuperado al arrancar. */
+  empresasRecuperadas: number
   guardarDeuda: (d: Deuda) => void
   anularDeuda: (id: string) => void
   guardarRenting: (r: Renting) => void
@@ -179,6 +182,7 @@ function upsert<T extends { id: string }>(lista: T[], item: T): T[] {
 
 export const useStore = create<Estado>((set, get) => ({
   loaded: false,
+  empresasRecuperadas: 0,
   tema: 'claro',
   grupo: { version: 1, nombre: 'Mi grupo', empresas: [], participaciones: [], socios: [], empresaActivaId: '' },
   config: configuracionInicial(),
@@ -187,6 +191,9 @@ export const useStore = create<Estado>((set, get) => ({
   init: async () => {
     const tema = await cargarTema()
     let grupo = migrarGrupo(await cargarGrupo())
+    // Si no había índice, cualquier espacio que aparezca luego es un huérfano y
+    // hay que entrar en él, no en la empresa vacía que se acaba de crear.
+    const sinIndicePrevio = !grupo
 
     if (!grupo) {
       // Primer arranque tras el cambio a multi-empresa: se crea el grupo con una
@@ -202,6 +209,36 @@ export const useStore = create<Estado>((set, get) => ({
         creadaEn: new Date().toISOString(),
       })
       await guardarGrupo(grupo)
+    }
+
+    // **Rescate de espacios huérfanos.** Si el índice del grupo se pierde y los
+    // datos de cada empresa siguen en su sitio, sin esto no los vería nadie: el
+    // índice se regenera vacío y `finanzas:datos:<id>` se queda ahí, intacto e
+    // invisible. Se recuperan todos los espacios que no estén en el índice.
+    const espacios = await espaciosGuardados()
+    const enIndice = new Set(grupo.empresas.map((e) => e.id))
+    const huerfanos = espacios.filter((e) => !enIndice.has(e.empresaId))
+    if (huerfanos.length > 0) {
+      grupo = {
+        ...grupo,
+        empresas: [
+          ...grupo.empresas,
+          ...huerfanos.map((h) => ({
+            id: h.empresaId,
+            razonSocial: h.razonSocial || 'Empresa recuperada',
+            cif: h.cif,
+            esHolding: false,
+            creadaEn: new Date().toISOString(),
+          })),
+        ],
+      }
+      // La activa pasa a ser una que tenga datos: si se acaba de regenerar el
+      // índice, la empresa «activa» es una recién creada y vacía, y entrar ahí
+      // daría la falsa sensación de que no se ha recuperado nada.
+      const conDatos = huerfanos.find((h) => h.tieneDatos)
+      if (conDatos && sinIndicePrevio) grupo = { ...grupo, empresaActivaId: conDatos.empresaId }
+      await guardarGrupo(grupo)
+      set({ empresasRecuperadas: huerfanos.filter((h) => h.tieneDatos).length })
     }
 
     // La empresa activa guardada podría no existir (backup antiguo): cae a la primera.

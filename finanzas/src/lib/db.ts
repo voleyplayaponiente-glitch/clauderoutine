@@ -78,6 +78,39 @@ export async function borrarTodo(): Promise<void> {
 }
 
 /**
+ * Espacios de empresa que hay guardados en IndexedDB, salgan o no en el índice
+ * del grupo.
+ *
+ * Hace falta para poder **rescatar espacios huérfanos**: si `finanzas:grupo` se
+ * pierde o se corrompe, el índice se regenera vacío y los datos de cada empresa
+ * —que siguen intactos en `finanzas:datos:<id>`— dejarían de verse para siempre,
+ * porque nadie los busca. Aquí es donde se encuentran.
+ */
+export async function espaciosGuardados(): Promise<{ empresaId: ID; razonSocial: string; cif: string; tieneDatos: boolean }[]> {
+  const todas = await keys()
+  const ids = new Set<string>()
+  for (const k of todas) {
+    if (typeof k !== 'string') continue
+    const m = /^finanzas:(?:config|datos):(.+)$/.exec(k)
+    if (m) ids.add(m[1])
+  }
+
+  const espacios = []
+  for (const empresaId of ids) {
+    const config = await get<Configuracion>(claveConfig(empresaId))
+    const datos = await get<DatosOperativos>(claveDatos(empresaId))
+    const tieneDatos = Object.values((datos ?? {}) as Record<string, unknown>).some((v) => Array.isArray(v) && v.length > 0)
+    espacios.push({
+      empresaId,
+      razonSocial: config?.empresa?.razonSocial ?? '',
+      cif: config?.empresa?.cif ?? '',
+      tieneDatos,
+    })
+  }
+  return espacios
+}
+
+/**
  * Migración de la versión de una sola empresa: mueve `finanzas:configuracion` y
  * `finanzas:datos` al espacio de la primera empresa del grupo. Solo borra las
  * claves antiguas después de comprobar que las nuevas se han escrito bien: si
