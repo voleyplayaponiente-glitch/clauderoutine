@@ -261,5 +261,6 @@ export function configuracionInicial(): Configuracion {
     apariencia: { densidad: 'comoda', formatoFecha: 'dd/mm/aaaa', moneda: 'EUR' },
     plantillasImportacion: [],
     conectores: [],
+    servidorCopias: { activo: false, automatico: true },
   }
 }

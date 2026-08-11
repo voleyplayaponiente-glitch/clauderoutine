@@ -5,6 +5,8 @@ import { Tarjeta, Boton, Semaforo } from '../componentes/ui'
 import { Modal } from '../componentes/formularios'
 import { hoyISO, formatearFecha } from '../lib/fechas'
 import { descargarBackupJson, descargarBackupExcel, leerBackup, listarSnapshots } from '../lib/copias'
+import { descargarCopiaRemota, empresasConCopia, listarCopiasRemotas, probarServidorCopias, type CopiaRemota, type EmpresaConCopia } from '../lib/copias-remotas'
+import { Campo, Select, Toggle } from '../componentes/formularios'
 import { resumenBackup, mismaEmpresa } from '../dominio/backup'
 import type { Backup } from '../dominio/backup'
 
@@ -48,6 +50,8 @@ export function Copias() {
       <CabeceraPantalla titulo="Copias de seguridad" descripcion="Backup completo, restauración verificada y snapshots automáticos diarios." />
 
       <QueHayGuardado />
+
+      <ServidorDeCopias onRestaurar={(backup, origen) => setCandidato({ backup, origen })} />
 
       {mensaje && <div className="mb-4"><Semaforo estado={mensaje.tipo} texto={mensaje.texto} /></div>}
 
@@ -177,6 +181,175 @@ function QueHayGuardado() {
             ))}
           </ul>
         </>
+      )}
+    </Tarjeta>
+  )
+}
+
+/**
+ * Copias contra un servidor propio (el Umbrel).
+ *
+ * Es la única protección real: la copia automática diaria vive en el mismo
+ * IndexedDB que los datos, así que el día que el navegador limpia el sitio se
+ * va todo junto. Aquí se sacan a un disco que es tuyo.
+ */
+function ServidorDeCopias({ onRestaurar }: { onRestaurar: (backup: Backup, origen: string) => void }) {
+  const config = useStore((s) => s.config)
+  const grupo = useStore((s) => s.grupo)
+  const actualizarConfig = useStore((s) => s.actualizarConfig)
+  const subirCopiaAhora = useStore((s) => s.subirCopiaAhora)
+  const ultimaCopia = useStore((s) => s.ultimaCopiaRemota)
+  const errorCopia = useStore((s) => s.errorCopiaRemota)
+
+  const cfg = config.servidorCopias ?? { activo: false, automatico: true }
+  const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [copias, setCopias] = useState<CopiaRemota[] | null>(null)
+  const [empresas, setEmpresas] = useState<EmpresaConCopia[]>([])
+  // Cuál de las empresas DEL SERVIDOR se está mirando. Tras un borrado del
+  // navegador no coincide con la de aquí: la app tiene un id nuevo.
+  const [elegida, setElegida] = useState('')
+
+  const guardar = (parcial: Partial<typeof cfg>) => actualizarConfig({ servidorCopias: { ...cfg, ...parcial } })
+
+  const conMensaje = async (accion: () => Promise<{ ok: boolean; mensaje: string }>) => {
+    setOcupado(true)
+    try {
+      const r = await accion()
+      setMensaje({ ok: r.ok, texto: r.mensaje })
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  const verCopiasDe = async (empresaId: string) => {
+    setElegida(empresaId)
+    try {
+      setCopias(await listarCopiasRemotas(cfg, empresaId))
+    } catch (e) {
+      setMensaje({ ok: false, texto: e instanceof Error ? e.message : 'No se han podido listar las copias' })
+    }
+  }
+
+  const refrescar = async () => {
+    try {
+      const lista = await empresasConCopia(cfg)
+      setEmpresas(lista)
+      if (lista.length === 0) {
+        setCopias([])
+        setMensaje({ ok: false, texto: 'El servidor no tiene ninguna copia todavía.' })
+        return
+      }
+      // Se preselecciona la de esta empresa si está; si no, la más reciente.
+      const propia = lista.find((e) => e.empresaId === grupo.empresaActivaId)
+      await verCopiasDe((propia ?? lista[0]).empresaId)
+    } catch (e) {
+      setMensaje({ ok: false, texto: e instanceof Error ? e.message : 'No se han podido listar las copias' })
+    }
+  }
+
+  return (
+    <Tarjeta className="mb-4">
+      <h3 className="font-semibold mb-1">Copias en tu servidor</h3>
+      <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+        La copia automática diaria vive en este mismo navegador, así que no salva si el navegador limpia los datos del sitio.
+        Esto las guarda en tu servidor (Umbrel), fuera del navegador.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+        <Campo
+          etiqueta="URL del servidor"
+          valor={cfg.url ?? ''}
+          onChange={(v) => guardar({ url: v || undefined })}
+          placeholder="https://umbrel.local:3001"
+        />
+        <Campo
+          etiqueta="Secreto compartido"
+          valor={cfg.secreto ?? ''}
+          onChange={(v) => guardar({ secreto: v || undefined })}
+          tipo="password"
+        />
+      </div>
+      <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+        Solo se admite HTTPS, o HTTP si el servidor está en tu red local: el secreto viaja en la cabecera de la petición. El
+        secreto <strong>no se guarda dentro de los backups</strong>.
+      </p>
+
+      <div className="flex flex-wrap items-center gap-4 mb-3">
+        <Toggle etiqueta="Usar el servidor para las copias" valor={cfg.activo} onChange={(v) => guardar({ activo: v })} />
+        <Toggle
+          etiqueta="Subir sola tras cada cambio"
+          valor={cfg.automatico}
+          onChange={(v) => guardar({ automatico: v })}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Boton variante="secundario" onClick={() => void conMensaje(() => probarServidorCopias(cfg))}>
+          {ocupado ? 'Probando…' : 'Probar conexión'}
+        </Boton>
+        <Boton onClick={() => void conMensaje(subirCopiaAhora)}>Copiar ahora</Boton>
+        <Boton variante="secundario" onClick={() => void refrescar()}>Ver copias del servidor</Boton>
+      </div>
+
+      {mensaje && (
+        <p className="text-sm mt-3" style={{ color: mensaje.ok ? 'var(--pos)' : 'var(--neg)' }}>{mensaje.texto}</p>
+      )}
+      {ultimaCopia && (
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+          Última copia subida: {formatearFecha(ultimaCopia.slice(0, 10))}.
+        </p>
+      )}
+      {errorCopia && (
+        <p className="text-xs mt-1" style={{ color: 'var(--warn)' }}>La última subida automática falló: {errorCopia}</p>
+      )}
+
+      {copias && (
+        <div className="mt-3">
+          {empresas.length > 0 && (
+            <div className="mb-2 max-w-md">
+              <Select
+                etiqueta="Empresa guardada en el servidor"
+                valor={elegida}
+                onChange={(v) => void verCopiasDe(v)}
+                opciones={empresas.map((e) => ({
+                  valor: e.empresaId,
+                  texto: `${e.razonSocial || '(sin nombre)'}${e.cif ? ` · ${e.cif}` : ''} — ${e.copias} copia(s)`,
+                }))}
+              />
+              {elegida !== grupo.empresaActivaId && (
+                <p className="text-xs mt-1" style={{ color: 'var(--warn)' }}>
+                  Esta copia se guardó con otro identificador de empresa (pasa siempre que el navegador se ha limpiado). Al
+                  restaurarla, sus datos entran en la empresa que tengas activa ahora.
+                </p>
+              )}
+            </div>
+          )}
+          <p className="text-sm font-medium mb-1">Copias guardadas</p>
+          {copias.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Todavía no hay ninguna. Pulsa «Copiar ahora».</p>
+          ) : (
+            <ul className="text-sm space-y-1">
+              {copias.map((c) => (
+                <li key={c.fecha} className="flex justify-between gap-4">
+                  <span>{formatearFecha(c.fecha)} · {Math.round(c.bytes / 1024)} KB</span>
+                  <button
+                    className="underline text-xs"
+                    style={{ color: 'var(--color-brand-500)' }}
+                    onClick={() =>
+                      void descargarCopiaRemota(cfg, elegida || grupo.empresaActivaId, c.fecha)
+                        .then((b) => onRestaurar(b, `servidor ${formatearFecha(c.fecha)}`))
+                        .catch((e) => setMensaje({ ok: false, texto: e instanceof Error ? e.message : 'No se ha podido descargar' }))
+                    }
+                  >
+                    Restaurar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+        </div>
       )}
     </Tarjeta>
   )

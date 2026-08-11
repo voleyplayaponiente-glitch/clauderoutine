@@ -126,3 +126,16 @@ describe('el grupo viaja en el backup sin romper los antiguos', () => {
     expect(verificarIntegridad(antiguo).valido).toBe(true)
   })
 })
+
+describe('el secreto del servidor de copias no viaja en el backup', () => {
+  it('se redacta igual que el de los conectores', () => {
+    const config = {
+      ...configuracionInicial(),
+      servidorCopias: { url: 'https://umbrel.local:3001', secreto: 'SUPERSECRETO', activo: true, automatico: true },
+    }
+    const b = construirBackup(config, datosVacios(), '2026-08-11T00:00:00.000Z')
+    expect(b.config.servidorCopias?.secreto).toBeUndefined()
+    expect(b.config.servidorCopias?.url).toBe('https://umbrel.local:3001')
+    expect(JSON.stringify(b)).not.toContain('SUPERSECRETO')
+  })
+})
