@@ -7,7 +7,10 @@ Aplicación web **en español**, **client-first / PWA offline-first**, de **gest
 integral** para una S.L. de retail (negocio de **vapeo**) con varios puntos de venta, stands
 y venta online. Estética estilo Apple, modo claro/oscuro, responsive.
 
-- **App en producción:** https://voleyplayaponiente-glitch.github.io/clauderoutine/finanzas/
+- **Dónde vive la app AHORA:** instalada en el Umbrel del usuario, `http://192.168.1.20:3011`
+  (app «Gestión Financiera» de su tienda `bespain-umbrel-store`). Ver «La app instalada EN el
+  Umbrel». **Es la que usa; sus datos están ahí.**
+- **App en producción (web, sigue publicándose):** https://voleyplayaponiente-glitch.github.io/clauderoutine/finanzas/
 - **Repo:** voleyplayaponiente-glitch/clauderoutine · vive en la carpeta `finanzas/`
 - **Rama de desarrollo (finanzas):** `claude/preparar-aplicacion-c947u8`
 - **Rama de publicación:** `claude/tournament-bracket-manager-gvrcdt` (ver «Despliegue»).
@@ -561,8 +564,23 @@ Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en De
   pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
   bueno es el del extracto, no lo que haya metido en Compras.
 
-## POR DÓNDE SEGUIR (sesión del 10/08/2026)
-**El usuario lo dijo tal cual: «mañana seguimos con el presupuesto».** Empezar por ahí.
+## POR DÓNDE SEGUIR (cierre del 12/08/2026)
+**El usuario lo dijo al despedirse: «guarda todo en memoria mañana continuo».**
+
+Estado al cerrar: la app ya está instalada en su Umbrel y funcionando en
+`http://192.168.1.20:3011`, con «Probar conexión» en verde contra su propio almacén de
+copias. **Pero está vacía**: los datos de las tres sociedades se perdieron el 11/08 y no se
+recuperaron. Lo primero de mañana, por tanto, no es código:
+
+1. **Dar de alta las empresas** (Configuración → sociedad, CIF, IVA, impuesto especial de
+   vapeo; luego las otras dos en Grupo de empresas). Hasta que no haya datos, «Copiar ahora»
+   no sube nada —y eso es lo correcto, no un fallo.
+2. Comprobar que, con datos dentro, la copia sube y aparece en «Ver copias del servidor».
+3. **Retirar el montaje provisional** de la mañana (contenedor del 3010 y la regla
+   `tailscale serve`), que ya no pinta nada.
+4. Y entonces sí, **el presupuesto**, que es lo que quedó pendiente del 10/08 (abajo).
+
+### Lo que quedó pendiente del presupuesto (10/08/2026)
 
 Lo que hay hoy en `pantallas/Presupuesto.tsx` y qué queda pendiente:
 - El botón **«Traer deuda y gastos del banco»** ya trae: cuotas de deuda (FINANCIACION),
@@ -643,6 +661,45 @@ a ocurrir.* Reutiliza el servicio de `servidor/`, con su mismo `SECRETO`.
   entrarán en la empresa activa.
 - **Verificado de extremo a extremo en el navegador**: subir → borrar TODO el IndexedDB →
   reconfigurar URL y secreto → recuperar el préstamo de 46.333,92 €.
+
+## La app instalada EN el Umbrel (12/08/2026) — es donde vive ahora
+El usuario lo pidió tal cual: *«lo que quiero es instalarla directamente en umbrel como
+la aplicación de gestión laboral y luego seguir con los cambios y actualizaciones»*.
+Antes de eso, el Umbrel solo guardaba respaldos y la app seguía en GitHub Pages.
+
+- **Tienda**: `voleyplayaponiente-glitch/bespain-umbrel-store` (community app store que ya
+  usaba para Gestor Laboral). App nueva en `bespain-gestor-finanzas/` (`umbrel-app.yml` +
+  `docker-compose.yml`), calcada de la de laboral: mismas claves y en el mismo orden.
+- **Dos imágenes, una sola puerta**: `gestor-finanzas` (nginx con la app compilada) y
+  `gestor-finanzas-api` (el servicio de `servidor/`). nginx sirve `/` y **pasa `/api` al
+  almacén de copias**, que NO publica puerto. Puerto de la app: **3011**
+  (3000 gestor-laboral · 3001, 3002, 3006, 3063 otras apps del Umbrel · 3010 el montaje
+  manual provisional). Publicadas por `.github/workflows/imagen-finanzas.yml` en cada push
+  a la rama de publicación, **después de pasar los tests**.
+- **POR QUÉ importa que compartan dirección, y no es estética**: con la app en Pages (https)
+  llamando al servidor de casa (http), el navegador bloquea la petición por contenido mixto.
+  Se intentó sortearlo con Tailscale + `tailscale serve --https=443`, y funcionaba, pero
+  obligaba a tener Tailscale en cada equipo (el PC del usuario no lo tenía → «Failed to
+  fetch»). Servida desde el Umbrel **no hay petición cruzada que bloquear**: ni HTTPS, ni
+  CORS, ni túneles. El rodeo de Tailscale quedó de más.
+- **El secreto de las copias es el `APP_PASSWORD` de Umbrel** (`deterministicPassword: true`):
+  la contraseña que la propia ficha de la app muestra y deja copiar. Nada que generar aparte.
+- Copias en `${APP_DATA_DIR}/copias`, fuera de los contenedores: actualizar no las toca.
+- El build se hace **sin `GITHUB_PAGES`** (base `./`), porque aquí la app cuelga de la raíz.
+  Verificado en navegador servida desde la raíz: arranca, la pantalla de Copias se pinta y no
+  hay errores de consola ni peticiones fallidas.
+- **Cambiar de dirección VACÍA la app a ojos del navegador**: IndexedDB va por origen, así que
+  `http://192.168.1.20:3011` no ve nada de lo de `…github.io/clauderoutine/finanzas/`. Se pasa
+  con Descargar JSON → Restaurar (los PDF no van en ese JSON).
+- **Una copia vacía sigue sin subirse** (`mereceSubirse`): recién instalada, «Copiar ahora» no
+  hace nada y es lo correcto. Lo que valida el montaje es el verde de «Probar conexión».
+- El montaje manual de la mañana (`~/finanzas-servidor`, contenedor `conectores-finanzas` en
+  el 3010) y la regla `tailscale serve` quedan **para retirar**:
+  `tailscale serve --https=443 off` + `docker compose down` en esa carpeta.
+- **NO se tocó nada del Umbrel del usuario**: tiene ahí un nodo Bitcoin, LND, electrs,
+  public-pool, Maybe Finance, Tor y **la app de gestión laboral en el 3000**. Regla que se
+  siguió y conviene mantener: puerto libre comprobado antes con `ss -lntp`, proyecto de
+  Compose aparte, y **nunca** `docker system prune` ni parar contenedores ajenos.
 
 ## Reglas de negocio clave
 - **Partida doble interna**: cada venta/compra/regularización genera su asiento cuadrado.
@@ -743,6 +800,13 @@ Invariantes que **no** se deben romper al tocar el código:
 - **Nunca `pkill -f "<algo>"` si `<algo>` aparece en la propia línea de comando** (p. ej.
   `pkill -f "vite preview"` o `pkill -f "port 4197"`): el shell se mata a sí mismo (exit 144) y
   deja a medias lo que viniera detrás. Mejor levantar la previsualización en otro puerto.
+  · **Y NO basta con evitar `pkill`**: un bucle sobre `/proc/*/cmdline` que compare con un
+    patrón (`*http.server*4311*`) cae en lo mismo, porque la línea del propio bucle contiene
+    ese texto. Volvió a pasar el 12/08 (exit 144). Si hay que matar algo por patrón, filtra
+    por el nombre del ejecutable (`node`, `python3`) y comprueba que el pid no es el propio.
+- **La terminal web de Umbrel pega con «bracketed paste»** y bash lo escupe como texto
+  (`bash: $'\E[200~sudo': command not found`). Se arregla una vez por sesión con
+  `bind 'set enable-bracketed-paste off'`, o escribiendo el comando a mano.
 
 ## Decisiones abiertas (esperan respuesta del usuario, NO decidir por él)
 - **Tributos y Seguridad Social como FINANCIACIÓN, no como gasto** en el presupuesto (pagar el
