@@ -4,7 +4,10 @@ services:
     container_name: conectores-finanzas
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      # El puerto del HOST es configurable desde .env (PUERTO_HOST). En un
+      # servidor con otras aplicaciones ya montadas, el 3001 puede estar
+      # cogido, y cambiarlo no debe obligar a editar este fichero.
+      - "${PUERTO_HOST:-3001}:3001"
     env_file:
       - .env
     volumes:
