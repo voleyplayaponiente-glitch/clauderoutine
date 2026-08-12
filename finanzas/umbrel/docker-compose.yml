@@ -1,0 +1,31 @@
+# Instalación de la app en el Umbrel.
+#
+# Dos servicios y una sola puerta: nginx sirve la aplicación y pasa todo lo que
+# empiece por /api al servicio de copias. Desde fuera solo se ve un puerto, así
+# que la app y su servidor comparten dirección y no hay ni CORS ni contenido
+# mixto que valga.
+#
+# Antes de levantarlo hay que crear el fichero .env de al lado con el SECRETO.
+services:
+  web:
+    image: ghcr.io/voleyplayaponiente-glitch/gestor-finanzas:latest
+    container_name: finanzas_web
+    restart: unless-stopped
+    ports:
+      # Puerto del Umbrel por el que entrarás a la app. El 3000, 3001, 3002,
+      # 3006, 3010 y 3063 ya están cogidos por otras aplicaciones.
+      - "${PUERTO_HOST:-3011}:80"
+    depends_on:
+      - api
+
+  api:
+    image: ghcr.io/voleyplayaponiente-glitch/gestor-finanzas-api:latest
+    container_name: finanzas_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Las copias viven FUERA del contenedor: actualizar la app no las toca.
+      - ./datos:/datos
+    # Sin `ports`: al servicio solo se llega a través de nginx. Una cosa menos
+    # expuesta en la red.
