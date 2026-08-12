@@ -95,12 +95,30 @@ Variables:
 
 | Variable | Para qué | Por defecto |
 |---|---|---|
+| `PUERTO_HOST` | Puerto por el que se accede desde fuera | `3001` |
 | `COPIAS_DIR` | Carpeta donde se guardan | `/datos` |
 | `COPIAS_RETENCION` | Cuántas copias se conservan por empresa | `30` |
 | `COPIAS_MAX_BYTES` | Tope de una copia, para que nadie llene el disco | 50 MB |
 
 Las copias quedan en `datos/copias/<empresa>/<AAAA-MM-DD>.json`: **texto plano y con checksum**,
 así que se pueden abrir, copiar a otro disco o restaurar a mano sin depender de nada.
+
+### Convivencia con lo que ya haya en el servidor
+
+Este servicio **no toca nada de lo que ya esté montado**. Es un proyecto de Docker Compose
+independiente, con su propia carpeta, su propia imagen y su propio volumen:
+
+- No comparte volumen, red ni base de datos con ninguna otra aplicación.
+- Si el puerto elegido ya está ocupado, Docker **se niega a arrancar** y lo dice; no se lo quita
+  a nadie. En ese caso, se cambia `PUERTO_HOST` en el `.env` y listo.
+- `docker compose down` en esta carpeta para **solo este** servicio. Nunca hace falta —y nunca
+  se debe— usar `docker system prune` ni parar contenedores ajenos.
+
+Antes de arrancarlo por primera vez conviene mirar qué hay y qué puertos están cogidos:
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+```
 
 ### Cómo se conecta la app
 
