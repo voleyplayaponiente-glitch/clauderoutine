@@ -75,3 +75,10 @@ Ampliable: drag-and-drop en calendario (hoy edición por selectores), siembra au
 
 ## Notas de uso (PWA instalada)
 - Es PWA con `registerType: 'autoUpdate'`. Tras un despliegue nuevo, en la app instalada basta **recargar** (Mac: Cmd+R, a veces dos veces); si persiste lo antiguo, **Cmd+Q y reabrir**. Recargar/actualizar **no borra datos** (IndexedDB local); solo se pierden con «Borrar todos los datos» o limpieza manual del navegador.
+
+## Otras apps en este repo (no se tocan desde aquí)
+Este `CLAUDE.md` cubre **solo** el gestor de torneos de la raíz. Conviven dos proyectos más,
+cada uno con su propia memoria; léela antes de tocar su carpeta:
+- `finanzas/CLAUDE.md` — gestión financiera de la S.L. de retail. En producción (Pages + Umbrel).
+- `club/CLAUDE.md` — gestión deportiva y financiera del CVPPB. **En Fase 0**: solo el plan
+  (`PLAN_APP_CLUB.md`), sin código, esperando validación del usuario.
