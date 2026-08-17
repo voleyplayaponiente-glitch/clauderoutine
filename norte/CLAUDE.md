@@ -82,6 +82,11 @@ npm run semilla        # usuario demo@norte.local
   Publicar dos imágenes en cada despliegue disparó el límite secundario de
   GitHub en `finanzas/`; por eso `norte-api` solo se reconstruye si cambian
   `api/` o `dominio/`.
+- **El `docker-compose.yml` lleva `name: norte` y no se quita.** Sin esa línea
+  Compose deduce el nombre del proyecto de la carpeta (`umbrel`) y **choca con
+  el proyecto del propio umbrelOS**: empieza a ver `auth` y `tor_proxy` como
+  huérfanos suyos, y un `down --remove-orphans` ahí dentro se llevaría piezas
+  del sistema del usuario. Salió en la primera instalación real (17/08/2026).
 - **Las imágenes nuevas de GHCR nacen privadas** y `docker compose pull` falla
   con `denied`. Comprobado el 17/08/2026: `norte-web` salió pública pero
   `norte-api` **privada**. Hay que ponerlas públicas a mano una vez en

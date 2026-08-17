@@ -13,6 +13,15 @@
 # dentro. Dos cosas menos expuestas en la red de casa.
 #
 # Antes de levantarlo, copia `.env.example` a `.env` y rellena los secretos.
+
+# **El nombre del proyecto se fija aquí y no es un detalle cosmético.** Sin esta
+# línea, Compose lo deduce del nombre de la carpeta —`umbrel`— y colisiona con
+# el proyecto del propio umbrelOS: pasa a ver `auth` y `tor_proxy` como
+# contenedores huérfanos *suyos*, y un `docker compose down --remove-orphans`
+# lanzado aquí se llevaría por delante piezas del sistema del usuario. Pasó en
+# la primera instalación real, el 17/08/2026.
+name: norte
+
 services:
   web:
     image: ghcr.io/voleyplayaponiente-glitch/norte-web:latest
