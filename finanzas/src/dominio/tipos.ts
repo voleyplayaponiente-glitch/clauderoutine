@@ -707,4 +707,37 @@ export interface Configuracion {
   plantillasImportacion: PlantillaImportacion[]
   conectores: Conector[]
   servidorCopias?: ServidorCopias
+  /** Cifras del ejercicio anterior, leídas del Modelo 200 presentado. */
+  ejercicioAnterior?: EjercicioAnterior
+}
+
+/**
+ * El ejercicio anterior **según la declaración presentada**, no según lo que se
+ * haya tecleado aquí. Es la foto de partida: sirve para comparar, para saber de
+ * dónde se viene y —lo que más se olvida— para no perder de vista la base
+ * imponible negativa pendiente de compensar, que es dinero.
+ *
+ * Se guarda tal y como venía en el modelo; **nada se recalcula**.
+ */
+export interface EjercicioAnterior {
+  ejercicio: number
+  /** De dónde salió: por ahora siempre 'MODELO_200'. */
+  origen: 'MODELO_200'
+  /** Cuándo se subió el documento. */
+  importadoEn: string
+  totalActivo?: number
+  patrimonioNeto?: number
+  capital?: number
+  reservas?: number
+  pasivoNoCorriente?: number
+  pasivoCorriente?: number
+  resultado?: number
+  resultadoAntesImpuestos?: number
+  ingresosFinancieros?: number
+  gastosFinancieros?: number
+  baseImponible?: number
+  tipoGravamen?: number
+  cuotaLiquida?: number
+  /** Base imponible negativa que queda por compensar en ejercicios futuros. */
+  binPendiente?: number
 }

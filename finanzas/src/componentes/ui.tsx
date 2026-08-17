@@ -94,11 +94,14 @@ export function Boton({
   onClick,
   variante = 'primario',
   tipo = 'button',
+  disabled = false,
 }: {
   children: ReactNode
   onClick?: () => void
   variante?: 'primario' | 'secundario'
   tipo?: 'button' | 'submit'
+  /** Deshabilitado: se atenúa y deja de responder, sin desaparecer. */
+  disabled?: boolean
 }) {
   const base = 'inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors'
   const estilo =
@@ -106,7 +109,13 @@ export function Boton({
       ? { background: 'var(--color-brand-500)', color: '#fff' }
       : { background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)' }
   return (
-    <button type={tipo} onClick={onClick} className={base} style={estilo}>
+    <button
+      type={tipo}
+      onClick={onClick}
+      disabled={disabled}
+      className={base}
+      style={{ ...estilo, opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+    >
       {children}
     </button>
   )

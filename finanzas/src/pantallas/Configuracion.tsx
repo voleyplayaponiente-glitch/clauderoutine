@@ -10,6 +10,7 @@ import { PanelUmbrales } from './config/PanelUmbrales'
 import { PanelApariencia } from './config/PanelApariencia'
 import { PanelDatos } from './config/PanelDatos'
 import { PanelConexiones } from './config/PanelConexiones'
+import { PanelModelo200 } from './config/PanelModelo200'
 
 const PESTANAS = [
   { id: 'empresa', texto: 'Empresa', panel: PanelEmpresa },
@@ -21,6 +22,7 @@ const PESTANAS = [
   { id: 'umbrales', texto: 'Umbrales', panel: PanelUmbrales },
   { id: 'apariencia', texto: 'Apariencia', panel: PanelApariencia },
   { id: 'conexiones', texto: 'Conexiones', panel: PanelConexiones },
+  { id: 'modelo200', texto: 'Ejercicio anterior', panel: PanelModelo200 },
   { id: 'datos', texto: 'Datos', panel: PanelDatos },
 ] as const
 
