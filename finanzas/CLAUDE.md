@@ -645,6 +645,23 @@ imported module: …/assets/pdf.worker.min-CHFwMXne.mjs»* al subir el acuerdo d
   y la raíz cambiados). Comprobado además **con el arreglo quitado**: sin él, `.mjs` sale como
   `application/octet-stream`.
 
+## Estado al cerrar el 17/08/2026 (tarde) — QUÉ ESTÁ PENDIENTE DE CONFIRMAR
+- Publicada la **1.1.4** en la tienda, imagen verificada en verde (`f2d151a`).
+- **Sin confirmar por el usuario**: que el acuerdo de aplazamiento entre y que el bloque
+  «Hacienda, Seguridad Social y otros acreedores» pase de 0 € a **12.449,65 €**. Es lo primero
+  que hay que preguntar al retomar.
+- Sus datos reales de BESPAIN 7777 al cierre: deuda total **91.614,84 €** — 3 préstamos
+  (CaixaBank 7.644,73 al 5,18 % · BBVA 46.862,76 al 3,90 % · Bankinter 10.000 al 0 %), póliza
+  con 16.562,15 dispuestos, renting del Renault Clio (263,63 + IVA, cuota 8 de 48) y 4 tarjetas
+  a 0. La otra empresa es BTC EMBASSY SPAIN HOLDING.
+- **Pendiente y prometido al usuario**: la PWA se actualiza sola (`registerType: 'autoUpdate'`)
+  pero **no avisa ni fuerza la recarga**, así que tras actualizar la app en el Umbrel el
+  navegador sigue sirviendo la versión vieja y parece que nada se ha arreglado. Le pasó hoy y
+  costó una tanda entera de mensajes. Hace falta un aviso «hay una versión nueva, recarga».
+- Iconos de sus dos apps en el escritorio de Umbrel **apagados**: las dos URLs de
+  `raw.githubusercontent.com` responden 200 (comprobado), así que era caché del navegador. Si
+  vuelve a pasar, empaquetar el icono en la app en vez de tirar de URL externa.
+
 ## Que un documento no acabe en la pantalla equivocada (`dominio/reconocer-documento.ts`)
 El usuario intentó subir el **acuerdo de aplazamiento de Hacienda** por la importación de
 extractos de **Bancos** y solo obtuvo «no se pudo leer el fichero». El lector funcionaba —lo
@@ -660,6 +677,14 @@ por «+ Deuda»).
   sin un solo apunte casi nunca es un extracto— y enseña el aviso con la pantalla correcta.
 - El botón de Deudas pasa a llamarse **«Subir fichero del banco o de Hacienda»**: el nombre
   anterior no invitaba a meter ahí un papel de la AEAT.
+- **Lo consulta también DEUDAS**, no solo Bancos, y ahí es donde más falta hacía: el acuerdo de
+  aplazamiento y la propia declaración se descargan de la Sede con nombres casi idénticos
+  (`MODELO_200_2025_SOLIC.APLAZ_concesion.pdf` y `MODELO_200_2025.pdf`), y subir la segunda en
+  Deudas devolvía «No se reconoce el préstamo en este fichero». **Le pasó al usuario y se
+  confundió con el fallo anterior de los `.mjs`**, porque el síntoma seguía siendo un error
+  rojo en la misma pantalla. Ahora dice: «Esto es el Modelo 200: va en Configuración →
+  Ejercicio anterior». Aplicar el patrón en TODAS las pantallas que traguen ficheros, no solo
+  en la que dio el aviso.
 - Los campos leídos se enseñan **en castellano** (`enCastellano` en `Deudas.tsx`): se estaban
   pintando los identificadores del código (`totalPlazos`, `nif`…), que además daban la
   impresión de que la app se había quedado a medias.
