@@ -85,14 +85,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: ¿Ha cambiado el servidor?
+      # Dos condiciones para reconstruir la imagen del servidor, y la segunda
+      # existe porque la primera sola ya falló: un commit que tocaba solo el
+      # `Dockerfile.api` no contaba como cambio, así que se saltó la
+      # construcción y la imagen **no llegó a publicarse nunca**. El compose del
+      # Umbrel apuntaba a algo que no existía.
+      - name: ¿Hay que construir el servidor?
         id: cambios
         run: |
-          if git diff --quiet HEAD~1 HEAD -- norte/api norte/dominio norte/package-lock.json; then
-            echo "api=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "api=true" >> "$GITHUB_OUTPUT"
+          construir=false
+
+          # 1) Ha cambiado algo de lo que va dentro de la imagen.
+          if ! git diff --quiet HEAD~1 HEAD -- \
+              norte/api norte/dominio norte/package-lock.json norte/Dockerfile.api; then
+            construir=true
+            echo "Cambió el servidor."
           fi
+
+          # 2) O la imagen no está publicada. Esto es lo que hace que el fallo
+          #    se cure solo en el siguiente push en vez de quedarse escondido.
+          token=$(curl -sf "https://ghcr.io/token?scope=repository:${{ github.repository_owner }}/norte-api:pull&service=ghcr.io" | jq -r '.token // empty')
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+            "https://ghcr.io/v2/${{ github.repository_owner }}/norte-api/manifests/latest")
+          if [ "$codigo" != "200" ]; then
+            construir=true
+            echo "La imagen del servidor no se puede descargar (HTTP $codigo): se construye."
+          fi
+
+          echo "api=$construir" >> "$GITHUB_OUTPUT"
 
       - name: Aplicación (nginx)
         uses: docker/build-push-action@v6
