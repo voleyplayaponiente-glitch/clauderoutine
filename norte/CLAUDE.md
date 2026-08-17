@@ -120,7 +120,28 @@ Verificado en navegador (Chromium, capturas en la conversación): registro real,
 sesión que sobrevive a recargar, los dos temas, 375 px sin desbordamiento
 horizontal y sin errores de consola.
 
+## INSTALADA Y VERIFICADA POR EL USUARIO (17/08/2026, 22:12)
+Corre en su Umbrel en **`http://192.168.1.20:3012`**. Cuenta creada
+(`julionietocristobal@gmail.com`), espacio Personal con sus categorías, la
+pantalla de inicio pintada y sin errores. Es donde vive; sus datos están ahí.
+
+- Instalación **manual** (clone en `~/norte-app`), no por la tienda de Umbrel
+  todavía. Falta la ficha en `bespain-umbrel-store` para que tenga icono en el
+  escritorio como las otras dos apps.
+- **Los datos están en `~/norte-datos`** (`postgres/` y `documentos/`), fuera de
+  la carpeta del código a propósito: actualizar o volver a clonar no los toca.
+  **Esa es la carpeta que hay que respaldar.**
+- Su `.env` (contraseña de Postgres y secreto de sesión) está solo en el Umbrel.
+  No hay copia en ningún otro sitio.
+- **Aún no hay copias de seguridad automáticas.** El `pg_dump` está documentado
+  en `umbrel/README.md` pero nadie lo ejecuta solo. Con lo que pasó en agosto,
+  esto no puede quedarse mucho tiempo así.
+
 ## Por dónde seguir
+0. **PRIMERO: cerrar el registro abierto.** Hoy cualquiera en su red puede
+   crearse una cuenta. No vería datos ajenos (el aislamiento está probado), pero
+   sobra. Debe quedar: la primera cuenta libre —la suya, ya creada— y el resto
+   por invitación. Acordado con él: se hace al empezar, antes de la fase 2.
 1. **Fase 2 — Movimientos y cuentas**: CRUD, categorías, recurrentes y `Cmd+K`
    con lenguaje natural («café 3,40 ayer»).
 2. Pendiente concreto heredado: **aviso de versión nueva de la PWA** (el
