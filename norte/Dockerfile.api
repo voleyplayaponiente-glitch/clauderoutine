@@ -17,9 +17,10 @@ RUN npm ci --ignore-scripts
 
 COPY dominio dominio
 COPY api api
-RUN npm run build -w @norte/dominio \
-  && npm --prefix api exec prisma generate \
-  && npm --prefix api exec tsc -b
+# `npm run -w` y no `npm --prefix … exec`: el segundo NO entra en la carpeta del
+# workspace, así que `prisma generate` buscaba el esquema en la raíz y no lo
+# encontraba. El `prebuild` del propio paquete ya compila `@norte/dominio`.
+RUN npm run build -w @norte/api
 
 FROM node:22-slim
 WORKDIR /repo

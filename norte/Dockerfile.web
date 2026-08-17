@@ -15,7 +15,8 @@ RUN npm ci --ignore-scripts
 
 COPY dominio dominio
 COPY app app
-RUN npm run build -w @norte/dominio && npm run build -w @norte/app
+# El `prebuild` de @norte/app ya compila el dominio del que depende.
+RUN npm run build -w @norte/app
 
 FROM nginx:1.27-alpine
 COPY --from=build /repo/app/dist /usr/share/nginx/html
