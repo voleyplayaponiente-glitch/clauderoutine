@@ -604,6 +604,27 @@ Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en De
   pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
   bueno es el del extracto, no lo que haya metido en Compras.
 
+## Que un documento no acabe en la pantalla equivocada (`dominio/reconocer-documento.ts`)
+El usuario intentó subir el **acuerdo de aplazamiento de Hacienda** por la importación de
+extractos de **Bancos** y solo obtuvo «no se pudo leer el fichero». El lector funcionaba —lo
+hacía Deudas— pero nadie se lo dijo. **Un «no se pudo leer» ante un fichero perfectamente
+legible es una mentira por omisión**, y es la segunda vez que pasa (la primera fue la póliza
+por «+ Deuda»).
+- `reconocerDocumento(filas)` identifica aplazamiento (AEAT o TGSS), renting, póliza, cuadro de
+  préstamo y Modelo 200, y devuelve **a qué pantalla van y por qué**. Devuelve `DESCONOCIDO`
+  si no hay señales suficientes: mandar a alguien a la pantalla equivocada es peor que callar.
+  Hay test de que **un extracto de banco de verdad NO se desvía** (si no, bloquearía la
+  importación normal).
+- **Bancos** lo consulta cuando la lectura falla **o devuelve cero movimientos** —un extracto
+  sin un solo apunte casi nunca es un extracto— y enseña el aviso con la pantalla correcta.
+- El botón de Deudas pasa a llamarse **«Subir fichero del banco o de Hacienda»**: el nombre
+  anterior no invitaba a meter ahí un papel de la AEAT.
+- Los campos leídos se enseñan **en castellano** (`enCastellano` en `Deudas.tsx`): se estaban
+  pintando los identificadores del código (`totalPlazos`, `nif`…), que además daban la
+  impresión de que la app se había quedado a medias.
+- Verificado en navegador con el PDF real del expediente 032640410056F: 12 plazos, importes y
+  fechas correctos, sin errores de consola.
+
 ## Sesión del 17/08/2026 — cerrado y VERIFICADO POR EL USUARIO con datos reales
 1. **Modelo 200** (ver su sección): el usuario lo subió y confirmó «subir año anterior también
    [va bien]». Ya hay dos empresas con datos: BESPAIN 7777 SLU y BTC EMBASSY SPAIN HOLDING.
