@@ -9,13 +9,25 @@
  * y quién participa en quién) vive aparte, en `finanzas:grupo`.
  */
 import { get, set, del, keys } from 'idb-keyval'
-import type { Configuracion, DatosOperativos, ID } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, ID, ServidorCopias } from '../dominio/tipos'
 import type { Backup } from '../dominio/backup'
 import type { Grupo } from '../dominio/grupo'
 
 const CLAVE_TEMA = 'finanzas:tema'
 const CLAVE_SNAPSHOTS = 'finanzas:snapshots'
 const CLAVE_GRUPO = 'finanzas:grupo'
+/**
+ * Servidor de copias: **una sola configuración para todo el grupo**, fuera de la
+ * configuración de cada empresa.
+ *
+ * Estaba dentro de `Configuracion` y eso tenía dos agujeros que dejaban al
+ * usuario sin copias sin decírselo:
+ *  · la configuración es POR EMPRESA, así que al crear o cambiar de sociedad la
+ *    del servidor aparecía vacía y esa empresa dejaba de subir nada;
+ *  · y como viaja dentro del backup, **restaurar una copia la sobrescribía**.
+ * Aquí fuera no le pasa ninguna de las dos cosas.
+ */
+const CLAVE_SERVIDOR = 'finanzas:servidor-copias'
 
 /** Claves de la versión de una sola empresa, anteriores al grupo. */
 const CLAVE_CONFIG_LEGADO = 'finanzas:configuracion'
@@ -38,6 +50,14 @@ export async function cargarGrupo(): Promise<Grupo | undefined> {
 
 export async function guardarGrupo(grupo: Grupo): Promise<void> {
   await set(CLAVE_GRUPO, grupo)
+}
+
+export async function cargarServidorCopias(): Promise<ServidorCopias | undefined> {
+  return get<ServidorCopias>(CLAVE_SERVIDOR)
+}
+
+export async function guardarServidorCopias(cfg: ServidorCopias): Promise<void> {
+  await set(CLAVE_SERVIDOR, cfg)
 }
 
 export async function cargarDatos(empresaId: ID): Promise<DatosOperativos | undefined> {

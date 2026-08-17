@@ -4,7 +4,7 @@
  * añadiendo su porción de estado fase a fase.
  */
 import { create } from 'zustand'
-import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, Renting, Poliza, TarjetaCredito, DeudorVario, Presupuesto, Conector, LogSync } from '../dominio/tipos'
+import type { Configuracion, DatosOperativos, Tercero, Venta, Compra, GastoRecurrente, CuentaTesoreria, MovimientoTesoreria, ArqueoCaja, Almacen, Articulo, MovimientoStock, PlantillaImportacion, LoteImportacion, Deuda, Renting, Poliza, TarjetaCredito, DeudorVario, Presupuesto, Conector, LogSync, ServidorCopias } from '../dominio/tipos'
 import { configuracionInicial } from '../dominio/defaults'
 import {
   cargarConfig,
@@ -16,6 +16,8 @@ import {
   cargarGrupo,
   espaciosGuardados,
   guardarGrupo,
+  cargarServidorCopias,
+  guardarServidorCopias,
   borrarEspacioEmpresa,
   migrarDesdeEmpresaUnica,
 } from '../lib/db'
@@ -102,6 +104,13 @@ interface Estado {
   /** Última copia subida al servidor propio, y el motivo si falló. */
   ultimaCopiaRemota?: string
   errorCopiaRemota?: string
+  /**
+   * Servidor de copias: **uno para todo el grupo**, no uno por empresa. Vivía
+   * dentro de `config` y eso dejaba sin copias a cada sociedad nueva y se
+   * perdía al restaurar un backup. Ver `CLAVE_SERVIDOR` en `lib/db.ts`.
+   */
+  servidorCopias?: ServidorCopias
+  actualizarServidorCopias: (parcial: Partial<ServidorCopias>) => void
   /** Sube ahora la copia de la empresa activa. */
   subirCopiaAhora: () => Promise<{ ok: boolean; mensaje: string }>
   guardarDeuda: (d: Deuda) => void
@@ -181,7 +190,7 @@ function persistirDatos(datos: DatosOperativos) {
  */
 let debounceCopia: ReturnType<typeof setTimeout> | undefined
 function programarCopiaRemota() {
-  const cfg = almacen?.get().config.servidorCopias
+  const cfg = almacen?.get().servidorCopias
   if (!cfg?.activo || !cfg.automatico || !cfg.url) return
   const empresaId = empresaActual
   clearTimeout(debounceCopia)
@@ -193,7 +202,7 @@ function programarCopiaRemota() {
 /** Sube la copia de una empresa. Un fallo no interrumpe: se anota y se enseña. */
 async function subirCopiaSiProcede(empresaId: string): Promise<{ ok: boolean; mensaje: string }> {
   const estado = almacen?.get()
-  const cfg = estado?.config.servidorCopias
+  const cfg = estado?.servidorCopias
   if (!estado || !cfg?.activo || !cfg.url) return { ok: false, mensaje: 'El servidor de copias no está configurado.' }
   try {
     const m = await import('../lib/copias-remotas')
@@ -237,6 +246,12 @@ export const useStore = create<Estado>((set, get) => {
   loaded: false,
   empresasRecuperadas: 0,
   subirCopiaAhora: () => subirCopiaSiProcede(empresaActual),
+
+  actualizarServidorCopias: (parcial) => {
+    const cfg = { ...(get().servidorCopias ?? { activo: false, automatico: true }), ...parcial }
+    set({ servidorCopias: cfg })
+    void guardarServidorCopias(cfg)
+  },
   tema: 'claro',
   grupo: { version: 1, nombre: 'Mi grupo', empresas: [], participaciones: [], socios: [], empresaActivaId: '' },
   config: configuracionInicial(),
@@ -308,7 +323,24 @@ export const useStore = create<Estado>((set, get) => {
     empresaActual = empresaId
 
     const [config, datos] = await Promise.all([cargarConfig(empresaId), cargarDatos(empresaId)])
+
+    // Servidor de copias: se lee de su clave global. Si aún no está (venimos de
+    // la versión en que vivía dentro de cada empresa), se adopta la primera que
+    // aparezca configurada, para no dejar de subir copias por la mudanza.
+    let servidorCopias = await cargarServidorCopias()
+    if (!servidorCopias) {
+      const candidata = config?.servidorCopias
+        ?? (await Promise.all(grupo.empresas.map((e) => cargarConfig(e.id))))
+          .map((c) => c?.servidorCopias)
+          .find((c) => c?.url)
+      if (candidata?.url) {
+        servidorCopias = candidata
+        await guardarServidorCopias(candidata)
+      }
+    }
+
     set({
+      servidorCopias,
       grupo,
       config: config ? migrarConfig(config) : configuracionInicial(),
       tema: tema ?? (prefiereOscuro() ? 'oscuro' : 'claro'),

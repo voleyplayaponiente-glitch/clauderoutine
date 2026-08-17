@@ -65,7 +65,13 @@ function alertasPoliza(datos: DatosOperativos, hoy: string): { polizasSobreUmbra
   return { polizasSobreUmbral: sobreUmbral, polizasMediaAlta: mediaAlta }
 }
 
-export function calcularDashboard(datos: DatosOperativos, config: Configuracion, hoy: string): DashboardData {
+export function calcularDashboard(
+  datos: DatosOperativos,
+  config: Configuracion,
+  hoy: string,
+  /** Estado de cosas que no viven en la configuración de la empresa. */
+  extra?: { copiasSinServidor?: boolean },
+): DashboardData {
   const mesActual = mesDe(hoy)
   const cuentas = datos.cuentasTesoreria.filter((c) => !c.anuladoEn)
   const tesoreria = tesoreriaTotal(cuentas, datos.movimientos)
@@ -159,6 +165,7 @@ export function calcularDashboard(datos: DatosOperativos, config: Configuracion,
     conciliacionesPendientes,
     puntosBajoObjetivo,
     ...alertasPoliza(datos, hoy),
+    copiasSinServidor: extra?.copiasSinServidor,
   }
 
   return { tesoreria, ventaMes, objetivoMes, margenBrutoPct, resultadoMes, deudaTotal, stockValorado, serieTesoreria, ventasPorCanal: { rows, canales }, ranking, waterfall: { ventas: ventaBaseMes, coste: costeMes, gastos: gastosMes, resultado: resultadoMes }, vencimientos, metricas }

@@ -199,9 +199,13 @@ function ServidorDeCopias({ onRestaurar }: { onRestaurar: (backup: Backup, orige
   const actualizarConfig = useStore((s) => s.actualizarConfig)
   const subirCopiaAhora = useStore((s) => s.subirCopiaAhora)
   const ultimaCopia = useStore((s) => s.ultimaCopiaRemota)
+  const servidor = useStore((s) => s.servidorCopias)
+  const actualizarServidorCopias = useStore((s) => s.actualizarServidorCopias)
   const errorCopia = useStore((s) => s.errorCopiaRemota)
 
-  const cfg = config.servidorCopias ?? { activo: false, automatico: true }
+  // La configuración del servidor es del GRUPO, no de la empresa activa: si
+  // fuera por empresa, cada sociedad nueva arrancaría sin copias.
+  const cfg = servidor ?? { activo: false, automatico: true }
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [copias, setCopias] = useState<CopiaRemota[] | null>(null)
@@ -210,7 +214,7 @@ function ServidorDeCopias({ onRestaurar }: { onRestaurar: (backup: Backup, orige
   // navegador no coincide con la de aquí: la app tiene un id nuevo.
   const [elegida, setElegida] = useState('')
 
-  const guardar = (parcial: Partial<typeof cfg>) => actualizarConfig({ servidorCopias: { ...cfg, ...parcial } })
+  const guardar = (parcial: Partial<typeof cfg>) => actualizarServidorCopias(parcial)
 
   const conMensaje = async (accion: () => Promise<{ ok: boolean; mensaje: string }>) => {
     setOcupado(true)
