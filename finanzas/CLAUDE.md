@@ -604,6 +604,28 @@ Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en De
   pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
   bueno es el del extracto, no lo que haya metido en Compras.
 
+## nginx no sabe qué es un `.mjs` — y por eso NO se podía leer ningún PDF en el Umbrel
+Síntoma que dio el usuario: *«Setting up fake worker failed: Failed to fetch dynamically
+imported module: …/assets/pdf.worker.min-CHFwMXne.mjs»* al subir el acuerdo de Hacienda.
+- **La causa no era el lector ni la caché**: el fichero estaba ahí y con el hash correcto. La
+  tabla `mime.types` de nginx mapea `js` pero **no `mjs`**, así que servía el worker de pdf.js
+  como `application/octet-stream` y el navegador **se niega a ejecutar un módulo** que no
+  llegue marcado como JavaScript. Afectaba a **todos** los PDF: facturas, extractos, préstamos
+  y aplazamientos. En GitHub Pages no pasaba porque allí sí se sirve como `text/javascript`.
+- Arreglado en `nginx.conf` con `location ~ \.mjs$ { default_type text/javascript; }` — en
+  expresión regular **a propósito**, para que gane sobre el `location /assets/`. Lo mismo con
+  `.webmanifest` (`application/manifest+json`), que sin su tipo impide instalar la PWA. Son las
+  DOS únicas extensiones del build que nginx no conoce; se comprobaron todas.
+- `vite.config.ts`: `mjs` añadido a `globPatterns` del precache, o la lectura de PDF no
+  funcionaría sin conexión.
+- **LECCIÓN, y es la importante: verificar contra el servidor DE PRODUCCIÓN.** La comprobación
+  en navegador se hacía con `python3 -m http.server`, que sirve `.mjs` como `text/javascript`,
+  así que pasaba en verde mientras el Umbrel fallaba. Para comprobar el despliegue del Umbrel
+  hay que levantar **nginx** con el `nginx.conf` real (`apt-get install nginx-light`, un
+  `nginx.conf` mínimo que haga `include /etc/nginx/mime.types` y luego el nuestro con el puerto
+  y la raíz cambiados). Comprobado además **con el arreglo quitado**: sin él, `.mjs` sale como
+  `application/octet-stream`.
+
 ## Que un documento no acabe en la pantalla equivocada (`dominio/reconocer-documento.ts`)
 El usuario intentó subir el **acuerdo de aplazamiento de Hacienda** por la importación de
 extractos de **Bancos** y solo obtuvo «no se pudo leer el fichero». El lector funcionaba —lo
