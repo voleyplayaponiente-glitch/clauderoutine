@@ -552,6 +552,46 @@ El mismo botón «Subir fichero del banco» reconoce el **acuerdo de concesión*
   tres líneas, y su valor (`4.062`) es indistinguible de un importe. Da igual: los plazos se
   guardan literales, y la app lo dice en un aviso en vez de inventarlo.
 
+## Modelo 200: el ejercicio anterior entero de un solo PDF (`dominio/modelo200.ts`)
+Pedido por el usuario: *añadir la posibilidad de subir un PDF con el impuesto de sociedades del
+año anterior para que recabara toda la información contable y fiscal del año anterior.*
+Se sube en **Configuración → Ejercicio anterior** (`config/PanelModelo200.tsx`).
+
+Dos decisiones que sostienen el lector, y las dos salieron del documento real:
+- **Se lee por número de clave, nunca por rótulo ni por posición.** La AEAT recoloca el
+  formulario cada ejercicio; las claves (00500 resultado, 00552 base imponible, 00180 total
+  activo…) no cambian.
+- **Las claves se guardan POR SECCIÓN, no en un saco común.** El modelo **reutiliza números**:
+  `00301` es «De valores negociables» en la cuenta de pérdidas y ganancias y «Correcciones por
+  IS (aumentos)» en la liquidación. Un `Record<clave, importe>` plano las mezclaría y daría una
+  cifra falsa **sin avisar**. La sección se detecta por la cabecera de página («Balance: Activo»,
+  «Cuenta de pérdidas y ganancias», «Liquidación (…)»…). Hay test que lo fija.
+
+Reglas de lectura que hicieron falta con el documento de verdad:
+- **Cada clave se queda con el importe que va justo detrás.** Si detrás hay otra clave (fila de
+  aumentos/disminuciones con una columna vacía), esa clave no tiene valor, y es correcto.
+- **Gana la primera aparición**: la última página repite el resumen de la liquidación.
+- La AEAT **parte la razón social de la participada entre dos líneas** («BESPAIN 7777, S» +
+  «.L.U.»): se recompone si la siguiente empieza por punto.
+- Los socios son filas regulares (`NIF | F | Nombre | provincia | nominal | %`). Con **un solo**
+  importe no se adivina si es nominal o porcentaje: se descarta antes que inventarlo.
+- Cuadres que se comprueban y **nunca se corrigen**: total activo = total patrimonio neto y
+  pasivo, y resultado del balance = resultado de P y G. Si no cuadran, se avisa.
+
+Qué se saca: identificación (NIF, razón social, ejercicio, periodo, CNAE) · balance · cuenta de
+pérdidas y ganancias · liquidación · **socios** (se dan de alta con un botón, sin duplicar por
+NIF) · **participadas** (se enseñan; NO se crea la sociedad sola, porque eso implica un espacio
+de datos nuevo y es decisión del usuario) · **bases imponibles negativas pendientes**.
+
+`Configuracion.ejercicioAnterior` (tipo `EjercicioAnterior`) guarda las cifras **tal cual venían**;
+nada se recalcula. Campo opcional, así que los datos ya guardados siguen siendo válidos.
+
+**VALIDADO con el Modelo 200 REAL** de BTC EMBASSY SPAIN HOLDING 2025 (`modelo200-real.test.ts`,
+206 filas del documento): activo 80.453,88 € = patrimonio neto y pasivo, resultado 19.944,01 €,
+base imponible **−3.605,84 €** y 3.915,99 € de bases negativas pendientes. Verificado además
+subiendo el PDF de verdad en un navegador real: la pantalla pinta las cifras sin un solo error de
+consola.
+
 ## Tarjetas de crédito (`dominio/tarjeta-credito.ts`)
 Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en Deudas.
 - Límite, saldo pendiente, **modalidad** y día del cargo. La modalidad es lo que decide si la
