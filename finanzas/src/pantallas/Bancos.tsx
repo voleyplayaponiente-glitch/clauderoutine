@@ -8,7 +8,22 @@ import { nuevoId } from '../dominio/id'
 import { formatearEuro } from '../dominio/dinero'
 import { saldoCuenta } from '../dominio/tesoreria'
 import { esFechaIsoValida } from '../dominio/validacion'
-import { leerExtracto, type LecturaExtracto } from '../lib/extracto'
+import { leerExtracto, filasDePrestamo, type LecturaExtracto } from '../lib/extracto'
+import { reconocerDocumento } from '../dominio/reconocer-documento'
+
+/**
+ * ¿El fichero pertenece a otra pantalla? Devuelve el aviso a enseñar, o
+ * `undefined` si de verdad no se reconoce. Nunca lanza: esto es un intento de
+ * ser útil, no puede romper la importación.
+ */
+async function esDeOtraPantalla(f: File): Promise<string | undefined> {
+  try {
+    const r = reconocerDocumento(await filasDePrestamo(f))
+    return r.mensaje?.replace(/\*\*/g, '')
+  } catch {
+    return undefined
+  }
+}
 import { ModalImportarExtracto } from './bancos/ModalImportarExtracto'
 import { GastosCuenta } from './bancos/GastosCuenta'
 import { categoriasDe } from '../dominio/resumen-compras'
@@ -115,8 +130,18 @@ export function Bancos() {
     setAviso(null)
     try {
       const lectura = await leerExtracto(f)
+      // Un extracto sin un solo movimiento casi nunca es un extracto: suele ser
+      // un documento de otra pantalla (un aplazamiento de Hacienda, el cuadro de
+      // un préstamo…). Antes que decir «no se pudo leer» —que es falso, porque
+      // sí se puede, en otro sitio— se mira de qué es y se dice a dónde va.
+      if (lectura.movimientos.length === 0) {
+        const otro = await esDeOtraPantalla(f)
+        if (otro) return setAviso(otro)
+      }
       setPendiente({ lectura, nombre: f.name })
     } catch (err) {
+      const otro = await esDeOtraPantalla(f)
+      if (otro) return setAviso(otro)
       setAviso(`No se pudo leer el fichero: ${err instanceof Error ? err.message : 'error desconocido'}`)
     } finally {
       setLeyendo(false)

@@ -131,7 +131,7 @@ export function Deudas() {
           {/* El banco parte el préstamo en dos descargas; se admiten las dos a la vez.
               El mismo botón reconoce la ficha de un renting o de una póliza. */}
           <Boton variante="secundario" onClick={() => refArchivo.current?.click()}>
-            {leyendo ? 'Leyendo…' : 'Subir fichero del banco'}
+            {leyendo ? 'Leyendo…' : 'Subir fichero del banco o de Hacienda'}
           </Boton>
           <input
             ref={refArchivo}
@@ -385,7 +385,7 @@ function RevisarPrestamo({
       <div className="space-y-4">
         <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: 'var(--surface-2)' }}>
           <p className="font-medium">
-            Leído: {datos.encontrados.length > 0 ? datos.encontrados.join(', ') : 'nada aprovechable'}. Revísalo antes de guardar.
+            Leído: {enCastellano(datos.encontrados)}. Revísalo antes de guardar.
           </p>
           {datos.numeroContrato && (
             <p style={{ color: 'var(--text-muted)' }}>
@@ -535,7 +535,7 @@ function RevisarAplazamiento({
       <div className="space-y-4">
         <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: 'var(--surface-2)' }}>
           <p className="font-medium">
-            Leído: {datos.encontrados.length > 0 ? datos.encontrados.join(', ') : 'nada aprovechable'}. Revísalo antes de guardar.
+            Leído: {enCastellano(datos.encontrados)}. Revísalo antes de guardar.
           </p>
           {datos.referencia && <p style={{ color: 'var(--text-muted)' }}>Expediente {datos.referencia}</p>}
           {datos.plazos.length > 0 && (
@@ -596,4 +596,35 @@ function RevisarAplazamiento({
       </div>
     </Modal>
   )
+}
+
+/**
+ * Los nombres de los campos leídos, en castellano.
+ *
+ * `encontrados` trae identificadores del código (`totalPlazos`, `nif`…) y se
+ * estaban enseñando tal cual en pantalla. A quien lee no le dicen nada; peor,
+ * dan la impresión de que la app se ha quedado a medias.
+ */
+const NOMBRES: Record<string, string> = {
+  plazos: 'los plazos',
+  totalPlazos: 'el total a pagar',
+  referencia: 'el expediente',
+  nif: 'el NIF',
+  importeTotal: 'el importe aplazado',
+  tipoInteres: 'el tipo de interés',
+  importe: 'el importe',
+  fechaInicio: 'la fecha de inicio',
+  entidad: 'la entidad',
+  cuotas: 'las cuotas',
+  plazo: 'el plazo',
+  periodicidad: 'la periodicidad',
+  contrato: 'el número de contrato',
+  comisionApertura: 'la comisión de apertura',
+}
+
+function enCastellano(claves: string[]): string {
+  if (claves.length === 0) return 'nada aprovechable'
+  const nombres = [...new Set(claves.map((c) => NOMBRES[c] ?? c))]
+  if (nombres.length === 1) return nombres[0]
+  return `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`
 }
