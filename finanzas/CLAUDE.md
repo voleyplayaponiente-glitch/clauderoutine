@@ -694,6 +694,26 @@ a ocurrir.* Reutiliza el servicio de `servidor/`, con su mismo `SECRETO`.
   · El **secreto del servidor se redacta** en `redactarCredenciales`, como los de los conectores.
     Se QUITA la clave en vez de ponerla a `undefined`: una clave presente con valor indefinido
     desaparece al pasar por JSON y el checksum dejaría de cuadrar.
+- **La configuración del servidor es DEL GRUPO, no de cada empresa** (17/08/2026, clave
+  `finanzas:servidor-copias` en `db.ts`, estado `servidorCopias` del store + acción
+  `actualizarServidorCopias`). Vivía dentro de `Configuracion` y eso tenía dos agujeros que
+  dejaban al usuario sin copias sin decírselo: cada sociedad nueva (o un cambio de empresa)
+  arrancaba con el panel vacío y dejaba de subir, y **restaurar un backup la sobrescribía**.
+  Lo destapó el propio usuario: el panel salía con «Falta la URL del servidor» en BESPAIN
+  cuando lo había configurado días antes en la otra empresa. En `init` hay **migración**: si no
+  existe la clave global, se adopta la primera configuración con URL que aparezca en cualquier
+  empresa. El campo `Configuracion.servidorCopias` se conserva en el tipo solo para esa
+  migración. Verificado en navegador reproduciendo su caso (dos empresas, config en la no
+  activa → la URL aparece rellena tras la mudanza).
+- **Alerta crítica «Sin copia fuera de este navegador»** (`copiasSinServidor` en
+  `MetricasAlerta`, cableada desde el Dashboard): salta si hay CUALQUIER dato y el servidor de
+  copias está apagado o sin URL, y lleva a /copias. Es la alerta que faltaba el día que se
+  perdieron los datos de las tres empresas. Solo con datos: en una app recién instalada sería
+  ruido, y el ruido enseña a ignorar avisos. Con test en `alertas.test.ts` y verificada en
+  navegador (captura con la alerta pintada en el centro de alertas).
+- **«N registros» de los snapshots cuenta OPERACIONES** (ventas, compras, movimientos…), no
+  configuración: recién dadas de alta las empresas, «0 registros» es normal y no significa que
+  el snapshot esté vacío de verdad (empresa, socios y ejercicio anterior sí van dentro).
 - **La recuperación va por el NOMBRE de la empresa, no por su id.** Lo destapó la prueba de
   desastre: tras limpiarse el navegador la app arranca con un id nuevo y las copias están bajo el
   viejo, así que listar por el id local no encontraba nada. El servidor devuelve la razón social y

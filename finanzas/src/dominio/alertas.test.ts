@@ -42,4 +42,18 @@ describe('alertas de la póliza de crédito', () => {
     expect(a[0].nivel).toBe('critico')
     expect(a[0].titulo).toContain('2 pólizas')
   })
+
+  it('avisa EN CRÍTICO de que no hay copia fuera del navegador', () => {
+    // Es la alerta que faltaba el día que se perdieron los datos de tres
+    // empresas: sin copia en un servidor, una limpieza del sitio no tiene
+    // vuelta atrás.
+    const a = generarAlertas({ ...cero, copiasSinServidor: true }, fmt)
+    const copia = a.find((x) => x.id === 'copias-sin-servidor')
+    expect(copia?.nivel).toBe('critico')
+    expect(copia?.ruta).toBe('/copias')
+  })
+
+  it('sin datos que perder no molesta con ese aviso', () => {
+    expect(generarAlertas(cero, fmt).some((x) => x.id === 'copias-sin-servidor')).toBe(false)
+  })
 })

@@ -16,7 +16,18 @@ export function Dashboard() {
   const config = useStore((s) => s.config)
   const datos = useStore((s) => s.datos)
   const hoy = hoyISO()
-  const d = useMemo(() => calcularDashboard(datos, config, hoy), [datos, config, hoy])
+  const servidor = useStore((s) => s.servidorCopias)
+  // Solo se avisa si HAY algo que perder: en una app recién instalada el aviso
+  // sería ruido, y el ruido acaba enseñando a ignorar los avisos.
+  const hayAlgoQuePerder = useMemo(
+    () => Object.values(datos as unknown as Record<string, unknown>).some((v) => Array.isArray(v) && v.length > 0),
+    [datos],
+  )
+  const copiasSinServidor = hayAlgoQuePerder && !(servidor?.activo && servidor.url)
+  const d = useMemo(
+    () => calcularDashboard(datos, config, hoy, { copiasSinServidor }),
+    [datos, config, hoy, copiasSinServidor],
+  )
   const alertas = generarAlertas(d.metricas, (n) => formatearEuro(n))
 
   const hayDatos = datos.ventas.length > 0 || datos.cuentasTesoreria.length > 0 || datos.compras.length > 0 || datos.deudas.length > 0

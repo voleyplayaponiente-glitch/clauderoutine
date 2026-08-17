@@ -27,6 +27,13 @@ export interface MetricasAlerta {
   polizasSobreUmbral: number
   /** Pólizas cuyo consumo MEDIO del año pasa del umbral: la renovación peligra. */
   polizasMediaAlta: number
+  /**
+   * Hay datos, pero la copia en el servidor propio está apagada o sin
+   * configurar. Es la alerta que faltaba el día que se perdieron los datos de
+   * tres empresas: entonces no había ningún aviso de que no existía copia
+   * fuera del navegador.
+   */
+  copiasSinServidor?: boolean
 }
 
 const ORDEN: Record<NivelAlerta, number> = { critico: 0, aviso: 1, info: 2 }
@@ -68,6 +75,17 @@ export function generarAlertas(m: MetricasAlerta, fmt: (n: number) => string): A
       titulo: `${plural(m.polizasMediaAlta, 'póliza con saldo medio alto', 'pólizas con saldo medio alto')}`,
       detalle: 'El consumo medio del año compromete la renovación',
       ruta: '/deudas',
+    })
+  }
+  if (m.copiasSinServidor) {
+    // Crítica a propósito: sin copia fuera del navegador, una limpieza del
+    // sitio se lleva los datos y no hay de dónde sacarlos. Ya pasó una vez.
+    alertas.push({
+      id: 'copias-sin-servidor',
+      nivel: 'critico',
+      titulo: 'Sin copia fuera de este navegador',
+      detalle: 'Hay datos y el servidor de copias está apagado o sin configurar',
+      ruta: '/copias',
     })
   }
   if (m.stockBajo > 0) {
