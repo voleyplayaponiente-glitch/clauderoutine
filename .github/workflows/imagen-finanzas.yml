@@ -60,7 +60,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # El servicio de copias cambia muy de tarde en tarde. Publicar SIEMPRE las
+      # dos imágenes seguidas disparó el límite secundario de GitHub («You have
+      # exceeded a secondary rate limit») y tumbó la publicación de un arreglo
+      # que sí estaba bien: solo se reconstruye cuando ha cambiado de verdad.
+      - name: ¿Ha cambiado el servicio de copias?
+        id: api
+        run: |
+          if [ "${{ github.event_name }}" != "push" ]; then
+            echo "cambia=si" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only ${{ github.event.before }} ${{ github.sha }} 2>/dev/null | grep -q '^finanzas/servidor/'; then
+            echo "cambia=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "cambia=no" >> "$GITHUB_OUTPUT"
+            echo "Sin cambios en finanzas/servidor: se conserva la imagen publicada."
+          fi
+
       - name: Servicio de copias (Node)
+        if: steps.api.outputs.cambia == 'si'
         uses: docker/build-push-action@v6
         with:
           context: finanzas/servidor
