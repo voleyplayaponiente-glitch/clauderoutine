@@ -604,6 +604,26 @@ Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en De
   pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
   bueno es el del extracto, no lo que haya metido en Compras.
 
+## Sesión del 17/08/2026 — cerrado y VERIFICADO POR EL USUARIO con datos reales
+1. **Modelo 200** (ver su sección): el usuario lo subió y confirmó «subir año anterior también
+   [va bien]». Ya hay dos empresas con datos: BESPAIN 7777 SLU y BTC EMBASSY SPAIN HOLDING.
+2. **El servidor de copias es ahora ÚNICO para el grupo** (`finanzas:servidor-copias` en
+   `db.ts`, estado `servidorCopias` + `actualizarServidorCopias` en el store). Antes vivía en
+   la `Configuracion` de CADA empresa: el usuario lo destapó al ver «Falta la URL del servidor»
+   con la segunda empresa activa. Dos agujeros tapados: cada sociedad nueva arrancaba sin
+   copias, y restaurar un backup pisaba la configuración. Migración automática en `init`
+   (adopta la primera configurada). El usuario confirmó: «veo bien las copias».
+3. **Alerta crítica `copias-sin-servidor`** en el Dashboard: hay datos y no hay servidor de
+   copias activo → aviso rojo con ruta a /copias. Solo con datos (sin datos sería ruido).
+   Es la alerta que faltó el día de la pérdida. Tests en `alertas.test.ts` (599 en verde).
+4. **Cómo se entrega una actualización al Umbrel (NO OLVIDARLO)**: además de publicar en la
+   rama de despliegue (que reconstruye las imágenes `:latest`), hay que **subir `version` en
+   `bespain-umbrel-store/bespain-gestor-finanzas/umbrel-app.yml`** con sus `releaseNotes` —
+   sin ese bump, a Umbrel no le «sale nada» que actualizar. Publicada la **1.1.0**.
+   El repo de la tienda se clona en `/workspace/bespain-umbrel-store` (rama `main`).
+5. Los «0 registros» de los snapshots cuentan OPERACIONES (ventas/compras/movimientos);
+   config, socios y ejercicio anterior van dentro aunque el contador diga 0. No es un fallo.
+
 ## POR DÓNDE SEGUIR (cierre del 12/08/2026)
 **El usuario lo dijo al despedirse: «guarda todo en memoria mañana continuo».**
 
