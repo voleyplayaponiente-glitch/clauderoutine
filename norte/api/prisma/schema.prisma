@@ -1,0 +1,962 @@
+// Esquema de Norte.
+//
+// Tres reglas que se repiten en todas las tablas y que conviene leer una vez:
+//
+//  1. **El dinero es `BigInt` en céntimos.** Nunca `Float`, nunca `Decimal` para
+//     importes. Los tipos de interés y las participaciones sí son `Decimal`,
+//     porque ahí lo que se necesita es precisión fraccionaria, no exactitud al
+//     céntimo.
+//  2. **Todo lo que es de un espacio lleva `espacioId`.** Es lo que permite que
+//     el guardián de `acceso.ts` filtre por una sola columna y que una consulta
+//     olvidadiza no se lleve datos de otro. Nada cuelga solo del usuario.
+//  3. **Nada se borra: `borradoEn`.** Papelera de 30 días, como promete el
+//     apartado 7 del encargo.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────── Núcleo: usuarios y espacios
+
+model Usuario {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  hashContrasena String
+  nombre         String
+  divisaBase     String    @default("EUR")
+  zonaHoraria    String    @default("Europe/Madrid")
+  // Secreto TOTP cifrado. Nulo mientras el usuario no active el segundo factor.
+  totpSecreto    String?
+  totpActivo     Boolean   @default(false)
+  preferencias   Json      @default("{}")
+  creadoEn       DateTime  @default(now())
+  actualizadoEn  DateTime  @updatedAt
+  borradoEn      DateTime?
+
+  membresias         MiembroEspacio[]
+  sesiones           Sesion[]
+  actividad          RegistroActividad[]
+  invitacionesHechas Invitacion[]        @relation("invitadoPor")
+  cuentas            Cuenta[]
+  documentos         Documento[]
+
+  @@index([borradoEn])
+  @@map("usuarios")
+}
+
+model Sesion {
+  id        String   @id @default(cuid())
+  usuarioId String
+  // Se guarda el SHA-256 del testigo, no el testigo. Quien lea la base de datos
+  // no puede suplantar a nadie con lo que hay dentro.
+  hashToken String   @unique
+  creadaEn  DateTime @default(now())
+  expiraEn  DateTime
+  ultimoUso DateTime @default(now())
+  agente    String?
+  ip        String?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiraEn])
+  @@map("sesiones")
+}
+
+enum TipoEspacio {
+  personal
+  pareja
+  negocio
+}
+
+enum Rol {
+  propietario
+  editor
+  lector
+}
+
+model Espacio {
+  id            String      @id @default(cuid())
+  nombre        String
+  tipo          TipoEspacio
+  divisaBase    String      @default("EUR")
+  creadoEn      DateTime    @default(now())
+  actualizadoEn DateTime    @updatedAt
+  borradoEn     DateTime?
+
+  miembros             MiembroEspacio[]
+  invitaciones         Invitacion[]
+  actividad            RegistroActividad[]
+  cuentas              Cuenta[]
+  categorias           Categoria[]
+  movimientos          Movimiento[]
+  reglasRecurrentes    ReglaRecurrente[]
+  reglasCategorizacion ReglaCategorizacion[]
+  documentos           Documento[]
+  fuentesIngreso       FuenteIngreso[]
+  presupuestos         Presupuesto[]
+  periodos             PeriodoPresupuesto[]
+  deudas               Deuda[]
+  tarjetas             Tarjeta[]
+  cuentasInversion     CuentaInversion[]
+  objetivos            ObjetivoAsignacion[]
+  repartos             Reparto[]
+  liquidaciones        Liquidacion[]
+  movimientosCapital   MovimientoCapital[]
+  fotosPatrimonio      FotoPatrimonio[]
+
+  @@index([borradoEn])
+  @@map("espacios")
+}
+
+model MiembroEspacio {
+  id            String    @id @default(cuid())
+  espacioId     String
+  usuarioId     String
+  rol           Rol       @default(editor)
+  // Porcentaje de participación: solo tiene sentido en espacios de negocio,
+  // donde manda el reparto de beneficios.
+  participacion Decimal   @default(0) @db.Decimal(7, 4)
+  altaEn        DateTime  @default(now())
+  bajaEn        DateTime?
+
+  espacio Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([espacioId, usuarioId])
+  @@index([usuarioId])
+  @@map("miembros_espacio")
+}
+
+model Invitacion {
+  id            String    @id @default(cuid())
+  espacioId     String
+  email         String
+  rol           Rol       @default(editor)
+  hashToken     String    @unique
+  invitadaPorId String
+  creadaEn      DateTime  @default(now())
+  expiraEn      DateTime
+  aceptadaEn    DateTime?
+  revocadaEn    DateTime?
+
+  espacio     Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  invitadaPor Usuario @relation("invitadoPor", fields: [invitadaPorId], references: [id])
+
+  @@index([espacioId])
+  @@map("invitaciones")
+}
+
+model RegistroActividad {
+  id        String   @id @default(cuid())
+  espacioId String
+  usuarioId String?
+  accion    String
+  entidad   String
+  entidadId String?
+  detalle   Json     @default("{}")
+  creadoEn  DateTime @default(now())
+
+  espacio Espacio  @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([espacioId, creadoEn])
+  @@map("registro_actividad")
+}
+
+// ─────────────────────────────────────────── Cuentas y movimientos
+
+enum TipoCuenta {
+  corriente
+  ahorro
+  efectivo
+  tarjeta_credito
+  inversion
+  prestamo
+  activo_no_liquido
+}
+
+model Cuenta {
+  id                String     @id @default(cuid())
+  espacioId         String
+  // Quién la creó. Manda para la privacidad: una cuenta con
+  // `visibleEnEspacio = false` solo la ve su dueño, aunque el otro sea
+  // propietario del espacio.
+  propietarioId     String
+  nombre            String
+  tipo              TipoCuenta
+  divisa            String     @default("EUR")
+  saldoInicial      BigInt     @default(0)
+  // Nunca el IBAN ni el número completos: alias y cuatro últimos dígitos.
+  ultimos4          String?
+  entidad           String?
+  computaPatrimonio Boolean    @default(true)
+  visibleEnEspacio  Boolean    @default(true)
+  archivadaEn       DateTime?
+  creadaEn          DateTime   @default(now())
+  actualizadaEn     DateTime   @updatedAt
+  borradaEn         DateTime?
+
+  espacio     Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  propietario Usuario @relation(fields: [propietarioId], references: [id])
+
+  movimientos     Movimiento[]
+  reglas          ReglaRecurrente[]
+  tarjeta         Tarjeta?
+  deuda           Deuda?
+  cuentaInversion CuentaInversion?
+
+  @@index([espacioId, borradaEn])
+  @@map("cuentas")
+}
+
+enum FlujoCategoria {
+  gasto
+  ingreso
+}
+
+enum TipoCategoria {
+  fijo
+  variable
+  discrecional
+}
+
+model Categoria {
+  id        String         @id @default(cuid())
+  espacioId String
+  padreId   String?
+  nombre    String
+  flujo     FlujoCategoria @default(gasto)
+  tipo      TipoCategoria  @default(variable)
+  esencial  Boolean        @default(false)
+  icono     String?
+  orden     Int            @default(0)
+  creadaEn  DateTime       @default(now())
+  borradaEn DateTime?
+
+  espacio Espacio     @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  padre   Categoria?  @relation("jerarquia", fields: [padreId], references: [id], onDelete: Cascade)
+  hijas   Categoria[] @relation("jerarquia")
+
+  movimientos Movimiento[]
+  reglas      ReglaRecurrente[]
+  reglasAuto  ReglaCategorizacion[]
+  lineas      LineaPresupuesto[]
+
+  @@index([espacioId, borradaEn])
+  @@index([padreId])
+  @@map("categorias")
+}
+
+enum EstadoMovimiento {
+  previsto
+  confirmado
+}
+
+model Movimiento {
+  id            String           @id @default(cuid())
+  espacioId     String
+  cuentaId      String
+  categoriaId   String?
+  // Céntimos. Negativo = sale dinero. El signo es el único criterio; no hay
+  // una columna «tipo» que pueda contradecirlo.
+  importe       BigInt
+  divisa        String           @default("EUR")
+  tipoCambio    Decimal          @default(1) @db.Decimal(18, 8)
+  importeBase   BigInt
+  fecha         DateTime         @db.Date
+  concepto      String
+  comercio      String?
+  notas         String?
+  etiquetas     String[]         @default([])
+  estado        EstadoMovimiento @default(confirmado)
+  esCompartido  Boolean          @default(false)
+  repartoId     String?
+  documentoId   String?
+  reglaId       String?
+  // Huella del apunte en su origen (extracto, API del banco). Es lo que impide
+  // que importar dos veces el mismo extracto duplique medio mes.
+  idExterno     String?
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
+  borradoEn     DateTime?
+
+  espacio   Espacio          @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  cuenta    Cuenta           @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  categoria Categoria?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  reparto   Reparto?         @relation(fields: [repartoId], references: [id], onDelete: SetNull)
+  documento Documento?       @relation(fields: [documentoId], references: [id], onDelete: SetNull)
+  regla     ReglaRecurrente? @relation(fields: [reglaId], references: [id], onDelete: SetNull)
+
+  @@unique([cuentaId, idExterno])
+  @@index([espacioId, fecha])
+  @@index([espacioId, categoriaId])
+  @@index([cuentaId, fecha])
+  @@map("movimientos")
+}
+
+enum Periodicidad {
+  semanal
+  quincenal
+  mensual
+  bimestral
+  trimestral
+  semestral
+  anual
+}
+
+model ReglaRecurrente {
+  id             String       @id @default(cuid())
+  espacioId      String
+  cuentaId       String
+  categoriaId    String?
+  concepto       String
+  importe        BigInt
+  periodicidad   Periodicidad @default(mensual)
+  diaDelMes      Int?
+  // Muchos recibos y nóminas caen el último día hábil, que no es un número fijo.
+  ultimoDiaHabil Boolean      @default(false)
+  desde          DateTime     @db.Date
+  hasta          DateTime?    @db.Date
+  activa         Boolean      @default(true)
+  creadaEn       DateTime     @default(now())
+  borradaEn      DateTime?
+
+  espacio     Espacio      @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  cuenta      Cuenta       @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  categoria   Categoria?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  movimientos Movimiento[]
+
+  @@index([espacioId, activa])
+  @@map("reglas_recurrentes")
+}
+
+model ReglaCategorizacion {
+  id          String   @id @default(cuid())
+  espacioId   String
+  patron      String
+  categoriaId String
+  // Cuántas veces ha acertado. Sirve para ordenar y para desconfiar de las que
+  // el usuario corrige a menudo.
+  aciertos    Int      @default(0)
+  automatica  Boolean  @default(true)
+  creadaEn    DateTime @default(now())
+
+  espacio   Espacio   @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  categoria Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@index([espacioId])
+  @@map("reglas_categorizacion")
+}
+
+// ─────────────────────────────────────────── Documentos subidos
+
+enum TipoDocumento {
+  extracto_banco
+  nomina
+  recibo
+  factura
+  cuadro_prestamo
+  informe_broker
+  desconocido
+}
+
+enum EstadoDocumento {
+  subido
+  procesando
+  revision
+  aplicado
+  fallido
+}
+
+model Documento {
+  id             String          @id @default(cuid())
+  espacioId      String
+  subidoPorId    String
+  nombreOriginal String
+  rutaAlmacen    String
+  mimeType       String
+  tamanoBytes    Int
+  // SHA-256 del contenido: subir dos veces el mismo extracto se detecta antes
+  // de leerlo siquiera.
+  hash           String
+  tipo           TipoDocumento   @default(desconocido)
+  estado         EstadoDocumento @default(subido)
+  // Por qué se cree que es de este tipo. Se enseña al usuario: mandarle a la
+  // pantalla equivocada sin explicación es peor que no reconocerlo.
+  motivoTipo     String?
+  error          String?
+  creadoEn       DateTime        @default(now())
+  procesadoEn    DateTime?
+  borradoEn      DateTime?
+
+  espacio      Espacio      @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  subidoPor    Usuario      @relation(fields: [subidoPorId], references: [id])
+  extracciones Extraccion[]
+  movimientos  Movimiento[]
+  nominas      Nomina[]
+
+  @@unique([espacioId, hash])
+  @@index([espacioId, estado])
+  @@map("documentos")
+}
+
+model Extraccion {
+  id          String   @id @default(cuid())
+  documentoId String
+  campo       String
+  valor       String
+  // 0..1. Por debajo del umbral se pide confirmación en vez de aplicarlo.
+  confianza   Decimal  @default(0) @db.Decimal(4, 3)
+  pagina      Int?
+  creadaEn    DateTime @default(now())
+
+  documento Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@index([documentoId])
+  @@map("extracciones")
+}
+
+// ─────────────────────────────────────────── Ingresos
+
+enum NaturalezaIngreso {
+  nomina
+  autonomo
+  alquiler
+  dividendos
+  intereses
+  negocio
+  otros
+}
+
+enum Variabilidad {
+  fija
+  variable
+}
+
+model FuenteIngreso {
+  id           String            @id @default(cuid())
+  espacioId    String
+  nombre       String
+  naturaleza   NaturalezaIngreso @default(nomina)
+  bruto        BigInt            @default(0)
+  retencion    Decimal           @default(0) @db.Decimal(5, 2)
+  neto         BigInt            @default(0)
+  periodicidad Periodicidad      @default(mensual)
+  // Con 14 pagas, dos meses del año no son como los otros diez.
+  pagasAnuales Int               @default(12)
+  variabilidad Variabilidad      @default(fija)
+  creadaEn     DateTime          @default(now())
+  borradaEn    DateTime?
+
+  espacio   Espacio            @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  historico HistoricoIngreso[]
+  nominas   Nomina[]
+
+  @@index([espacioId, borradaEn])
+  @@map("fuentes_ingreso")
+}
+
+model HistoricoIngreso {
+  id       String   @id @default(cuid())
+  fuenteId String
+  // Primer día del mes al que corresponde.
+  mes      DateTime @db.Date
+  neto     BigInt
+
+  fuente FuenteIngreso @relation(fields: [fuenteId], references: [id], onDelete: Cascade)
+
+  @@unique([fuenteId, mes])
+  @@map("historico_ingresos")
+}
+
+/// El desglose de una nómina leída de su PDF. Se guarda entero porque la
+/// diferencia entre bruto y neto es la mitad de la conversación cuando alguien
+/// mira su presupuesto por primera vez.
+model Nomina {
+  id               String   @id @default(cuid())
+  fuenteId         String
+  documentoId      String?
+  mes              DateTime @db.Date
+  bruto            BigInt
+  cotizaciones     BigInt   @default(0)
+  irpf             BigInt   @default(0)
+  otrasDeducciones BigInt   @default(0)
+  neto             BigInt
+  // Las pagas extra y los atrasos descolocan la media si se cuelan como un mes
+  // normal, así que van marcados aparte.
+  esPagaExtra      Boolean  @default(false)
+  atrasos          BigInt   @default(0)
+  empresa          String?
+  creadaEn         DateTime @default(now())
+
+  fuente    FuenteIngreso @relation(fields: [fuenteId], references: [id], onDelete: Cascade)
+  documento Documento?    @relation(fields: [documentoId], references: [id], onDelete: SetNull)
+
+  @@unique([fuenteId, mes, esPagaExtra])
+  @@map("nominas")
+}
+
+// ─────────────────────────────────────────── Presupuesto
+
+enum MetodoPresupuesto {
+  base_cero
+  cincuenta_treinta_veinte
+  sobres
+}
+
+model Presupuesto {
+  id            String            @id @default(cuid())
+  espacioId     String
+  // Primer día del mes presupuestado.
+  mes           DateTime          @db.Date
+  metodo        MetodoPresupuesto @default(sobres)
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+
+  espacio Espacio            @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  lineas  LineaPresupuesto[]
+
+  @@unique([espacioId, mes])
+  @@map("presupuestos")
+}
+
+model LineaPresupuesto {
+  id            String  @id @default(cuid())
+  presupuestoId String
+  categoriaId   String
+  asignado      BigInt  @default(0)
+  // Lo que sobró el mes pasado y se arrastra a este, si la categoría lo tiene
+  // activado. Se guarda calculado para que el cierre de mes sea una foto y no
+  // dependa de recalcular la historia entera.
+  arrastrado    BigInt  @default(0)
+  rollover      Boolean @default(false)
+
+  presupuesto Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  categoria   Categoria   @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([presupuestoId, categoriaId])
+  @@map("lineas_presupuesto")
+}
+
+/// Cierre mensual: la foto de lo previsto contra lo real. Inmutable una vez
+/// cerrado el mes; si algo cambia después, se ve en la diferencia.
+model PeriodoPresupuesto {
+  id             String    @id @default(cuid())
+  espacioId      String
+  mes            DateTime  @db.Date
+  ingresosReales BigInt    @default(0)
+  gastosReales   BigInt    @default(0)
+  ahorroReal     BigInt    @default(0)
+  previstoTotal  BigInt    @default(0)
+  cerradoEn      DateTime?
+  resumen        Json      @default("{}")
+
+  espacio Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+
+  @@unique([espacioId, mes])
+  @@map("periodos_presupuesto")
+}
+
+// ─────────────────────────────────────────── Deudas
+
+enum TipoDeuda {
+  hipoteca
+  prestamo_personal
+  auto
+  estudios
+  familiar
+  tarjeta_revolving
+}
+
+enum SistemaAmortizacion {
+  frances
+  aleman
+  americano
+}
+
+model Deuda {
+  id                   String              @id @default(cuid())
+  espacioId            String
+  cuentaId             String?             @unique
+  nombre               String
+  tipo                 TipoDeuda
+  entidad              String?
+  principalOriginal    BigInt
+  saldoPendiente       BigInt
+  // Tipo de interés nominal anual, en tanto por ciento (3,90 = 3,90 %).
+  tin                  Decimal             @db.Decimal(7, 4)
+  tae                  Decimal?            @db.Decimal(7, 4)
+  plazoMeses           Int
+  cuota                BigInt
+  sistema              SistemaAmortizacion @default(frances)
+  fechaPrimerPago      DateTime            @db.Date
+  diaDePago            Int                 @default(1)
+  tipoVariable         Boolean             @default(false)
+  // Diferencial sobre el Euríbor, en puntos porcentuales.
+  diferencial          Decimal?            @db.Decimal(7, 4)
+  revisionMeses        Int?
+  comisionAmortizacion Decimal             @default(0) @db.Decimal(5, 3)
+  creadaEn             DateTime            @default(now())
+  liquidadaEn          DateTime?
+  borradaEn            DateTime?
+
+  espacio Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  cuenta  Cuenta? @relation(fields: [cuentaId], references: [id], onDelete: SetNull)
+
+  cuadro         CuotaAmortizacion[]
+  amortizaciones AmortizacionExtra[]
+
+  @@index([espacioId, borradaEn])
+  @@map("deudas")
+}
+
+model CuotaAmortizacion {
+  id        String    @id @default(cuid())
+  deudaId   String
+  numero    Int
+  fecha     DateTime  @db.Date
+  cuota     BigInt
+  interes   BigInt
+  capital   BigInt
+  saldoVivo BigInt
+  pagadaEn  DateTime?
+
+  deuda Deuda @relation(fields: [deudaId], references: [id], onDelete: Cascade)
+
+  @@unique([deudaId, numero])
+  @@map("cuadro_amortizacion")
+}
+
+model AmortizacionExtra {
+  id              String   @id @default(cuid())
+  deudaId         String
+  fecha           DateTime @db.Date
+  importe         BigInt
+  // Reducir cuota o reducir plazo. La app dice cuánto interés ahorra cada una
+  // antes de que el usuario elija; no es una preferencia estética.
+  reducePlazo     Boolean  @default(true)
+  comision        BigInt   @default(0)
+  interesAhorrado BigInt   @default(0)
+  creadaEn        DateTime @default(now())
+
+  deuda Deuda @relation(fields: [deudaId], references: [id], onDelete: Cascade)
+
+  @@index([deudaId])
+  @@map("amortizaciones_extra")
+}
+
+// ─────────────────────────────────────────── Tarjetas de crédito
+
+enum ModalidadTarjeta {
+  pago_total
+  aplazado
+}
+
+/// Una tarjeta de crédito NO es una cuenta corriente con signo negativo: tiene
+/// ciclo, fecha de corte y fecha de pago, y entre una y otra hay financiación
+/// gratis que conviene ver. Por eso es su propia tabla.
+model Tarjeta {
+  id               String           @id @default(cuid())
+  espacioId        String
+  cuentaId         String           @unique
+  nombre           String
+  ultimos4         String?
+  limite           BigInt
+  diaCorte         Int
+  diaPago          Int
+  modalidad        ModalidadTarjeta @default(pago_total)
+  tin              Decimal?         @db.Decimal(7, 4)
+  minimoPorcentaje Decimal          @default(0) @db.Decimal(5, 2)
+  minimoSuelo      BigInt           @default(0)
+  creadaEn         DateTime         @default(now())
+  borradaEn        DateTime?
+
+  espacio Espacio        @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  cuenta  Cuenta         @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  ciclos  CicloTarjeta[]
+
+  @@index([espacioId, borradaEn])
+  @@map("tarjetas")
+}
+
+model CicloTarjeta {
+  id              String   @id @default(cuid())
+  tarjetaId       String
+  desde           DateTime @db.Date
+  hasta           DateTime @db.Date
+  fechaPago       DateTime @db.Date
+  consumido       BigInt   @default(0)
+  pagado          BigInt   @default(0)
+  interesAplicado BigInt   @default(0)
+  cerrado         Boolean  @default(false)
+
+  tarjeta Tarjeta @relation(fields: [tarjetaId], references: [id], onDelete: Cascade)
+
+  @@unique([tarjetaId, desde])
+  @@map("ciclos_tarjeta")
+}
+
+// ─────────────────────────────────────────── Inversiones
+
+enum ClaseActivo {
+  renta_variable
+  renta_fija
+  monetario
+  inmobiliario
+  materias_primas
+  cripto
+  otros
+}
+
+enum TipoCuentaInversion {
+  broker
+  plan_pensiones
+  fondo
+  cripto
+  inmobiliario
+}
+
+model CuentaInversion {
+  id        String              @id @default(cuid())
+  espacioId String
+  cuentaId  String?             @unique
+  nombre    String
+  broker    String?
+  tipo      TipoCuentaInversion @default(broker)
+  divisa    String              @default("EUR")
+  creadaEn  DateTime            @default(now())
+  borradaEn DateTime?
+
+  espacio    Espacio    @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  cuenta     Cuenta?    @relation(fields: [cuentaId], references: [id], onDelete: SetNull)
+  posiciones Posicion[]
+
+  @@index([espacioId, borradaEn])
+  @@map("cuentas_inversion")
+}
+
+model Posicion {
+  id                String      @id @default(cuid())
+  cuentaInversionId String
+  nombre            String
+  isin              String?
+  ticker            String?
+  clase             ClaseActivo @default(renta_variable)
+  region            String?
+  divisa            String      @default("EUR")
+  participaciones   Decimal     @default(0) @db.Decimal(24, 8)
+  costeMedio        BigInt      @default(0)
+  ultimoPrecio      BigInt?
+  // Sin fecha, un precio no dice nada. Si no hay API, se ve cuándo se valoró.
+  fechaValoracion   DateTime?
+  creadaEn          DateTime    @default(now())
+  borradaEn         DateTime?
+
+  cuentaInversion CuentaInversion       @relation(fields: [cuentaInversionId], references: [id], onDelete: Cascade)
+  movimientos     MovimientoInversion[]
+
+  @@index([cuentaInversionId, borradaEn])
+  @@map("posiciones")
+}
+
+enum TipoMovimientoInversion {
+  compra
+  venta
+  aportacion
+  retirada
+  dividendo
+  comision
+  split
+}
+
+model MovimientoInversion {
+  id              String                  @id @default(cuid())
+  posicionId      String
+  tipo            TipoMovimientoInversion
+  // La fecha es obligatoria y no es un adorno: de aquí sale la TIR.
+  fecha           DateTime                @db.Date
+  participaciones Decimal                 @default(0) @db.Decimal(24, 8)
+  importe         BigInt
+  comision        BigInt                  @default(0)
+  divisa          String                  @default("EUR")
+  tipoCambio      Decimal                 @default(1) @db.Decimal(18, 8)
+  notas           String?
+  creadoEn        DateTime                @default(now())
+
+  posicion Posicion @relation(fields: [posicionId], references: [id], onDelete: Cascade)
+
+  @@index([posicionId, fecha])
+  @@map("movimientos_inversion")
+}
+
+model ObjetivoAsignacion {
+  id        String      @id @default(cuid())
+  espacioId String
+  clase     ClaseActivo
+  objetivo  Decimal     @db.Decimal(5, 2)
+  // Puntos porcentuales de desvío que se toleran antes de avisar.
+  umbral    Decimal     @default(5) @db.Decimal(5, 2)
+
+  espacio Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+
+  @@unique([espacioId, clase])
+  @@map("objetivos_asignacion")
+}
+
+// ─────────────────────────────────────────── Espacios compartidos
+
+enum TipoReparto {
+  mitades
+  proporcional_ingresos
+  porcentaje_manual
+  importe_fijo
+}
+
+model Reparto {
+  id        String      @id @default(cuid())
+  espacioId String
+  nombre    String
+  tipo      TipoReparto @default(proporcional_ingresos)
+  creadoEn  DateTime    @default(now())
+  borradoEn DateTime?
+
+  espacio     Espacio        @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  partes      ParteReparto[]
+  movimientos Movimiento[]
+
+  @@index([espacioId])
+  @@map("repartos")
+}
+
+model ParteReparto {
+  id          String  @id @default(cuid())
+  repartoId   String
+  usuarioId   String
+  // Se usa según el tipo: porcentaje en `porcentaje_manual`, céntimos en
+  // `importe_fijo`, y se ignora en los otros dos (se calcula).
+  porcentaje  Decimal @default(0) @db.Decimal(7, 4)
+  importeFijo BigInt  @default(0)
+
+  reparto Reparto @relation(fields: [repartoId], references: [id], onDelete: Cascade)
+
+  @@unique([repartoId, usuarioId])
+  @@map("partes_reparto")
+}
+
+enum EstadoLiquidacion {
+  pendiente
+  saldada
+}
+
+model Liquidacion {
+  id        String            @id @default(cuid())
+  espacioId String
+  desde     DateTime          @db.Date
+  hasta     DateTime          @db.Date
+  estado    EstadoLiquidacion @default(pendiente)
+  creadaEn  DateTime          @default(now())
+  saldadaEn DateTime?
+
+  espacio Espacio           @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  pagos   PagoLiquidacion[]
+
+  @@index([espacioId, estado])
+  @@map("liquidaciones")
+}
+
+/// Una transferencia concreta de A a B. El algoritmo de liquidación minimiza
+/// cuántas filas de estas hacen falta: nadie quiere hacer seis bizums.
+model PagoLiquidacion {
+  id            String    @id @default(cuid())
+  liquidacionId String
+  deUsuarioId   String
+  aUsuarioId    String
+  importe       BigInt
+  pagadoEn      DateTime?
+
+  liquidacion Liquidacion @relation(fields: [liquidacionId], references: [id], onDelete: Cascade)
+
+  @@index([liquidacionId])
+  @@map("pagos_liquidacion")
+}
+
+enum TipoMovimientoCapital {
+  aportacion
+  retirada
+  reparto_beneficios
+}
+
+model MovimientoCapital {
+  id        String                @id @default(cuid())
+  espacioId String
+  usuarioId String
+  tipo      TipoMovimientoCapital
+  importe   BigInt
+  fecha     DateTime              @db.Date
+  notas     String?
+  creadoEn  DateTime              @default(now())
+
+  espacio Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+
+  @@index([espacioId, fecha])
+  @@map("movimientos_capital")
+}
+
+// ─────────────────────────────────────────── Patrimonio
+
+/// La foto mensual que alimenta el gráfico firma de la aplicación. Se guarda
+/// calculada, no se recalcula al vuelo: el histórico de patrimonio tiene que
+/// ser estable aunque después se corrija un movimiento de hace dos años.
+model FotoPatrimonio {
+  id             String   @id @default(cuid())
+  espacioId      String
+  mes            DateTime @db.Date
+  activos        BigInt
+  pasivos        BigInt
+  patrimonioNeto BigInt
+  desglose       Json     @default("{}")
+  creadaEn       DateTime @default(now())
+
+  espacio Espacio @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+
+  @@unique([espacioId, mes])
+  @@map("fotos_patrimonio")
+}
+
+// ─────────────────────────────────────────── Venta a terceros
+
+enum PlanLicencia {
+  prueba
+  personal
+  pareja
+  negocio
+}
+
+enum EstadoLicencia {
+  activa
+  caducada
+  revocada
+}
+
+/// Licencia de uso de esta instalación. Sin licencia válida la app entra en
+/// **solo lectura**: nunca borra ni secuestra los datos de nadie.
+model Licencia {
+  id          String         @id @default(cuid())
+  clave       String         @unique
+  plan        PlanLicencia   @default(prueba)
+  estado      EstadoLicencia @default(activa)
+  titular     String?
+  email       String?
+  emitidaEn   DateTime       @default(now())
+  caducaEn    DateTime?
+  maxUsuarios Int            @default(2)
+  notas       String?
+
+  @@map("licencias")
+}

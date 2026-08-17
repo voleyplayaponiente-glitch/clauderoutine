@@ -1,0 +1,34 @@
+{
+  "name": "@norte/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Servidor de Norte: Fastify + Prisma + PostgreSQL.",
+  "scripts": {
+    "prebuild": "npm run build -w @norte/dominio --prefix ..",
+    "build": "prisma generate && tsc -b",
+    "dev": "prisma generate && node --env-file-if-exists=.env --import tsx --watch src/principal.ts",
+    "arrancar": "node dist/principal.js",
+    "migrar": "prisma migrate dev",
+    "migrar:desplegar": "prisma migrate deploy",
+    "semilla": "node --env-file-if-exists=.env --import tsx src/semilla.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/rate-limit": "^10.2.2",
+    "@node-rs/argon2": "^2.0.2",
+    "@norte/dominio": "*",
+    "@prisma/client": "^6.2.1",
+    "fastify": "^5.2.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

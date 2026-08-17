@@ -1,0 +1,46 @@
+# Imagen del servidor: Node + Fastify + Prisma.
+#
+# `node:22-slim` y no `alpine` a propósito: Argon2 y los motores de Prisma
+# traen binarios precompilados para glibc, y en musl acaban compilándose (o
+# fallando) en cada build.
+FROM node:22-slim AS build
+WORKDIR /repo
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY dominio/package.json dominio/
+COPY api/package.json api/
+COPY app/package.json app/
+RUN npm ci --ignore-scripts
+
+COPY dominio dominio
+COPY api api
+RUN npm run build -w @norte/dominio \
+  && npm --prefix api exec prisma generate \
+  && npm --prefix api exec tsc -b
+
+FROM node:22-slim
+WORKDIR /repo
+ENV NODE_ENV=production
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /repo/node_modules node_modules
+COPY --from=build /repo/package.json ./
+COPY --from=build /repo/dominio/package.json dominio/package.json
+COPY --from=build /repo/dominio/dist dominio/dist
+COPY --from=build /repo/api/package.json api/package.json
+COPY --from=build /repo/api/dist api/dist
+COPY --from=build /repo/api/prisma api/prisma
+
+WORKDIR /repo/api
+EXPOSE 3012
+
+# Las migraciones se aplican al arrancar. Es lo que hace que actualizar la app
+# en el Umbrel sea pulsar un botón y no acordarse de un comando: una versión
+# nueva con una tabla nueva se pone al día sola, y si la migración falla el
+# contenedor no arranca en vez de servir con un esquema a medias.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/principal.js"]
