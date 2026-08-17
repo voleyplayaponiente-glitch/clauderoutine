@@ -27,7 +27,9 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
+      // `mjs` incluido a propósito: el worker de pdf.js se sirve con esa
+      // extensión y sin él la lectura de PDF no funcionaba sin conexión.
+      workbox: { globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2}'] },
     }),
   ],
   resolve: {
