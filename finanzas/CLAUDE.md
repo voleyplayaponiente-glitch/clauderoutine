@@ -604,6 +604,25 @@ Dicho por el usuario: *es deuda financiera a corto plazo.* Sección propia en De
   pagadas con ella ese mes y avisa si no cuadra con el saldo. **No lo cambia sola**: el saldo
   bueno es el del extracto, no lo que haya metido en Compras.
 
+## ENTREGAR NO ES EMPUJAR: comprobar que la imagen se PUBLICÓ
+Error de proceso que costó dos vueltas al usuario: se hizo el arreglo de los `.mjs`, se subió a
+la rama de publicación y se le dijo «actualiza». **La compilación de la imagen había fallado**
+(`You have exceeded a secondary rate limit` de GitHub al subir la segunda imagen), así que el
+Umbrel seguía sirviendo la versión vieja y él veía el mismo error. El código estaba bien; lo
+que faltaba era mirar.
+- **Después de cada push a la rama de publicación, comprobar el workflow** antes de anunciar
+  nada: `actions_list` → `list_workflow_runs` de `imagen-finanzas.yml` y verificar
+  `conclusion: success` del commit publicado.
+- Causa raíz atacada: publicar **dos** imágenes seguidas en cada despliegue disparaba el límite
+  secundario. `gestor-finanzas-api` solo se reconstruye ahora si cambia `finanzas/servidor/`.
+- **Parche en caliente**, si urge y la imagen no está publicada (verificado con nginx local:
+  **se SUMA** a la tabla de tipos, no la sustituye; css, png y html siguen bien):
+  ```
+  C=$(sudo docker ps --format '{{.Names}}' | grep gestor-finanzas | grep web)
+  sudo docker exec "$C" sh -c 'printf "types { text/javascript mjs; application/manifest+json webmanifest; }\n" > /etc/nginx/conf.d/zz-mjs.conf && nginx -t && nginx -s reload'
+  ```
+  Sobrevive a reiniciar el contenedor, **no** a recrearlo (una actualización lo absorbe).
+
 ## nginx no sabe qué es un `.mjs` — y por eso NO se podía leer ningún PDF en el Umbrel
 Síntoma que dio el usuario: *«Setting up fake worker failed: Failed to fetch dynamically
 imported module: …/assets/pdf.worker.min-CHFwMXne.mjs»* al subir el acuerdo de Hacienda.
