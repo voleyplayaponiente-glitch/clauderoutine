@@ -18,6 +18,7 @@ import { SeccionPolizas, polizaNueva } from './deudas/SeccionPolizas'
 import { SeccionTarjetas, tarjetaCreditoNueva } from './deudas/SeccionTarjetas'
 import { cuadroDeuda, resumenFinanciacion } from '../dominio/financiacion'
 import { esAplazamiento, leerAplazamiento, type DatosAplazamiento } from '../dominio/aplazamiento-aeat'
+import { reconocerDocumento } from '../dominio/reconocer-documento'
 import type { Deuda, Poliza, Renting, TarjetaCredito, TipoDeuda } from '../dominio/tipos'
 
 const TIPOS: { valor: TipoDeuda; texto: string; grupo: 'financiera' | 'comercial' | 'fiscal' | 'otra' }[] = [
@@ -98,7 +99,15 @@ export function Deudas() {
 
       const fusion = fusionarPrestamos(filas.map(leerPrestamo))
       if (fusion.cuotas.length === 0 && fusion.encontrados.length === 0) {
-        setErrorArchivo(fusion.avisos[0] ?? 'No se ha podido leer el fichero.')
+        // Antes de dar el mensaje genérico de «no se reconoce el préstamo»:
+        // mirar si el documento es de OTRA pantalla y decirlo. Es fácil subir
+        // aquí el Modelo 200 —el aplazamiento y la declaración se llaman casi
+        // igual al descargarlos de la Sede— y el mensaje de préstamo no ayuda
+        // en nada a entender qué ha pasado.
+        const otro = filas.map(reconocerDocumento).find((r) => r.tipo !== 'DESCONOCIDO')
+        setErrorArchivo(
+          otro?.mensaje?.replace(/\*\*/g, '') ?? fusion.avisos[0] ?? 'No se ha podido leer el fichero.',
+        )
       } else {
         setLectura(fusion)
       }
