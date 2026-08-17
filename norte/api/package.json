@@ -12,6 +12,7 @@
     "migrar": "prisma migrate dev",
     "migrar:desplegar": "prisma migrate deploy",
     "semilla": "node --env-file-if-exists=.env --import tsx src/semilla.ts",
+    "pretest": "npm run build -w @norte/dominio --prefix ..",
     "test": "vitest run",
     "test:watch": "vitest"
   },
