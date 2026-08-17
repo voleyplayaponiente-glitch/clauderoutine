@@ -82,6 +82,18 @@ npm run semilla        # usuario demo@norte.local
   Publicar dos imágenes en cada despliegue disparó el límite secundario de
   GitHub en `finanzas/`; por eso `norte-api` solo se reconstruye si cambian
   `api/` o `dominio/`.
+- **Las imágenes nuevas de GHCR nacen privadas** y `docker compose pull` falla
+  con `denied`. Comprobado el 17/08/2026: `norte-web` salió pública pero
+  `norte-api` **privada**. Hay que ponerlas públicas a mano una vez en
+  Settings → Packages. Se verifica sin instalar nada pidiendo el manifiesto a
+  `ghcr.io/v2/<usuario>/<imagen>/manifests/latest` con un token anónimo.
+- **`npm --prefix <dir> exec` NO entra en la carpeta**: `prisma generate`
+  buscaba el esquema en la raíz del monorepo y la imagen del servidor no se
+  construía. Se usa `npm run -w <paquete>`, que sí entra.
+- **Los tests de la API no arrancan sin `@norte/dominio` compilado ni sin
+  `prisma generate`.** Lo tapaba tener el `dist/` de una sesión anterior; en un
+  clon limpio se caían. Está resuelto en el `pretest` de `api`. Lección: antes
+  de dar por bueno un CI, **clonar en limpio y correr la misma secuencia**.
 - **Un «no se pudo leer» ante un fichero legible es una mentira por omisión.**
   Cuando llegue la fase 3, el buzón de documentos debe decir *qué* es el fichero
   y *adónde* va, nunca mandar a la pantalla equivocada ni callarse.

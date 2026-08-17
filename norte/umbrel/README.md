@@ -21,6 +21,23 @@ dentro. Que la app y su servidor compartan dirección no es estética — quita 
 golpe el CORS, el contenido mixto y la necesidad de un túnel para usarla dentro
 de casa.
 
+## Antes de instalar: hacer públicas las dos imágenes
+
+GitHub publica los paquetes nuevos **en privado** por defecto, y entonces
+`docker compose pull` falla en el Umbrel con un `denied`. Hay que hacerlo una
+sola vez, igual que con `gestor-finanzas`:
+
+1. <https://github.com/voleyplayaponiente-glitch?tab=packages>
+2. Entra en `norte-web` y en `norte-api` → *Package settings* → *Change
+   visibility* → **Public**.
+
+Comprobado el 17/08/2026: `norte-web` salió pública y **`norte-api` privada**.
+Para verificarlo sin instalar nada:
+
+```bash
+docker pull ghcr.io/voleyplayaponiente-glitch/norte-api:latest
+```
+
 ## Instalación
 
 ```bash
