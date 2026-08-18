@@ -107,7 +107,7 @@ npm run semilla        # usuario demo@norte.local
   principio; **falta cablear el aviso «hay una versión nueva, recarga»** en la
   interfaz (pendiente, ver abajo).
 
-## Estado — fase 1 cerrada (54 tests en verde)
+## Estado — fase 1 cerrada + puerta cerrada (79 tests en verde)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -137,11 +137,28 @@ pantalla de inicio pintada y sin errores. Es donde vive; sus datos están ahí.
   en `umbrel/README.md` pero nadie lo ejecuta solo. Con lo que pasó en agosto,
   esto no puede quedarse mucho tiempo así.
 
+## El registro está CERRADO (18/08/2026)
+La primera cuenta de una instalación es libre; a partir de ahí **solo se entra
+con invitación**. Sin panel de ajustes y sin interruptor: un interruptor es algo
+que alguien puede dejar abierto sin enterarse.
+- `dominio/registro.ts` decide (`decidirRegistro`), con sus tests. El servidor
+  solo va a buscar la invitación y traduce el «no» a un 403.
+- Invitación = enlace de **un solo uso**, caduca a los **7 días**, anulable, y
+  opcionalmente atada a un correo. En la base de datos se guarda el **HMAC** del
+  testigo, no el testigo, igual que las sesiones.
+- El testigo viaja en el **fragmento** (`#/invitacion/…`), que el navegador no
+  manda al servidor, y las consultas van por **POST con el testigo en el cuerpo**:
+  Fastify registra la URL de cada petición y en la ruta acabaría en los logs.
+- `marcarInvitacionUsada` va con `updateMany` filtrando por `aceptadaEn: null`:
+  es un pulso atómico. Con `findUnique` + `update` habría un hueco por el que
+  dos personas usarían el mismo enlace a la vez.
+- **El ayudante `registrar()` de los tests cambió**: solo la primera cuenta pasa
+  por la API; las demás se crean por dentro y entran por `/auth/entrar`. Si un
+  test nuevo necesita registrar de verdad, mira `test/registro.test.ts`.
+- Verificado en navegador con dos personas: alta de Julio, espacio «Casa»,
+  enlace, alta de Marta ya dentro de Casa, y el mismo enlace rechazado después.
+
 ## Por dónde seguir
-0. **PRIMERO: cerrar el registro abierto.** Hoy cualquiera en su red puede
-   crearse una cuenta. No vería datos ajenos (el aislamiento está probado), pero
-   sobra. Debe quedar: la primera cuenta libre —la suya, ya creada— y el resto
-   por invitación. Acordado con él: se hace al empezar, antes de la fase 2.
 1. **Fase 2 — Movimientos y cuentas**: CRUD, categorías, recurrentes y `Cmd+K`
    con lenguaje natural («café 3,40 ayer»).
 2. Pendiente concreto heredado: **aviso de versión nueva de la PWA** (el

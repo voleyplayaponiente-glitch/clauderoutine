@@ -136,7 +136,9 @@ model MiembroEspacio {
 model Invitacion {
   id            String    @id @default(cuid())
   espacioId     String
-  email         String
+  // Opcional a propósito: si viene, la invitación es para esa persona y solo
+  // para ella; si no, es un enlace de un solo uso válido para quien lo tenga.
+  email         String?
   rol           Rol       @default(editor)
   hashToken     String    @unique
   invitadaPorId String

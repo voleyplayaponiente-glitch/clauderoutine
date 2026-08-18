@@ -124,7 +124,7 @@ export async function crearServidor({
   }))
 
   await app.register(rutasAuth, { prisma, configuracion, limites })
-  await app.register(rutasEspacios, { prisma })
+  await app.register(rutasEspacios, { prisma, configuracion })
 
   return app
 }

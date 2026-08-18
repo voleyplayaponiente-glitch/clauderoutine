@@ -78,12 +78,50 @@ export interface Sesion {
   espacios: EspacioResumen[]
 }
 
+export interface EstadoPuerta {
+  requiereInvitacion: boolean
+  primeraCuenta: boolean
+}
+
+export type ConsultaInvitacion =
+  | { valida: true; espacio: string; rol: string; email: string | null; invitaPor: string; expiraEn: string }
+  | { valida: false; motivo: string; mensaje: string }
+
+export interface InvitacionPendiente {
+  id: string
+  email: string | null
+  rol: string
+  creadaEn: string
+  expiraEn: string
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
+  estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
   entrar: (email: string, contrasena: string) =>
     pedir<Sesion>('/auth/entrar', { metodo: 'POST', cuerpo: { email, contrasena } }),
-  registro: (email: string, nombre: string, contrasena: string) =>
-    pedir<Sesion>('/auth/registro', { metodo: 'POST', cuerpo: { email, nombre, contrasena } }),
+  registro: (email: string, nombre: string, contrasena: string, invitacion?: string) =>
+    pedir<Sesion>('/auth/registro', {
+      metodo: 'POST',
+      cuerpo: { email, nombre, contrasena, ...(invitacion ? { invitacion } : {}) },
+    }),
   salir: () => pedir<{ ok: true }>('/auth/salir', { metodo: 'POST' }),
   espacios: () => pedir<{ espacios: EspacioResumen[] }>('/espacios'),
+
+  crearEspacio: (nombre: string, tipo: 'personal' | 'pareja' | 'negocio') =>
+    pedir<{ espacio: { id: string } }>('/espacios', { metodo: 'POST', cuerpo: { nombre, tipo } }),
+
+  // El testigo va en el cuerpo y no en la ruta: Fastify registra la URL de cada
+  // petición, y en la ruta acabaría escrito en los registros del servidor.
+  consultarInvitacion: (token: string) =>
+    pedir<ConsultaInvitacion>('/invitaciones/consultar', { metodo: 'POST', cuerpo: { token } }),
+  invitaciones: (espacioId: string) =>
+    pedir<{ invitaciones: InvitacionPendiente[] }>(`/espacios/${espacioId}/invitaciones`),
+  crearInvitacion: (espacioId: string, datos: { email?: string; rol: string }) =>
+    pedir<{ ruta: string; invitacion: InvitacionPendiente }>(`/espacios/${espacioId}/invitaciones`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  anularInvitacion: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/invitaciones/${id}`, { metodo: 'DELETE' }),
 }

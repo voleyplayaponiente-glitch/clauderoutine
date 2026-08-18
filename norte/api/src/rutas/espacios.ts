@@ -1,4 +1,6 @@
 import { admiteMiembros, esTipoEspacio, TIPOS_ESPACIO } from '@norte/dominio'
+import type { Configuracion } from '../configuracion.js'
+import { crearInvitacion } from '../invitaciones.js'
 import type { PrismaClient } from '@prisma/client'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
@@ -21,13 +23,23 @@ const esquemaCategoria = z.object({
   icono: z.string().max(40).nullish(),
 })
 
+const esquemaInvitacion = z.object({
+  // Sin correo, la invitación vale para quien tenga el enlace (un solo uso).
+  // Con correo, solo para esa persona.
+  email: z.string().email('Ese correo no parece válido.').optional(),
+  rol: z.enum(['editor', 'lector']).default('editor'),
+})
+
 const esquemaMiembro = z.object({
   email: z.string().email('Ese correo no parece válido.'),
   rol: z.enum(['editor', 'lector']).default('editor'),
 })
 
-export async function rutasEspacios(app: FastifyInstance, opciones: { prisma: PrismaClient }) {
-  const { prisma } = opciones
+export async function rutasEspacios(
+  app: FastifyInstance,
+  opciones: { prisma: PrismaClient; configuracion: Configuracion },
+) {
+  const { prisma, configuracion } = opciones
 
   app.get('/api/espacios', async (peticion) => {
     const usuario = usuarioDe(peticion)
@@ -182,6 +194,96 @@ export async function rutasEspacios(app: FastifyInstance, opciones: { prisma: Pr
     return respuesta.code(201).send({
       miembro: { usuarioId: invitado.id, nombre: invitado.nombre, email: invitado.email, rol: miembro.rol },
     })
+  })
+
+  // ───────────────────────────── Invitaciones
+  //
+  // Es la única puerta de entrada a esta instalación desde que el registro
+  // dejó de estar abierto: la primera cuenta es libre y el resto entra por
+  // aquí. Solo el propietario del espacio puede abrirla.
+
+  app.post('/api/espacios/:id/invitaciones', async (peticion, respuesta) => {
+    const usuario = usuarioDe(peticion)
+    const { id } = peticion.params as { id: string }
+    const contexto = await exigirEspacio(prisma, usuario.id, id, 'propietario')
+    const datos = esquemaInvitacion.parse(peticion.body)
+
+    const espacio = await prisma.espacio.findUniqueOrThrow({ where: { id: contexto.espacioId } })
+    if (!admiteMiembros(espacio.tipo)) {
+      throw sinPermiso(
+        'Un espacio personal es solo tuyo. Crea uno de pareja o de negocio para compartir.',
+      )
+    }
+
+    if (datos.email) {
+      const yaEsta = await prisma.miembroEspacio.findFirst({
+        where: {
+          espacioId: contexto.espacioId,
+          bajaEn: null,
+          usuario: { email: datos.email.trim().toLowerCase() },
+        },
+      })
+      if (yaEsta) throw conflicto('Esa persona ya está en el espacio.')
+    }
+
+    const { token, invitacion } = await crearInvitacion(prisma, configuracion.secretoSesion, {
+      espacioId: contexto.espacioId,
+      invitadaPorId: usuario.id,
+      email: datos.email ?? null,
+      rol: datos.rol,
+    })
+
+    await prisma.registroActividad.create({
+      data: {
+        espacioId: contexto.espacioId,
+        usuarioId: usuario.id,
+        accion: 'crear_invitacion',
+        entidad: 'invitacion',
+        entidadId: invitacion.id,
+        detalle: { email: datos.email ?? null, rol: datos.rol },
+      },
+    })
+
+    // El testigo se devuelve **una sola vez**, aquí. En la base de datos solo
+    // queda su HMAC, así que ni listándolas después se puede recuperar: si se
+    // pierde el enlace, se anula y se hace otro.
+    return respuesta.code(201).send({
+      invitacion: { id: invitacion.id, rol: invitacion.rol, expiraEn: invitacion.expiraEn },
+      ruta: `#/invitacion/${token}`,
+    })
+  })
+
+  app.get('/api/espacios/:id/invitaciones', async (peticion) => {
+    const usuario = usuarioDe(peticion)
+    const { id } = peticion.params as { id: string }
+    const contexto = await exigirEspacio(prisma, usuario.id, id, 'propietario')
+
+    const invitaciones = await prisma.invitacion.findMany({
+      where: { espacioId: contexto.espacioId, aceptadaEn: null, revocadaEn: null },
+      orderBy: { creadaEn: 'desc' },
+      select: { id: true, email: true, rol: true, creadaEn: true, expiraEn: true },
+    })
+    return { invitaciones }
+  })
+
+  app.delete('/api/espacios/:id/invitaciones/:invitacionId', async (peticion) => {
+    const usuario = usuarioDe(peticion)
+    const { id, invitacionId } = peticion.params as { id: string; invitacionId: string }
+    const contexto = await exigirEspacio(prisma, usuario.id, id, 'propietario')
+
+    // El `espacioId` del contexto en el `where`, no solo el id de la invitación:
+    // si no, el propietario de un espacio podría anular invitaciones de otro.
+    const { count } = await prisma.invitacion.updateMany({
+      where: {
+        id: invitacionId,
+        espacioId: contexto.espacioId,
+        aceptadaEn: null,
+        revocadaEn: null,
+      },
+      data: { revocadaEn: new Date() },
+    })
+    if (count === 0) throw noEncontrado('Esa invitación no existe o ya no está pendiente.')
+    return { ok: true }
   })
 
   app.delete('/api/espacios/:id/miembros/:usuarioId', async (peticion) => {

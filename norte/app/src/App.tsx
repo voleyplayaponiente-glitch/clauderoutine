@@ -44,6 +44,11 @@ export function App() {
     )
   }
 
+  // El enlace de invitación lleva el testigo en el fragmento (#/…), que el
+  // navegador NO manda al servidor: no acaba en los registros de nginx ni en
+  // los de la API.
+  const tokenInvitacion = ruta.startsWith('/invitacion/') ? ruta.slice('/invitacion/'.length) : undefined
+
   const sinSesion = !sesion.data || (sesion.error instanceof ErrorDeApi && sesion.error.estado === 401)
   if (sinSesion) {
     if (sesion.error instanceof ErrorDeApi && sesion.error.codigo === 'sin_conexion') {
@@ -58,7 +63,7 @@ export function App() {
         </main>
       )
     }
-    return <Entrar />
+    return <Entrar tokenInvitacion={tokenInvitacion} />
   }
 
   return (

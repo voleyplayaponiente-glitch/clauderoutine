@@ -59,17 +59,6 @@ describe('registro', () => {
     expect(sesion.hashToken).toHaveLength(64) // sha256 en hexadecimal
   })
 
-  it('no admite dos cuentas con el mismo correo', async () => {
-    await registrar(app, 'ana@ejemplo.es')
-    const segunda = await app.inject({
-      method: 'POST',
-      url: '/api/auth/registro',
-      payload: { email: 'ANA@ejemplo.es', nombre: 'Otra Ana', contrasena: 'otra frase larga aqui' },
-    })
-    expect(segunda.statusCode).toBe(409)
-    expect(segunda.json().error.mensaje).toContain('entrar')
-  })
-
   it('rechaza una contraseña corta explicando qué hacer', async () => {
     const respuesta = await app.inject({
       method: 'POST',
