@@ -7,7 +7,10 @@ import { COOKIE_SESION, usuarioDeSesion } from './auth/sesiones.js'
 import type { Configuracion } from './configuracion.js'
 import { ErrorApi, noAutenticado } from './errores.js'
 import { rutasAuth } from './rutas/auth.js'
+import { rutasCuentas } from './rutas/cuentas.js'
 import { rutasEspacios } from './rutas/espacios.js'
+import { rutasMovimientos } from './rutas/movimientos.js'
+import { rutasRecurrentes } from './rutas/recurrentes.js'
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -125,6 +128,9 @@ export async function crearServidor({
 
   await app.register(rutasAuth, { prisma, configuracion, limites })
   await app.register(rutasEspacios, { prisma, configuracion })
+  await app.register(rutasCuentas, { prisma })
+  await app.register(rutasMovimientos, { prisma })
+  await app.register(rutasRecurrentes, { prisma })
 
   return app
 }
