@@ -36,7 +36,7 @@ Otras dos derivas del prompt original, decididas y justificadas:
 cd norte
 npm install
 npm run dev            # API en :3012 + interfaz en :5173 (Vite reenvía /api)
-npm test               # motor (30) + API (24) = 54 tests
+npm test               # motor (40) + API (39) = 79 tests
 npm run test:dominio   # solo el motor, sin base de datos
 npm run build          # dominio + api + app
 npm run migrar         # prisma migrate dev
