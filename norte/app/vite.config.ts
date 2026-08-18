@@ -1,6 +1,31 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+/**
+ * Sella cada compilación con una versión y la publica en `version.json`.
+ *
+ * Es lo que permite avisar de «hay una versión nueva» **sin service worker**, y
+ * eso importa más de lo que parece: los navegadores no dan service worker fuera
+ * de https o localhost, y Norte vive en `http://<ip-del-umbrel>:3012`. Un aviso
+ * basado en el service worker no saltaría nunca ahí, que es justo donde hace
+ * falta. Comprobado en Chromium: en la IP de red, `navigator.serviceWorker` ni
+ * existe.
+ */
+function versionDeCompilacion(): Plugin {
+  const version = process.env.NORTE_VERSION ?? process.env.GITHUB_SHA ?? String(Date.now())
+  return {
+    name: 'norte-version',
+    config: () => ({ define: { __NORTE_VERSION__: JSON.stringify(version) } }),
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version }),
+      })
+    },
+  }
+}
 
 /**
  * La app cuelga siempre de la raíz del servidor (nginx en el Umbrel), así que
@@ -10,6 +35,7 @@ export default defineConfig({
   base: './',
   plugins: [
     react(),
+    versionDeCompilacion(),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],

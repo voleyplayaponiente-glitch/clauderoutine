@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { AvisoVersion } from './componentes/AvisoVersion.js'
 import { Logotipo } from './componentes/Marca.js'
 import { Aviso, Boton, Esqueleto } from './componentes/ui.js'
 import { useUi, type Tema } from './estado/ui.js'
@@ -63,7 +64,12 @@ export function App() {
         </main>
       )
     }
-    return <Entrar tokenInvitacion={tokenInvitacion} />
+    return (
+      <>
+        <Entrar tokenInvitacion={tokenInvitacion} />
+        <AvisoVersion />
+      </>
+    )
   }
 
   return (
@@ -110,6 +116,8 @@ export function App() {
       <footer className="mx-auto max-w-5xl px-5 pb-10 pt-4 text-sm text-texto-3">
         {sesion.data?.usuario.email} · Norte guarda tus datos en este servidor.
       </footer>
+
+      <AvisoVersion />
     </div>
   )
 }

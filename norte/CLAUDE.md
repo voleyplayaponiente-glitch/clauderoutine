@@ -102,10 +102,18 @@ npm run semilla        # usuario demo@norte.local
 - **Un «no se pudo leer» ante un fichero legible es una mentira por omisión.**
   Cuando llegue la fase 3, el buzón de documentos debe decir *qué* es el fichero
   y *adónde* va, nunca mandar a la pantalla equivocada ni callarse.
-- **La PWA no avisa de que hay versión nueva** en `finanzas/`, y eso costó una
-  tanda entera de mensajes. Aquí `registerType: 'prompt'` está puesto desde el
-  principio; **falta cablear el aviso «hay una versión nueva, recarga»** en la
-  interfaz (pendiente, ver abajo).
+- **NO hay service worker en la instalación del usuario, y es por diseño del
+  navegador.** Los service workers solo van en https o en localhost; Norte se
+  sirve por `http://192.168.1.20:3012`, donde `navigator.serviceWorker` **ni
+  existe** (comprobado en Chromium contra una IP de red: `isSecureContext:
+  false`). Consecuencias: allí **no se puede instalar como PWA** y **cualquier
+  aviso basado en el service worker es código muerto**. Se llegó a escribir uno
+  con `useRegisterSW` antes de comprobarlo; por eso está esta nota.
+- **El aviso de versión nueva va por `version.json`** (`vite.config.ts` sella
+  cada compilación, el componente `AvisoVersion` pregunta al volver a la pestaña
+  y cada 15 min). Funciona en http plano. `nginx.conf` lo sirve con `no-store`:
+  cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
+  contra la IP de red.
 
 ## Estado — fase 1 cerrada + puerta cerrada (79 tests en verde)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
@@ -161,9 +169,7 @@ que alguien puede dejar abierto sin enterarse.
 ## Por dónde seguir
 1. **Fase 2 — Movimientos y cuentas**: CRUD, categorías, recurrentes y `Cmd+K`
    con lenguaje natural («café 3,40 ayer»).
-2. Pendiente concreto heredado: **aviso de versión nueva de la PWA** (el
-   `registerType: 'prompt'` ya está; falta el cartel y el botón de recargar).
-3. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
+2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
 4. Cuando llegue la fase 3, pedirle al usuario **una nómina y un extracto suyos
    de verdad**: con ficheros inventados la lectura sale bonita en los tests y
