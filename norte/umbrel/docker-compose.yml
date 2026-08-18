@@ -41,7 +41,13 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://norte:${POSTGRES_PASSWORD}@db:5432/norte
+      # Por piezas y no como URL: si la contraseña trae una `@` o una `/`, una
+      # cadena de conexión se parte por el sitio equivocado. El servidor la
+      # escapa al construir la URL.
+      NORTE_BD_HOST: db
+      NORTE_BD_USUARIO: norte
+      NORTE_BD_CONTRASENA: ${POSTGRES_PASSWORD}
+      NORTE_BD_NOMBRE: norte
       NORTE_PUERTO: 3012
       NODE_ENV: production
       NORTE_DATOS_DIR: /datos
