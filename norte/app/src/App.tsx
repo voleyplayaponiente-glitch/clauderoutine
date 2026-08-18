@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { AvisoVersion } from './componentes/AvisoVersion.js'
+import { EntradaRapida } from './componentes/EntradaRapida.js'
 import { Logotipo } from './componentes/Marca.js'
 import { Aviso, Boton, Esqueleto } from './componentes/ui.js'
 import { useUi, type Tema } from './estado/ui.js'
 import { api, ErrorDeApi, type Sesion } from './lib/api.js'
 import { ir, useRuta } from './lib/router.js'
+import { Cuentas } from './pantallas/Cuentas.js'
 import { Entrar } from './pantallas/Entrar.js'
 import { Inicio } from './pantallas/Inicio.js'
+import { Movimientos } from './pantallas/Movimientos.js'
 import { Muestra } from './pantallas/Muestra.js'
 
 export function App() {
@@ -109,9 +112,32 @@ export function App() {
         </div>
       </header>
 
+      {activo && (
+        <nav className="border-b border-linea bg-sup-1">
+          <div className="mx-auto flex max-w-5xl gap-1 px-5">
+            <Pestana ruta={ruta} a="/" texto="Inicio" />
+            <Pestana ruta={ruta} a="/movimientos" texto="Movimientos" />
+            <Pestana ruta={ruta} a="/cuentas" texto="Cuentas" />
+          </div>
+        </nav>
+      )}
+
       <main className="animar-entrada">
-        {ruta === '/muestra' ? <Muestra /> : <Inicio espacio={activo} />}
+        {ruta === '/muestra' ? (
+          <Muestra />
+        ) : ruta === '/movimientos' && activo ? (
+          <Movimientos espacio={activo} />
+        ) : ruta === '/cuentas' && activo ? (
+          <Cuentas espacio={activo} />
+        ) : (
+          <Inicio espacio={activo} />
+        )}
       </main>
+
+      {/* La entrada rápida escucha Ctrl+K en toda la app, no solo en
+          Movimientos: apuntar un gasto tiene que estar a un atajo de
+          distancia desde donde estés. */}
+      {activo && puedeEscribir(activo) && <EntradaRapida espacioId={activo.id} />}
 
       <footer className="mx-auto max-w-5xl px-5 pb-10 pt-4 text-sm text-texto-3">
         {sesion.data?.usuario.email} · Norte guarda tus datos en este servidor.
@@ -119,6 +145,27 @@ export function App() {
 
       <AvisoVersion />
     </div>
+  )
+}
+
+function puedeEscribir(espacio: { rol: string }): boolean {
+  return espacio.rol !== 'lector'
+}
+
+function Pestana({ ruta, a, texto }: { ruta: string; a: string; texto: string }) {
+  const activa = ruta === a || (a === '/' && ruta === '')
+  return (
+    <button
+      onClick={() => ir(a)}
+      aria-current={activa ? 'page' : undefined}
+      className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors ${
+        activa
+          ? 'border-marca font-medium text-texto-1'
+          : 'border-transparent text-texto-2 hover:text-texto-1'
+      }`}
+    >
+      {texto}
+    </button>
   )
 }
 

@@ -124,7 +124,12 @@ describe('movimientos', () => {
     })
     const cuerpo = lista.json()
     expect(cuerpo.total).toBe(3)
-    expect(cuerpo.resumen).toEqual({ ingresos: 240000, gastos: 57500, balance: 182500 })
+    expect(cuerpo.resumen).toEqual({
+      ingresos: 240000,
+      gastos: 57500,
+      balance: 182500,
+      previsto: { ingresos: 0, gastos: 0 },
+    })
   })
 
   it('busca por texto y filtra por fecha', async () => {

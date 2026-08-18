@@ -36,7 +36,8 @@ Otras dos derivas del prompt original, decididas y justificadas:
 cd norte
 npm install
 npm run dev            # API en :3012 + interfaz en :5173 (Vite reenvía /api)
-npm test               # motor (40) + API (39) = 79 tests
+npm test               # motor (81) + API (62) = 143 tests
+# Si no hay PostgreSQL (contenedor nuevo): norte/scripts/bd-desarrollo.sh
 npm run test:dominio   # solo el motor, sin base de datos
 npm run build          # dominio + api + app
 npm run migrar         # prisma migrate dev
@@ -115,7 +116,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fase 1 cerrada + puerta cerrada (79 tests en verde)
+## Estado — fases 1 y 2 cerradas (143 tests en verde)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -166,9 +167,22 @@ que alguien puede dejar abierto sin enterarse.
 - Verificado en navegador con dos personas: alta de Julio, espacio «Casa»,
   enlace, alta de Marta ya dentro de Casa, y el mismo enlace rechazado después.
 
+## Fase 2 cerrada (18/08/2026): cuentas, movimientos, recurrentes y Cmd+K
+- **`Ctrl/Cmd + K`** con lenguaje natural. La frase se interpreta **en el
+  navegador** con `dominio/lenguaje-natural.ts`, el mismo motor que los tests:
+  la vista previa se actualiza al teclear y lo que se ve es lo que se guarda.
+- **Lo previsto NO toca el saldo, y tampoco el resumen.** El saldo lo excluía
+  desde el principio, pero el resumen de Movimientos lo sumaba a los gastos:
+  decía «has gastado 1.703 €» cuando 1.700 eran el alquiler del mes que viene.
+  Se vio mirando la pantalla, no en los tests. Ahora van en líneas separadas.
+- Generar previstos es **idempotente** (`idExterno = recurrente:<id>:<fecha>` +
+  índice único). Pensado para que un día lo dispare un temporizador.
+- La privacidad de cuentas está cableada en cuentas, movimientos Y recurrentes:
+  una cuenta no compartida no aparece ni filtrando por su id.
+
 ## Por dónde seguir
-1. **Fase 2 — Movimientos y cuentas**: CRUD, categorías, recurrentes y `Cmd+K`
-   con lenguaje natural («café 3,40 ayer»).
+1. **Fase 3 — Documentos**: buzón único, lectura de extractos y **nóminas**,
+   revisión antes de aplicar y detección de duplicados.
 2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
 4. Cuando llegue la fase 3, pedirle al usuario **una nómina y un extracto suyos

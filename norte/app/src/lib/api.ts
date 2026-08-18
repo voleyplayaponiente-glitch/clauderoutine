@@ -87,6 +87,82 @@ export type ConsultaInvitacion =
   | { valida: true; espacio: string; rol: string; email: string | null; invitaPor: string; expiraEn: string }
   | { valida: false; motivo: string; mensaje: string }
 
+export interface CuentaResumen {
+  id: string
+  nombre: string
+  tipo: string
+  divisa: string
+  entidad: string | null
+  ultimos4: string | null
+  computaPatrimonio: boolean
+  visibleEnEspacio: boolean
+  esMia: boolean
+  archivada: boolean
+  saldo: number
+}
+
+export interface Movimiento {
+  id: string
+  cuentaId: string
+  categoriaId: string | null
+  categoria: string | null
+  importe: number
+  fecha: string
+  concepto: string
+  comercio: string | null
+  notas: string | null
+  etiquetas: string[]
+  estado: 'previsto' | 'confirmado'
+  esCompartido: boolean
+}
+
+export interface ListaMovimientos {
+  movimientos: Movimiento[]
+  total: number
+  pagina: number
+  resumen: {
+    ingresos: number
+    gastos: number
+    balance: number
+    previsto: { ingresos: number; gastos: number }
+  }
+}
+
+export interface Categoria {
+  id: string
+  nombre: string
+  padreId: string | null
+  flujo: 'gasto' | 'ingreso'
+  tipo: string
+  esencial: boolean
+}
+
+export interface Recurrente {
+  id: string
+  cuentaId: string
+  categoriaId: string | null
+  categoria: string | null
+  concepto: string
+  importe: number
+  periodicidad: string
+  desde: string
+  hasta: string | null
+  diaDelMes: number | null
+  ultimoDiaHabil: boolean
+  activa: boolean
+  proxima: string | null
+}
+
+export interface FiltrosMovimientos {
+  desde?: string
+  hasta?: string
+  cuentaId?: string
+  categoriaId?: string
+  estado?: 'previsto' | 'confirmado'
+  texto?: string
+  pagina?: number
+}
+
 export interface InvitacionPendiente {
   id: string
   email: string | null
@@ -124,4 +200,54 @@ export const api = {
     }),
   anularInvitacion: (espacioId: string, id: string) =>
     pedir<{ ok: true }>(`/espacios/${espacioId}/invitaciones/${id}`, { metodo: 'DELETE' }),
+
+  categorias: (espacioId: string) =>
+    pedir<{ categorias: Categoria[] }>(`/espacios/${espacioId}/categorias`),
+
+  cuentas: (espacioId: string) => pedir<{ cuentas: CuentaResumen[] }>(`/espacios/${espacioId}/cuentas`),
+  crearCuenta: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ cuenta: CuentaResumen }>(`/espacios/${espacioId}/cuentas`, { metodo: 'POST', cuerpo: datos }),
+  editarCuenta: (espacioId: string, id: string, datos: Record<string, unknown>) =>
+    pedir<{ cuenta: CuentaResumen }>(`/espacios/${espacioId}/cuentas/${id}`, {
+      metodo: 'PATCH',
+      cuerpo: datos,
+    }),
+  borrarCuenta: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/cuentas/${id}`, { metodo: 'DELETE' }),
+
+  movimientos: (espacioId: string, filtros: FiltrosMovimientos = {}) => {
+    const busqueda = new URLSearchParams()
+    for (const [clave, valor] of Object.entries(filtros)) {
+      if (valor !== undefined && valor !== '') busqueda.set(clave, String(valor))
+    }
+    const cola = busqueda.toString()
+    return pedir<ListaMovimientos>(`/espacios/${espacioId}/movimientos${cola ? `?${cola}` : ''}`)
+  },
+  crearMovimiento: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ movimiento: Movimiento }>(`/espacios/${espacioId}/movimientos`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  editarMovimiento: (espacioId: string, id: string, datos: Record<string, unknown>) =>
+    pedir<{ movimiento: Movimiento }>(`/espacios/${espacioId}/movimientos/${id}`, {
+      metodo: 'PATCH',
+      cuerpo: datos,
+    }),
+  borrarMovimiento: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/movimientos/${id}`, { metodo: 'DELETE' }),
+
+  recurrentes: (espacioId: string) =>
+    pedir<{ recurrentes: Recurrente[] }>(`/espacios/${espacioId}/recurrentes`),
+  crearRecurrente: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ recurrente: { id: string } }>(`/espacios/${espacioId}/recurrentes`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  borrarRecurrente: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/recurrentes/${id}`, { metodo: 'DELETE' }),
+  generarPrevistos: (espacioId: string) =>
+    pedir<{ creados: number; revisados: number }>(`/espacios/${espacioId}/recurrentes/generar`, {
+      metodo: 'POST',
+      cuerpo: {},
+    }),
 }

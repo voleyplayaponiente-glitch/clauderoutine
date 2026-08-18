@@ -95,23 +95,44 @@ export interface ResumenPeriodo {
   ingresos: Centimos
   gastos: Centimos
   balance: Centimos
+  /** Lo que aún no ha pasado, aparte. Nunca mezclado con lo anterior. */
+  previsto: { ingresos: Centimos; gastos: Centimos }
 }
 
 /**
  * Ingresos, gastos y balance de un conjunto de movimientos.
  *
- * Los gastos se devuelven en **positivo** aunque se guarden en negativo: «has
- * gastado 1.240 €» se lee mejor que «has gastado −1.240 €», y el signo ya lo
- * pone la interfaz donde hace falta.
+ * **Lo previsto va aparte, no sumado.** Decir «has gastado 1.703 €» cuando
+ * 1.700 son un alquiler que se pagará el mes que viene es exactamente la clase
+ * de mentira que esta app no se permite; y además contradiría al saldo, que sí
+ * los excluye. Se devuelven las dos cifras y la interfaz enseña cada una como
+ * lo que es.
+ *
+ * Los gastos van en **positivo** aunque se guarden en negativo: «has gastado
+ * 1.240 €» se lee mejor que «has gastado −1.240 €».
  */
 export function resumir(movimientos: MovimientoSaldo[]): ResumenPeriodo {
   let ingresos = 0
   let gastos = 0
+  let previstoIngresos = 0
+  let previstoGastos = 0
+
   for (const m of movimientos) {
-    if (m.importe > 0) ingresos += m.importe
-    else gastos += -m.importe
+    const esPrevisto = m.estado === 'previsto'
+    if (m.importe > 0) {
+      if (esPrevisto) previstoIngresos += m.importe
+      else ingresos += m.importe
+    } else {
+      if (esPrevisto) previstoGastos += -m.importe
+      else gastos += -m.importe
+    }
   }
-  return { ingresos, gastos, balance: ingresos - gastos }
+  return {
+    ingresos,
+    gastos,
+    balance: ingresos - gastos,
+    previsto: { ingresos: previstoIngresos, gastos: previstoGastos },
+  }
 }
 
 /**

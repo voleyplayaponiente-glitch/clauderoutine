@@ -63,15 +63,39 @@ describe('resumen del periodo', () => {
       { importe: -45000, estado: 'confirmado' },
       { importe: -12500, estado: 'confirmado' },
     ])
-    expect(resumen).toEqual({ ingresos: 240000, gastos: 57500, balance: 182500 })
+    expect(resumen).toEqual({
+      ingresos: 240000,
+      gastos: 57500,
+      balance: 182500,
+      previsto: { ingresos: 0, gastos: 0 },
+    })
+  })
+
+  it('lo previsto va aparte y NO se suma a lo gastado', () => {
+    // Decir «has gastado 1.703 €» cuando 1.700 son el alquiler del mes que
+    // viene es mentir, y además contradice al saldo, que sí los excluye.
+    const resumen = resumir([
+      { importe: -340, estado: 'confirmado' },
+      { importe: -85000, estado: 'previsto' },
+      { importe: 240000, estado: 'confirmado' },
+      { importe: 100000, estado: 'previsto' },
+    ])
+    expect(resumen.gastos).toBe(340)
+    expect(resumen.ingresos).toBe(240000)
+    expect(resumen.balance).toBe(239660)
+    expect(resumen.previsto).toEqual({ ingresos: 100000, gastos: 85000 })
   })
 
   it('la tasa de ahorro sale del resumen', () => {
-    expect(tasaDeAhorro({ ingresos: 240000, gastos: 180000, balance: 60000 })).toBeCloseTo(0.25)
+    expect(
+      tasaDeAhorro({ ingresos: 240000, gastos: 180000, balance: 60000, previsto: { ingresos: 0, gastos: 0 } }),
+    ).toBeCloseTo(0.25)
   })
 
   it('sin ingresos la tasa no es 0 %, es que no se puede calcular', () => {
     // Devolver 0 aquí pintaría un semáforo rojo sobre una división por cero.
-    expect(tasaDeAhorro({ ingresos: 0, gastos: 50000, balance: -50000 })).toBeNull()
+    expect(
+      tasaDeAhorro({ ingresos: 0, gastos: 50000, balance: -50000, previsto: { ingresos: 0, gastos: 0 } }),
+    ).toBeNull()
   })
 })
