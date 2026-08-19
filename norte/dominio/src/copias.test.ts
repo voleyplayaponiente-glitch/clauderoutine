@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agruparCopias, juzgarCopias, type EstadoCopias } from './copias.js'
+import { agruparCopias, juzgarCopias, juzgarExterno, type EstadoCopias } from './copias.js'
 
 const AHORA = new Date('2026-08-19T10:00:00Z')
 
@@ -10,6 +10,7 @@ const BUENO: EstadoCopias = {
   copias: 8,
   ok: true,
   mensaje: null,
+  externo: null,
 }
 
 describe('juzgar el estado de las copias', () => {
@@ -95,5 +96,53 @@ describe('agrupar los ficheros de cada copia', () => {
 
   it('ignora lo que haya en la carpeta y no sea una copia', () => {
     expect(agruparCopias([{ fichero: 'estado.json', bytes: 100 }])).toEqual([])
+  })
+})
+
+describe('juzgar el disco externo', () => {
+  const CONECTADO = {
+    conectado: true,
+    ruta: '/externo/midisco/norte-copias',
+    copias: 42,
+    ultima: '2026-08-19T04:31:00Z',
+    libresMb: 51_200,
+    mensaje: null,
+    vistoAlgunaVez: true,
+  }
+
+  it('conectado, cuenta lo que hay y cuánto sitio queda', () => {
+    const juicio = juzgarExterno(CONECTADO, AHORA)
+    expect(juicio.salud).toBe('al_dia')
+    expect(juicio.detalle).toBe('42 copias en el disco. Quedan 50 GB libres.')
+  })
+
+  it('sin disco y sin haberlo tenido nunca, explica cómo se pone', () => {
+    const juicio = juzgarExterno(null, AHORA)
+    expect(juicio.salud).toBe('sin_configurar')
+    expect(juicio.detalle).toMatch(/norte-copias/)
+  })
+
+  it('desconectado hace poco no es una alarma', () => {
+    const juicio = juzgarExterno({ ...CONECTADO, conectado: false }, AHORA)
+    expect(juicio.salud).toBe('desconectado')
+    expect(juicio.titulo).toMatch(/no está conectado/)
+    expect(juicio.detalle).toMatch(/Nada grave/)
+  })
+
+  it('desconectado desde hace semanas sí lo es, y dice cuánto', () => {
+    // El caso que motiva guardar «vistoAlgunaVez»: el disco estaba, alguien lo
+    // desenchufó y nadie se ha enterado.
+    const juicio = juzgarExterno(
+      { ...CONECTADO, conectado: false, ultima: '2026-07-19T04:31:00Z' },
+      AHORA,
+    )
+    expect(juicio.titulo).toMatch(/lleva días sin aparecer/)
+    expect(juicio.detalle).toContain('31 días')
+  })
+
+  it('un problema del disco se cuenta tal cual lo dijo el servicio', () => {
+    const juicio = juzgarExterno({ ...CONECTADO, mensaje: 'Quedan 12 MB libres.' }, AHORA)
+    expect(juicio.salud).toBe('con_problema')
+    expect(juicio.detalle).toBe('Quedan 12 MB libres.')
   })
 })

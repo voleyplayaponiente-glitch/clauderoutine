@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1, 2 y 3 cerradas (213 tests en verde: 132 dominio + 81 API)
+## Estado — fases 1, 2 y 3 cerradas (220 tests en verde: 137 dominio + 83 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -284,18 +284,56 @@ la app, se restauró en otra vacía y se comprobó que vuelven las mismas filas
 retención se probó con 28 copias falsas repartidas por 13 meses y dejó
 exactamente las 18 esperadas.
 
-Lo que **no** cubre y hay que decirle al usuario: las copias viven en el mismo
-Umbrel. Protegen de un borrado, de una migración mal hecha o de un contenedor
-roto; no protegen de que se estropee el disco. Sacarlas de ahí (`rsync`) sigue
-siendo manual y está en `umbrel/README.md`.
+### La segunda copia, en un disco externo (19/08/2026)
+
+El mismo servicio lleva cada copia a un disco conectado al Umbrel. Se monta
+`/media` del host en `/externo`, no un disco concreto, para que valga
+cualquiera.
+
+- **La marca `norte-copias` es obligatoria y es el corazón del diseño.** Solo se
+  escribe dentro de un directorio que contenga una carpeta con ese nombre. Es lo
+  único que distingue «el disco está conectado» de «el disco no está y Docker ha
+  creado un directorio vacío con el mismo nombre»; sin la marca, el servicio
+  llenaría el disco de sistema del Umbrel creyendo que manda las copias fuera.
+  De paso funciona como permiso explícito.
+- **En el disco externo no se borra nada.** La rotación es cosa del Umbrel; el
+  archivo de fuera es de solo añadir, para que ningún fallo de aquí lo vacíe.
+- Se copia con `cp` y se **compara el sha256** antes de renombrar: en un USB,
+  `cp` puede volver sin error dejando el fichero a medias. Y se llama a `sync`,
+  porque si no lo escrito se queda en la caché y desenchufar se lo lleva.
+- `vistoAlgunaVez` (un fichero `.externo-visto`) permite distinguir «aquí nunca
+  hubo disco» de «el disco estaba y alguien lo desenchufó hace tres semanas».
+  Sin eso, la pantalla no puede avisar de lo segundo, que es lo que de verdad
+  pasa.
+- Se comprueba el sitio libre antes de escribir: llenar el disco del todo deja
+  copias a medias.
+- **Un *bind mount* no ve los discos montados DESPUÉS de arrancar el
+  contenedor.** Se decidió no usar `propagation: rslave` para no arriesgar que
+  el servicio no arranque en su máquina; a cambio, hay que reiniciar la app tras
+  conectar un disco, y la propia app lo dice.
+
+Un fallo que solo apareció al ejecutarlo de verdad: `pg_dump` mete un
+**tabulador** en sus mensajes de error, y un tabulador crudo dentro de una
+cadena JSON la invalida. El `estado.json` se volvía ilegible justo cuando había
+un fallo que contar. `limpiar_texto` quita ahora todos los caracteres de
+control.
+
+Verificado restaurando **desde el fichero que había viajado al disco externo**,
+no solo desde el local. Y probados los cinco casos: sin disco, disco sin marcar
+(no se escribe nada), disco marcado, segunda vuelta sin recopiar, y disco
+desconectado después de haberlo usado.
+
+Lo que **sigue sin cubrir**: si el disco externo vive enchufado al Umbrel, un
+robo o un incendio se lleva las dos copias. Una tercera fuera de casa (otra
+máquina, o cifrada en la nube) sigue pendiente.
 
 ## Por dónde seguir
 1. **Fase 4 — Presupuesto por sobres**: asignación mensual, lo que queda por
    sobre, y el aviso cuando el ritmo de gasto se sale.
 2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
-3. Sacar las copias fuera del Umbrel de forma automática (a un disco USB o a
-   otra máquina). Hoy el `rsync` está documentado pero es manual.
+3. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado
+   remoto). El disco externo protege del disco roto, no del robo ni del fuego.
 4. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la
    instalación manual vieja, ya sustituida por la de la tienda.
 

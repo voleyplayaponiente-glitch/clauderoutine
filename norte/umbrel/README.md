@@ -79,6 +79,7 @@ servir con un esquema a medias.
 - `${APP_DATA_DIR}/postgres` — la base de datos.
 - `${APP_DATA_DIR}/documentos` — los PDF de nóminas y extractos subidos.
 - `${APP_DATA_DIR}/copias` — las copias de seguridad ya hechas.
+- `/media/<tu disco>/norte-copias` — la segunda copia, en el disco externo.
 
 Los tres están fuera de los contenedores: actualizar la app no los toca.
 
@@ -110,10 +111,50 @@ sudo docker logs --tail 20 norte_copias
 cat ~/norte-datos/copias/estado.json
 ```
 
-### Llévatelas fuera del Umbrel
+### El disco externo
 
 Una copia que vive en la misma máquina que el original no protege de que se
-estropee esa máquina. De vez en cuando:
+estropee esa máquina. Norte se lleva las copias a un disco conectado al Umbrel,
+también solo, **pero hay que decirle a cuál**:
+
+1. Conecta el disco al Umbrel y móntalo bajo `/media`:
+
+   ```bash
+   lsblk                                   # busca tu disco, p. ej. sda1
+   sudo mkdir -p /media/copias
+   sudo mount /dev/sda1 /media/copias
+   ```
+
+   Para que sobreviva a un reinicio, añádelo a `/etc/fstab` con su UUID
+   (`sudo blkid /dev/sda1`).
+
+2. **Crea en el disco una carpeta llamada `norte-copias`:**
+
+   ```bash
+   sudo mkdir -p /media/copias/norte-copias
+   ```
+
+3. Reinicia Norte (desde el Umbrel, o `sudo docker compose restart copias`).
+
+Ese paso 2 no es burocracia. Es lo único que distingue «el disco está
+conectado» de «el disco no está y Docker me ha dejado un directorio vacío con
+el mismo nombre»; sin la marca, el servicio escribiría gigabytes en el disco de
+sistema del Umbrel creyendo que los manda fuera. Y de paso funciona como
+permiso: Norte solo escribe en discos que tú has marcado.
+
+Una vez hecho, cada copia nueva sale al disco en cuanto se crea, y si el disco
+estaba desconectado, las pendientes salen solas la siguiente hora. **Del disco
+externo no se borra nada nunca**: la rotación es cosa del Umbrel, y el archivo
+de fuera es de solo añadir para que ningún fallo de aquí pueda vaciarlo.
+
+El estado se ve en la pantalla de inicio de la app, junto al de las copias: si
+el disco lleva días sin aparecer, lo dice.
+
+Un aviso de fontanería: un *bind mount* **no ve** los discos que se monten
+después de arrancar el contenedor. Si conectas el disco con Norte ya en marcha,
+reinicia la app para que lo vea.
+
+Y si prefieres llevártelas a otra máquina en vez de a un disco:
 
 ```bash
 rsync -av umbrel@umbrel.local:~/norte-datos/copias/ ~/copias-norte/

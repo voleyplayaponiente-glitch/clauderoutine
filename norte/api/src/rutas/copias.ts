@@ -1,4 +1,9 @@
-import { agruparCopias, type EstadoCopias, type FicheroCopia } from '@norte/dominio'
+import {
+  agruparCopias,
+  type EstadoCopias,
+  type EstadoExterno,
+  type FicheroCopia,
+} from '@norte/dominio'
 import type { PrismaClient } from '@prisma/client'
 import type { FastifyInstance } from 'fastify'
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
@@ -59,11 +64,28 @@ export async function rutasCopias(
         copias: Number(datos.copias ?? 0),
         ok: datos.ok !== false,
         mensaje: typeof datos.mensaje === 'string' ? datos.mensaje : null,
+        externo: leerExterno(datos.externo),
       }
     } catch {
       // Ni fichero, ni JSON válido: se trata igual, porque para el usuario
       // significan lo mismo —no hay noticias del servicio de copias.
       return null
+    }
+  }
+
+  /** El bloque del disco externo puede faltar (versión anterior del servicio) o
+   *  venir a medias; se normaliza aquí para que la app no tenga que dudar. */
+  function leerExterno(crudo: unknown): EstadoExterno | null {
+    if (!crudo || typeof crudo !== 'object') return null
+    const datos = crudo as Partial<EstadoExterno>
+    return {
+      conectado: datos.conectado === true,
+      ruta: typeof datos.ruta === 'string' ? datos.ruta : null,
+      copias: Number(datos.copias ?? 0),
+      ultima: typeof datos.ultima === 'string' ? datos.ultima : null,
+      libresMb: typeof datos.libresMb === 'number' ? datos.libresMb : null,
+      mensaje: typeof datos.mensaje === 'string' ? datos.mensaje : null,
+      vistoAlgunaVez: datos.vistoAlgunaVez === true,
     }
   }
 

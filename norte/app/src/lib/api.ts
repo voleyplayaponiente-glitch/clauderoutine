@@ -230,6 +230,15 @@ export interface EstadoDeCopias {
     copias: number
     ok: boolean
     mensaje: string | null
+    externo: {
+      conectado: boolean
+      ruta: string | null
+      copias: number
+      ultima: string | null
+      libresMb: number | null
+      mensaje: string | null
+      vistoAlgunaVez: boolean
+    } | null
   } | null
   servicioVivo: boolean
   copias: { sello: string; fecha: string; bytes: number; conDocumentos: boolean }[]

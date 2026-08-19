@@ -69,6 +69,25 @@ describe('ver el estado de las copias', () => {
     expect(respuesta.json()).toMatchObject({ estado: null, servicioVivo: false, copias: [] })
   })
 
+  it('lee el bloque del disco externo', async () => {
+    await servicioEscribe(
+      '{"ultima":"2026-08-19T04:30:00Z","copias":3,"ok":true,"externo":' +
+        '{"conectado":true,"ruta":"/externo/usb/norte-copias","copias":40,' +
+        '"ultima":"2026-08-19T04:31:00Z","libresMb":51200,"mensaje":null,"vistoAlgunaVez":true}}',
+    )
+    const respuesta = await app.inject({ method: 'GET', url: '/api/copias', headers: { cookie: dueno.cookie } })
+    expect(respuesta.json().estado.externo).toMatchObject({ conectado: true, copias: 40 })
+  })
+
+  it('un estado sin bloque de disco externo no rompe nada', async () => {
+    // Es lo que escribía la versión anterior del servicio: al actualizar Norte
+    // el contenedor de copias puede tardar en reescribir su estado.
+    await servicioEscribe('{"ultima":"2026-08-19T04:30:00Z","copias":3,"ok":true}')
+    const respuesta = await app.inject({ method: 'GET', url: '/api/copias', headers: { cookie: dueno.cookie } })
+    expect(respuesta.statusCode).toBe(200)
+    expect(respuesta.json().estado.externo).toBeNull()
+  })
+
   it('un estado corrupto se trata como falta de noticias, no como un error 500', async () => {
     await servicioEscribe('{esto no es json')
     const respuesta = await app.inject({ method: 'GET', url: '/api/copias', headers: { cookie: dueno.cookie } })

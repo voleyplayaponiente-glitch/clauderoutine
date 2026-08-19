@@ -9,6 +9,24 @@ import type { FechaISO } from './fechas.js'
  * en vez de dejarlo en un registro que nadie mira.
  */
 
+/**
+ * El disco externo, tal como lo ve el servicio de copias.
+ *
+ * `vistoAlgunaVez` es la pieza que hace útil todo esto: sin ella no se puede
+ * distinguir «aquí nunca ha habido disco externo» de «el disco estaba y alguien
+ * lo desenchufó hace tres semanas», y son dos situaciones muy distintas.
+ */
+export interface EstadoExterno {
+  conectado: boolean
+  ruta: string | null
+  copias: number
+  /** ISO en UTC de la última vez que se copió algo al disco. */
+  ultima: string | null
+  libresMb: number | null
+  mensaje: string | null
+  vistoAlgunaVez: boolean
+}
+
 /** Lo que el servicio de copias escribe en `estado.json` tras cada intento. */
 export interface EstadoCopias {
   /** ISO en UTC del último volcado correcto. */
@@ -18,6 +36,7 @@ export interface EstadoCopias {
   copias: number
   ok: boolean
   mensaje: string | null
+  externo: EstadoExterno | null
 }
 
 export type SaludCopias = 'al_dia' | 'atrasada' | 'fallida' | 'sin_servicio'
@@ -129,4 +148,70 @@ export function agruparCopias(ficheros: FicheroCopia[]): Copia[] {
     porSello.set(sello, copia)
   }
   return [...porSello.values()].sort((a, b) => b.sello.localeCompare(a.sello))
+}
+
+export type SaludExterno = 'al_dia' | 'desconectado' | 'con_problema' | 'sin_configurar'
+
+export interface JuicioExterno {
+  salud: SaludExterno
+  titulo: string
+  detalle: string
+}
+
+/** A partir de aquí, un disco que estaba y ya no está deja de ser un despiste y
+ *  empieza a ser un aviso: las copias vuelven a estar todas en la misma
+ *  máquina. */
+const DIAS_TOLERADOS_FUERA = 3
+
+export function juzgarExterno(externo: EstadoExterno | null, ahora: Date): JuicioExterno {
+  if (!externo || (!externo.conectado && !externo.vistoAlgunaVez)) {
+    return {
+      salud: 'sin_configurar',
+      titulo: 'Sin copia fuera del servidor',
+      detalle:
+        'Las copias están solo en este Umbrel: protegen de un borrado o de una actualización ' +
+        'que salga mal, no de que se estropee el disco. Conecta un disco y crea en él una ' +
+        'carpeta llamada «norte-copias» para que Norte empiece a llevárselas.',
+    }
+  }
+
+  if (externo.conectado && externo.mensaje) {
+    return { salud: 'con_problema', titulo: 'Problema con el disco externo', detalle: externo.mensaje }
+  }
+
+  if (externo.conectado) {
+    const sitio =
+      externo.libresMb !== null ? ` Quedan ${Math.round(externo.libresMb / 1024)} GB libres.` : ''
+    return {
+      salud: 'al_dia',
+      titulo: 'Copia en el disco externo',
+      detalle: `${externo.copias} copia${externo.copias === 1 ? '' : 's'} en el disco.${sitio}`,
+    }
+  }
+
+  const dias =
+    externo.ultima === null
+      ? null
+      : Math.floor((ahora.getTime() - new Date(externo.ultima).getTime()) / 86_400_000)
+
+  if (dias !== null && dias <= DIAS_TOLERADOS_FUERA) {
+    return {
+      salud: 'desconectado',
+      titulo: 'El disco externo no está conectado',
+      detalle:
+        'Nada grave todavía: la última copia salió hace ' +
+        `${dias === 0 ? 'menos de un día' : `${dias} día${dias === 1 ? '' : 's'}`}. ` +
+        'Vuelve a conectarlo cuando puedas.',
+    }
+  }
+
+  return {
+    salud: 'desconectado',
+    titulo: 'El disco externo lleva días sin aparecer',
+    detalle:
+      dias === null
+        ? 'No hay constancia de que se haya copiado nada a él. Conéctalo y reinicia Norte.'
+        : `La última copia que salió del Umbrel es de hace ${dias} días. Si acabas de conectarlo, ` +
+          'reinicia Norte desde el Umbrel para que lo vea.',
+  }
 }

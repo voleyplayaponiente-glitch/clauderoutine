@@ -1,4 +1,4 @@
-import { juzgarCopias, type SaludCopias } from '@norte/dominio'
+import { juzgarCopias, juzgarExterno, type SaludCopias, type SaludExterno } from '@norte/dominio'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, ErrorDeApi } from '../lib/api.js'
@@ -20,6 +20,15 @@ const PUNTO: Record<SaludCopias, string> = {
   atrasada: 'bg-aviso',
   fallida: 'bg-negativo',
   sin_servicio: 'bg-negativo',
+}
+
+// El disco externo es opcional: no tenerlo no pone nada en rojo, pero que
+// estuviera y haya dejado de estar sí merece ámbar.
+const PUNTO_EXTERNO: Record<SaludExterno, string> = {
+  al_dia: 'bg-positivo',
+  desconectado: 'bg-aviso',
+  con_problema: 'bg-negativo',
+  sin_configurar: 'bg-linea',
 }
 
 export function Copias() {
@@ -53,6 +62,7 @@ export function Copias() {
     { estado: copias.data.estado, servicioVivo: copias.data.servicioVivo },
     new Date(),
   )
+  const externo = juzgarExterno(copias.data.estado?.externo ?? null, new Date())
   const ultima = copias.data.estado?.ultima
 
   return (
@@ -77,6 +87,17 @@ export function Copias() {
         >
           Hacer una copia ahora
         </Boton>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-start gap-3 border-t border-linea pt-4">
+        <span
+          className={`mt-1.5 size-2.5 shrink-0 rounded-full ${PUNTO_EXTERNO[externo.salud]}`}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{externo.titulo}</p>
+          <p className="text-sm leading-relaxed text-texto-2">{externo.detalle}</p>
+        </div>
       </div>
 
       {pedida && !pedir.isError && (
@@ -105,12 +126,19 @@ export function Copias() {
               </li>
             ))}
           </ul>
-          {/* Saber dónde están es la mitad de tener copias: la otra mitad es
-              poder llevárselas fuera del Umbrel. */}
           <p className="mt-3 text-xs leading-relaxed text-texto-3">
             Están en <code className="rounded bg-sup-3 px-1">{copias.data.carpeta}</code> dentro de
-            tu servidor. Cópialas de vez en cuando a un disco aparte: una copia que vive en la
-            misma máquina que el original no protege de que se estropee esa máquina.
+            tu servidor
+            {copias.data.estado?.externo?.ruta ? (
+              <>
+                {' '}
+                y también en{' '}
+                <code className="rounded bg-sup-3 px-1">{copias.data.estado.externo.ruta}</code>, en
+                el disco externo. Del disco externo no se borra nada nunca.
+              </>
+            ) : (
+              '.'
+            )}
           </p>
         </details>
       )}

@@ -87,11 +87,24 @@ services:
       NORTE_COPIAS_HORA: ${NORTE_COPIAS_HORA:-04:30}
       NORTE_COPIAS_DIARIAS: ${NORTE_COPIAS_DIARIAS:-7}
       NORTE_COPIAS_MENSUALES: ${NORTE_COPIAS_MENSUALES:-12}
+      # Mínimo de sitio libre que se exige en el disco externo antes de
+      # escribir en él. Llenarlo del todo dejaría copias a medias.
+      NORTE_EXTERNO_MINIMO_MB: ${NORTE_EXTERNO_MINIMO_MB:-500}
     volumes:
       - ./copias.sh:/copias.sh:ro
       - ${APP_DATA_DIR:-.}/copias:/copias
       - ${APP_DATA_DIR:-.}/documentos:/documentos:ro
       - ${APP_DATA_DIR:-.}/peticion-copia:/peticion
+      # El disco externo. Se monta la carpeta donde el sistema deja los discos
+      # conectados, no un disco concreto: así vale cualquiera.
+      #
+      # Norte solo escribe si encuentra dentro una carpeta llamada
+      # «norte-copias». Esa marca es lo único que distingue «el disco está» de
+      # «el disco no está y aquí hay un directorio vacío»; sin ella el servicio
+      # llenaría el disco de sistema del Umbrel creyendo que manda las copias
+      # fuera. Un bind mount no ve los discos que se monten DESPUÉS de arrancar
+      # el contenedor: si conectas uno, reinicia la app.
+      - ${NORTE_EXTERNO_HOST:-/media}:/externo
     depends_on:
       db:
         condition: service_healthy
