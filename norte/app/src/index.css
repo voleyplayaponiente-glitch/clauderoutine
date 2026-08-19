@@ -26,7 +26,11 @@
 
   --texto-1: #0b0e13;
   --texto-2: #4a5361;
-  --texto-3: #79828f;
+  /* 5,72:1 sobre blanco y 4,78:1 sobre la superficie más clara en la que se
+     usa. El tono anterior (#79828f) se veía bien y **suspendía** la relación de
+     contraste mínima en todas las pantallas: lo cazó axe, no el ojo. Sigue
+     siendo el gris más callado de los tres, que era su trabajo. */
+  --texto-3: #5f6773;
 
   /* El separador es una sombra de contacto, no una línea dura. */
   --linea: #dfe3e9;
@@ -39,6 +43,14 @@
   --marca: #0a6bdb;
   --marca-clara: #3ab4f5;
   --marca-tenue: #e7f1fd;
+  /* Azul para TEXTO sobre `--marca-tenue`. El de la marca se quedaba en 4,45:1
+     sobre ese fondo: casi, que en accesibilidad es que no. */
+  --marca-tinta: #0a5cbe;
+  /* La tinta que va ENCIMA de un relleno de marca. En claro es blanco (5,07:1)
+     y en oscuro casi negro, porque el azul del modo oscuro es más luminoso y
+     con texto blanco se queda en 3,65:1 — suspenso, y en el botón principal de
+     la aplicación. Lo cazó axe. */
+  --sobre-marca: #ffffff;
 
   /* Color de alerta PARA GRÁFICOS, distinto del `--negativo` de los textos.
      Una marca en un gráfico y una cifra en rojo tienen requisitos distintos:
@@ -63,7 +75,8 @@
 
   --texto-1: #f2f4f7;
   --texto-2: #a3acbb;
-  --texto-3: #6b7484;
+  /* Mismo caso que en claro: #6b7484 daba 3,85:1 y no llegaba. */
+  --texto-3: #8a93a3;
 
   --linea: #232935;
 
@@ -74,6 +87,10 @@
   --marca: #0a84ff;
   --marca-clara: #6fd6ff;
   --marca-tenue: #10233a;
+  /* 6,19:1 sobre `--marca-tenue`; el de la marca daba 4,35:1. */
+  --marca-tinta: #4ba6ff;
+  /* 5,17:1 sobre #0a84ff. Ver la nota del modo claro. */
+  --sobre-marca: #06121f;
 
   /* Un paso más oscuro que `--negativo` (#ff5b52), que se salía de la banda de
      luminosidad del modo oscuro. Comprobado con el validador. */
@@ -98,6 +115,8 @@
   --color-marca: var(--marca);
   --color-marca-clara: var(--marca-clara);
   --color-marca-tenue: var(--marca-tenue);
+  --color-marca-tinta: var(--marca-tinta);
+  --color-sobre-marca: var(--sobre-marca);
   --color-grafico-alerta: var(--grafico-alerta);
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Segoe UI', Roboto,
@@ -196,5 +215,65 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Impresión.
+ *
+ * El PDF de los informes lo hace el navegador, así que estas reglas SON el
+ * generador de PDF: lo que no esté aquí no sale en el papel.
+ *
+ * Se imprime siempre en claro, aunque la pantalla esté en oscuro. Un informe
+ * con fondo negro se lleva medio cartucho y en papel se lee peor; y el gris
+ * claro del modo oscuro sobre blanco desaparece.
+ */
+@media print {
+  :root,
+  :root[data-theme='oscuro'],
+  .oscuro {
+    --fondo: #ffffff;
+    --sup-1: #ffffff;
+    --sup-2: #ffffff;
+    --sup-3: #ffffff;
+    --texto-1: #000000;
+    --texto-2: #333333;
+    --texto-3: #555555;
+    --linea: #cccccc;
+    --positivo: #0a5c42;
+    --negativo: #93231f;
+    --marca: #0a4c9c;
+    --sombra-contacto: none;
+    --sombra-ambiental: none;
+  }
+
+  /* La cabecera pegajosa, la barra de pestañas y los botones no van al papel. */
+  header.material,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* Márgenes del papel, no del diseño de pantalla. */
+  @page {
+    margin: 16mm 14mm;
+  }
+
+  /* Una sección no se parte por la mitad si cabe entera en la página. */
+  section,
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Las URLs de los enlaces se imprimen: en papel, un enlace azul no lleva
+     a ninguna parte. */
+  .informe a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.85em;
+    color: #555555;
   }
 }

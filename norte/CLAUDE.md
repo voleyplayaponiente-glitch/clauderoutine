@@ -36,7 +36,9 @@ Otras dos derivas del prompt original, decididas y justificadas:
 cd norte
 npm install
 npm run dev            # API en :3012 + interfaz en :5173 (Vite reenvía /api)
-npm test               # motor (265) + API (148) = 413 tests
+npm test               # motor (278) + API (157) = 435 tests
+npm run licencia -- claves          # par de claves para emitir licencias
+npm run licencia -- emitir --titular "Ana" --plan pareja --meses 12
 # Si no hay PostgreSQL (contenedor nuevo): norte/scripts/bd-desarrollo.sh
 npm run test:dominio   # solo el motor, sin base de datos
 npm run build          # dominio + api + app
@@ -120,7 +122,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1 a 8 cerradas (413 tests en verde: 265 dominio + 148 API)
+## Estado — LAS NUEVE FASES CERRADAS (435 tests en verde: 278 dominio + 157 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -683,13 +685,126 @@ Pendiente de la fase: elegir el reparto de un gasto concreto se hace hoy con la
 regla única del espacio; si hay varias reglas, el gasto sale en «sin reparto»
 y hay que asignarla en Movimientos, donde **todavía no hay selector de regla**.
 
+## Fase 9 cerrada (19/08/2026): venta y pulido
+
+La última. Licencias, exportación, informe imprimible, accesibilidad medida y
+rendimiento medido. Y los textos legales, que el plan dejaba para aquí.
+
+### La licencia, y la desviación deliberada del plan
+El plan decía «sin licencia válida, modo solo lectura». Tal cual, publicar esa
+versión habría dejado a alguien mirando sus propias cuentas sin poder apuntar un
+café el día que se le pasara renovar. Lo que se ha hecho:
+
+- **La licencia paga compartir, no usar.** Sin licencia, una persona usa Norte
+  entero y para siempre. Lo que abre la licencia es el cupo de personas, que es
+  justo lo que añade valor y lo que cuesta soportar.
+- **Al caducar no se cierra la puerta**: el cupo vuelve a una persona y quien
+  sobra pasa a solo lectura. **Nunca el dueño**, y nunca se borra ni se oculta
+  un dato.
+- **Cláusula de anterioridad, `HEREDADOS_HASTA = '2026-08-20'`.** Quien ya
+  usaba la instalación antes de que existiera el licenciamiento no cuenta para
+  el cupo, jamás. Publicar una versión que le quita la escritura a alguien que
+  ayer la tenía es cambiarle el trato después de firmarlo. **Esa fecha no se
+  mueve**: moverla convierte clientes antiguos en morosos de un despliegue para
+  otro. Hay un test que la fija, para que nadie la toque sin querer.
+- **Ed25519 y sin llamar a casa.** La clave lleva la carga firmada; el servidor
+  la comprueba solo, sin conexión. La pública va en el código (`clave.ts`) y se
+  puede cambiar con `NORTE_CLAVE_LICENCIAS`. **La privada no está en este
+  repositorio** y `.gitignore` la excluye por si alguien la genera dentro.
+- Se firma **la carga ya codificada**, no el objeto: reserializar un JSON antes
+  de comprobar la firma es la forma clásica de que dos implementaciones ordenen
+  las claves distinto y una firma buena parezca mala.
+- Una firma buena no garantiza una carga con sentido, así que además se
+  comprueba la forma (plan conocido, fechas con formato, cupo entre 1 y 1000).
+- **Una instalación tiene UNA licencia.** Guardar varias obligaría a inventar
+  cuál manda, y «la más nueva» se rompe en cuanto alguien reinstala una
+  perpetua vieja después de probar una de prueba.
+- El guardián: `exigirEspacio` comprueba la licencia **solo cuando el rol
+  mínimo es editor o más**. Leer y exportar no preguntan nunca.
+
+**Un test que habría empezado a fallar solo, un martes cualquiera.** Al añadir
+el guardián, los 148 tests seguían en verde… porque los usuarios que crean los
+tests nacen con la fecha de hoy, y hoy caía dentro de la cláusula de
+anterioridad. El día 20 se habrían caído todos. Ahora `limpiarBd` deja la
+instalación licenciada de par en par —una instalación con varias personas es,
+por definición, una instalación licenciada— y los límites se prueban a
+propósito en `licencia.test.ts`, envejeciendo las cuentas a mano. El par de
+claves de los tests se genera en el propio `ayuda.ts`, así que la clave privada
+de verdad no tiene que existir para poder probar el licenciamiento.
+
+### Exportar: la contrapartida, en el mismo despliegue
+`GET /exportar` (JSON completo) y `/exportar.csv` (movimientos). Piden **rol de
+lector y no preguntan por la licencia**. Una aplicación que te deja de dejar
+sacar tus datos cuando dejas de pagarle no te vendió un programa, te alquiló tus
+propios movimientos. El CSV lleva `;`, coma decimal y **BOM** —sin él, Excel se
+come las tildes—, y el JSON va campo a campo y no con `...spread`: un volcado
+con puntos suspensivos exporta mañana lo que alguien añada a la tabla sin que
+nadie lo decida. La visibilidad de cuentas se respeta, con test.
+
+### El informe: el PDF lo hace el navegador
+`/#/informe` con una hoja de estilos de impresión. **Es una decisión, no una
+dejadez**: una librería de PDF obligaría a repintar el diseño con primitivas y
+el resultado se parecería a un listado de los noventa; con `@media print` el
+motor del navegador maqueta lo que ya sabe maquetar y no entra una dependencia
+más en una aplicación que procesa ficheros de fuera. **Se imprime siempre en
+claro**, aunque la pantalla esté en oscuro: un informe con fondo negro se lleva
+medio cartucho y en papel se lee peor. Comprobado con `emulateMedia('print')` y
+generando el PDF de verdad.
+
+### Accesibilidad: medida, no opinada
+Auditoría con **axe-core sobre 11 rutas × 2 temas**, más la puerta en los dos
+temas y a 375 px. Se pasó de decenas de incumplimientos a **cero**. Lo que
+salió, y que a ojo parecía correcto:
+- **`--texto-3` suspendía el contraste en TODA la aplicación** (3,89:1 en claro
+  y 3,85:1 en oscuro). Es el gris de los pies de tarjeta, los títulos de sección
+  y las notas: estaba en todas las pantallas. Ahora `#5f6773` y `#8a93a3`, que
+  dan 5,72:1 y 5,86:1 y siguen siendo el gris más callado de los tres.
+- **El botón principal en modo oscuro**: blanco sobre `#0a84ff` da 3,65:1. En
+  vez de tocar el azul de la marca —que es identidad, foco y selección— se ha
+  añadido `--sobre-marca`, la tinta que va encima de un relleno de marca: blanco
+  en claro, casi negro en oscuro (5,17:1).
+- **La etiqueta azul** (`bg-marca-tenue text-marca`) se quedaba en 4,45:1 y
+  4,35:1: *casi*, que en accesibilidad es que no. Token nuevo `--marca-tinta`.
+- **Orden de encabezados**: `Tarjeta` ponía `h3` bajo un `h1`. Ahora `h2`, y
+  Deudas tiene un encabezado «Préstamos» que antes faltaba.
+- La cabecera de la columna de acciones estaba vacía, y la puerta no tenía `h1`
+  (el logotipo dice «Norte» a quien lo ve; a quien no lo ve, no le dice nada).
+
+### Rendimiento: medido en esta máquina, con la semilla puesta
+Interfaz: **396 KB / 114 KB comprimidos**, un solo paquete. API, p50 sobre 12
+peticiones: `/auth/yo` 4,9 ms · `/cuadro` 8,6 ms · `/movimientos` (200) 6,8 ms ·
+`/presupuesto` 8,8 ms · `/cuenta` (compartido) 9,3 ms · `/exportar` 9,3 ms.
+
+Y un **N+1 de la fase 8, arreglado**: la cuenta compartida pedía los ingresos
+del mes **una vez por gasto**. El mapa que ya se usaba para explicar el reparto
+en pantalla hace ahora también de caché.
+
+### Textos legales
+`/#/legal`: qué es Norte y qué no (**no es entidad de pago, no da asesoramiento
+de inversión ni fiscal, los informes no son documentos contables**), dónde viven
+los datos y qué significa el RGPD en una instalación autoalojada —el cliente es
+el responsable del tratamiento; quien vende el programa no es encargado, porque
+no accede ni puede acceder—, y las condiciones de uso. Escritos desde lo que el
+programa hace de verdad. **No los ha revisado un abogado y la propia pantalla lo
+dice**: describen el comportamiento con exactitud, que es lo que un jurista
+necesita para adaptarlos.
+
+### La semilla, otra vez
+Sembraba el gasto del mes con días relativos («hace 18 días»), y ejecutándola un
+día 3 todo caía en el mes anterior: el presupuesto y el informe salían vacíos y
+parecían rotos. Ahora hay `esteMes(dia)`, que fija el día del mes y lo recorta a
+hoy.
+
+Y un detalle que se vio en el informe impreso: un total de cero gastos se
+enseñaba como **«-0,00 €»**, que parece un fallo del programa. `formatearDinero`
+normaliza el cero negativo.
+
 ## Por dónde seguir
-1. **Fase 9 — Venta y pulido**: licencias, informes en PDF, accesibilidad y
-   rendimiento (ver `../PLAN_NORTE.md`). Es la última.
-2. **El selector de regla de reparto en Movimientos**, para poder tener más de
+1. **El selector de regla de reparto en Movimientos**, para poder tener más de
    una regla en un espacio. Es lo único que queda abierto de la fase 8.
-3. **La foto de la cartera**, para poder dar la TWR. Es lo último que queda
+2. **La foto de la cartera**, para poder dar la TWR. Es lo último que queda
    abierto de la fase 6 y el sitio donde ponerla ya existe.
+3. **Que un abogado revise `/#/legal`** antes de vender Norte a un tercero.
 4. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado
    remoto). El disco externo protege del disco roto, no del robo ni del fuego.
 5. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la

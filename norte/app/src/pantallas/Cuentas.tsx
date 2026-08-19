@@ -94,7 +94,7 @@ function FichaCuenta({
     <Tarjeta>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-medium">{cuenta.nombre}</h3>
+          <h2 className="truncate text-lg font-medium">{cuenta.nombre}</h2>
           <p className="text-sm text-texto-3">
             {nombreTipo}
             {cuenta.ultimos4 && ` ····${cuenta.ultimos4}`}

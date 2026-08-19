@@ -4,3 +4,7 @@ dist
 datos
 *.log
 .DS_Store
+
+# La clave privada con la que se firman las licencias. NUNCA al repositorio.
+norte-licencias.privada.pem
+*.privada.pem

@@ -16,7 +16,9 @@ import { rutasCuentas } from './rutas/cuentas.js'
 import { rutasDeudas } from './rutas/deudas.js'
 import { rutasDocumentos } from './rutas/documentos.js'
 import { rutasEspacios } from './rutas/espacios.js'
+import { rutasExportar } from './rutas/exportar.js'
 import { rutasInversiones } from './rutas/inversiones.js'
+import { rutasLicencia } from './rutas/licencia.js'
 import { rutasPresupuestos } from './rutas/presupuestos.js'
 import { rutasTarjetas } from './rutas/tarjetas.js'
 import { rutasMovimientos } from './rutas/movimientos.js'
@@ -155,6 +157,8 @@ export async function crearServidor({
   await app.register(rutasInversiones, { prisma })
   await app.register(rutasCuadro, { prisma })
   await app.register(rutasCompartido, { prisma })
+  await app.register(rutasLicencia, { prisma })
+  await app.register(rutasExportar, { prisma })
 
   return app
 }

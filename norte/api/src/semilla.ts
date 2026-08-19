@@ -87,6 +87,20 @@ async function sembrar() {
     return fecha.toISOString().slice(0, 10)
   }
 
+  /**
+   * Un día **de este mes**, sin pasar de hoy. El gasto del mes no puede
+   * sembrarse con días relativos: ejecutando la semilla un día 3, «hace 18
+   * días» cae en el mes pasado y el presupuesto y el informe salen vacíos —que
+   * es justo lo que pasó la primera vez.
+   */
+  const esteMes = (dia: number) => {
+    const hoy = new Date()
+    const elegido = Math.min(dia, hoy.getDate())
+    return new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), elegido))
+      .toISOString()
+      .slice(0, 10)
+  }
+
   const corriente = (
     await post('/cuentas', { nombre: 'Cuenta corriente', tipo: 'corriente', saldoInicial: 214_000 })
   ).json() as { cuenta: { id: string } }
@@ -131,6 +145,45 @@ async function sembrar() {
     })
   }
   await patch(`/inversiones/posiciones/${posicion.posicion.id}/precio`, { ultimoPrecio: 29_500 })
+
+  // Gasto del mes, con categoría. Sin esto, el presupuesto y el informe salen
+  // vacíos y no se pueden juzgar: un mes de verdad tiene gasto, no solo
+  // previsiones.
+  const categoriasPersonal = await prisma.categoria.findMany({
+    where: { espacioId: personal.id, borradaEn: null },
+  })
+  const categoria = (nombre: string) =>
+    categoriasPersonal.find((c) => c.nombre.toLowerCase() === nombre.toLowerCase())?.id
+  const gastosDelMes: [number, number, string, string][] = [
+    [-95_000, 1, 'Alquiler', 'Vivienda'],
+    [-6_240, 3, 'Luz', 'Suministros'],
+    [-4_500, 4, 'Internet y móvil', 'Suministros'],
+    [-13_480, 5, 'Compra semanal', 'Alimentación'],
+    [-3_890, 7, 'Gasolina', 'Transporte'],
+    [-11_950, 9, 'Compra semanal', 'Alimentación'],
+    [-2_640, 10, 'Farmacia', 'Salud'],
+    [-4_200, 12, 'Cena fuera', 'Ocio'],
+    [-12_310, 14, 'Compra semanal', 'Alimentación'],
+    [-1_890, 16, 'Café y prensa', 'Ocio'],
+    [-5_600, 17, 'Ropa', 'Compras'],
+  ]
+  const ingresoPersonal = categoriasPersonal.find((c) => c.flujo === 'ingreso')
+  await post('/movimientos', {
+    cuentaId,
+    importe: 244_360,
+    fecha: esteMes(1),
+    concepto: 'Nómina',
+    categoriaId: ingresoPersonal?.id,
+  })
+  for (const [importe, dia, concepto, nombreCategoria] of gastosDelMes) {
+    await post('/movimientos', {
+      cuentaId,
+      importe,
+      fecha: esteMes(dia),
+      concepto,
+      categoriaId: categoria(nombreCategoria),
+    })
+  }
 
   // Lo que ya está comprometido, que es de lo único que se hace proyección.
   await post('/movimientos', { cuentaId, importe: -75_000, fecha: dentroDe(6), concepto: 'Alquiler garaje', estado: 'previsto' })

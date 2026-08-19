@@ -356,7 +356,7 @@ export async function rutasCompartido(app: FastifyInstance, opciones: { prisma: 
     reparto: { tipo: string; partes: { usuarioId: string; porcentaje: unknown; importeFijo: bigint }[] },
     espacioId: string,
     fecha: string,
-    usados?: Map<string, Map<string, number>>,
+    usados: Map<string, Map<string, number>>,
   ): Promise<Reparto> {
     const partes = reparto.partes.map((parte) => ({
       usuarioId: parte.usuarioId,
@@ -369,8 +369,14 @@ export async function rutasCompartido(app: FastifyInstance, opciones: { prisma: 
     }
 
     const mes = fecha.slice(0, 7)
-    const ingresos = await ingresosDelMes(espacioId, mes)
-    usados?.set(mes, ingresos)
+    // El mapa hace de caché además de servir para explicarlo en pantalla: sin
+    // esto, un periodo con treinta gastos compartidos lanzaba treinta
+    // consultas de ingresos para preguntar treinta veces por el mismo mes.
+    let ingresos = usados.get(mes)
+    if (!ingresos) {
+      ingresos = await ingresosDelMes(espacioId, mes)
+      usados.set(mes, ingresos)
+    }
     return {
       tipo: 'proporcional_ingresos',
       partes: partes.map((parte) => ({ ...parte, ingreso: ingresos.get(parte.usuarioId) ?? 0 })),

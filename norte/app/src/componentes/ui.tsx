@@ -16,7 +16,7 @@ function unir(...clases: (string | false | null | undefined)[]): string {
 type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'peligro'
 
 const ESTILO_BOTON: Record<VarianteBoton, string> = {
-  primario: 'bg-marca text-white hover:brightness-110 active:brightness-95',
+  primario: 'bg-marca text-sobre-marca hover:brightness-110 active:brightness-95',
   secundario: 'bg-sup-3 text-texto-1 hover:brightness-105 active:brightness-95',
   fantasma: 'bg-transparent text-texto-2 hover:bg-sup-2 hover:text-texto-1',
   peligro: 'bg-negativo text-white hover:brightness-110 active:brightness-95',
@@ -123,10 +123,12 @@ export function Tarjeta({
     >
       {(titulo || accion) && (
         <header className="mb-4 flex items-center justify-between gap-3">
+          {/* h2, no h3: la pantalla pone el h1 y saltarse un nivel deja a quien
+              navega con lector de pantalla sin saber si esto cuelga de algo. */}
           {titulo && (
-            <h3 className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em] text-texto-3">
+            <h2 className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em] text-texto-3">
               {titulo}
-            </h3>
+            </h2>
           )}
           {accion}
         </header>
@@ -303,7 +305,7 @@ export function EstadoVacio({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-tarjeta bg-sup-2 px-6 py-10 text-center">
-      <h3 className="text-lg font-semibold">{titulo}</h3>
+      <h2 className="text-lg font-semibold">{titulo}</h2>
       {/* Un vacío que solo dice «no hay nada» es una pantalla desperdiciada:
           este dice qué hacer para llenarla. */}
       <p className="max-w-sm text-sm leading-relaxed text-texto-2">{texto}</p>
@@ -347,7 +349,7 @@ export function Etiqueta({ children, tono = 'neutro' }: { children: ReactNode; t
     <span
       className={unir(
         'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
-        tono === 'marca' ? 'bg-marca-tenue text-marca' : 'bg-sup-3 text-texto-2',
+        tono === 'marca' ? 'bg-marca-tenue text-marca-tinta' : 'bg-sup-3 text-texto-2',
       )}
     >
       {children}

@@ -14,7 +14,8 @@
     "semilla": "node --env-file-if-exists=.env --import tsx src/semilla.ts",
     "pretest": "npm run build -w @norte/dominio --prefix .. && prisma generate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "licencia": "node --env-file-if-exists=.env --import tsx src/licencia/emitir.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

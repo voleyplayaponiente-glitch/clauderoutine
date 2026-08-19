@@ -162,7 +162,12 @@ export function Movimientos({ espacio }: { espacio: EspacioResumen }) {
                     <th className="px-2 py-2 font-medium">Concepto</th>
                     <th className="px-2 py-2 font-medium">Categoría</th>
                     <th className="px-2 py-2 text-right font-medium">Importe</th>
-                    <th className="px-2 py-2" />
+                    {/* La columna de acciones necesita nombre aunque no se
+                        vea: en un lector de pantalla, una cabecera vacía deja
+                        la última celda de cada fila sin decir de qué es. */}
+                    <th className="px-2 py-2">
+                      <span className="sr-only">Acciones</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

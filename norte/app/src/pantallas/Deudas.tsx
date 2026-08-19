@@ -57,6 +57,10 @@ export function Deudas({ espacio }: { espacio: EspacioResumen }) {
         )}
       </header>
 
+      {/* El encabezado va aunque solo haya un préstamo: sin él, el nombre de
+          cada deuda era un h3 colgando de un h1, y un lector de pantalla no
+          puede decir de qué cuelga. */}
+      <h2 className="text-xl font-semibold tracking-[-0.01em]">Préstamos</h2>
       {deudas.isLoading ? (
         <Esqueleto className="h-40 w-full" />
       ) : deudas.data && deudas.data.deudas.length === 0 ? (

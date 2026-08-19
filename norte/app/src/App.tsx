@@ -8,11 +8,14 @@ import { useUi, type Tema } from './estado/ui.js'
 import { api, ErrorDeApi, type Sesion } from './lib/api.js'
 import { ir, useRuta } from './lib/router.js'
 import { Cuentas } from './pantallas/Cuentas.js'
+import { Ajustes } from './pantallas/Ajustes.js'
 import { Compartido } from './pantallas/Compartido.js'
 import { Deudas } from './pantallas/Deudas.js'
 import { Documentos } from './pantallas/Documentos.js'
 import { Entrar } from './pantallas/Entrar.js'
 import { Inicio } from './pantallas/Inicio.js'
+import { Informe } from './pantallas/Informe.js'
+import { Legal } from './pantallas/Legal.js'
 import { Inversiones } from './pantallas/Inversiones.js'
 import { Movimientos } from './pantallas/Movimientos.js'
 import { Presupuesto } from './pantallas/Presupuesto.js'
@@ -134,9 +137,12 @@ export function App() {
               <Pestana ruta={ruta} a="/compartido" texto="Compartido" />
             )}
             <Pestana ruta={ruta} a="/documentos" texto="Documentos" />
+            <Pestana ruta={ruta} a="/ajustes" texto="Ajustes" />
           </div>
         </nav>
       )}
+
+      <AvisoSoloLectura />
 
       <main className="animar-entrada">
         {ruta === '/muestra' ? (
@@ -153,6 +159,12 @@ export function App() {
           <Inversiones espacio={activo} />
         ) : ruta === '/compartido' && activo ? (
           <Compartido espacio={activo} />
+        ) : ruta === '/informe' && activo ? (
+          <Informe espacio={activo} />
+        ) : ruta === '/legal' ? (
+          <Legal />
+        ) : ruta === '/ajustes' && activo ? (
+          <Ajustes espacio={activo} />
         ) : ruta === '/documentos' && activo ? (
           <Documentos espacio={activo} />
         ) : (
@@ -165,7 +177,7 @@ export function App() {
           distancia desde donde estés. */}
       {activo && puedeEscribir(activo) && <EntradaRapida espacioId={activo.id} />}
 
-      <footer className="mx-auto max-w-5xl px-5 pb-10 pt-4 text-sm text-texto-3">
+      <footer className="mx-auto max-w-5xl px-5 pb-10 pt-4 text-sm text-texto-3 print:hidden">
         {sesion.data?.usuario.email} · Norte guarda tus datos en este servidor.
       </footer>
 
@@ -218,5 +230,28 @@ function SelectorTema() {
         </option>
       ))}
     </select>
+  )
+}
+
+/**
+ * Si esta cuenta está en solo lectura por la licencia, se dice **antes** de que
+ * lo descubra intentando guardar algo. Un botón que falla sin explicación
+ * parece una aplicación rota; esto es una decisión y tiene que leerse como tal.
+ */
+function AvisoSoloLectura() {
+  const licencia = useQuery({ queryKey: ['licencia'], queryFn: () => api.licencia() })
+  if (!licencia.data || licencia.data.puedoEscribir) return null
+
+  return (
+    <div role="status" className="border-b border-aviso/30 bg-aviso/12 print:hidden">
+      <p className="mx-auto max-w-5xl px-4 py-2.5 text-sm leading-relaxed sm:px-5">
+        <strong>Tu cuenta está en solo lectura.</strong> {licencia.data.detalle} Puedes
+        consultarlo y{' '}
+        <a href="#/ajustes" className="underline underline-offset-2">
+          exportarlo todo
+        </a>{' '}
+        cuando quieras.
+      </p>
+    </div>
   )
 }

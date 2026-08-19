@@ -4,8 +4,14 @@
   "version": "0.1.0",
   "description": "Norte — control presupuestario personal",
   "type": "module",
-  "workspaces": ["dominio", "api", "app"],
-  "engines": { "node": ">=22" },
+  "workspaces": [
+    "dominio",
+    "api",
+    "app"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "npm run dev -w @norte/api & npm run dev -w @norte/app",
     "dev:api": "npm run dev -w @norte/api",
@@ -15,6 +21,7 @@
     "test:dominio": "npm run test -w @norte/dominio",
     "test:api": "npm run test -w @norte/api",
     "migrar": "npm run migrar -w @norte/api",
-    "semilla": "npm run semilla -w @norte/api"
+    "semilla": "npm run semilla -w @norte/api",
+    "licencia": "npm run licencia -w @norte/api --"
   }
 }

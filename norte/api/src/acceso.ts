@@ -1,6 +1,7 @@
-import { decidirAcceso, type Rol } from '@norte/dominio'
+import { alcanza, decidirAcceso, puedeEscribirConLicencia, type Rol } from '@norte/dominio'
 import type { PrismaClient } from '@prisma/client'
-import { ErrorApi } from './errores.js'
+import { ErrorApi, sinPermiso } from './errores.js'
+import { estadoDeLicencia } from './licencia/estado.js'
 
 /**
  * El guardián. **Todo** lo que toca datos de un espacio pasa por aquí.
@@ -49,6 +50,22 @@ export async function exigirEspacio(
   if (!decision.permitido) {
     throw new ErrorApi(decision.motivo, decision.mensaje)
   }
+
+  // El rol dice qué puede hacer dentro de un espacio; la licencia dice si esta
+  // instalación le deja escribir en absoluto. Son dos permisos distintos y los
+  // dos pasan por aquí, que es el único sitio donde no se pueden olvidar.
+  // Leer y exportar no preguntan nunca: los datos son suyos pase lo que pase.
+  if (alcanza(rolMinimo, 'editor')) {
+    const licencia = await estadoDeLicencia(prisma)
+    if (!puedeEscribirConLicencia(licencia, usuarioId)) {
+      throw sinPermiso(
+        'Esta instalación de Norte no tiene licencia para tantas personas, así que tu cuenta ' +
+          'está en solo lectura. Puedes seguir consultándolo y exportándolo todo; para volver a ' +
+          'apuntar, quien la instaló tiene que ampliar la licencia.',
+      )
+    }
+  }
+
   return { espacioId, rol: decision.rol }
 }
 

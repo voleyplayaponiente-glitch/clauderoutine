@@ -120,7 +120,9 @@ export function formatearDinero(
     })
     FORMATO.set(clave, formato)
   }
-  const texto = formato.format(aEuros(centimos))
+  // `Object.is(-0, 0)` es falso y `Intl` respeta el signo: sin esto, un total
+  // de cero gastos se enseña como «-0,00 €», que parece un fallo del programa.
+  const texto = formato.format(centimos === 0 ? 0 : aEuros(centimos))
   // El «+» solo cuando se pide: en una variación de patrimonio importa, en un
   // saldo normal es ruido.
   return opciones.conSigno && centimos > 0 ? `+${texto}` : texto

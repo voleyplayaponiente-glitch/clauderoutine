@@ -55,6 +55,10 @@ export function Entrar({ tokenInvitacion }: { tokenInvitacion?: string }) {
     <main className="flex min-h-dvh items-center justify-center bg-fondo px-5 py-10">
       <div className="animar-entrada w-full max-w-sm">
         <div className="mb-8 flex flex-col gap-3">
+          {/* El logotipo dice «Norte» a quien lo ve; a quien no lo ve, no le
+              dice nada. Un h1 oculto le da a la página el título que ya tiene
+              visualmente, sin repetirlo en pantalla. */}
+          <h1 className="sr-only">Norte</h1>
           <Logotipo tamano={34} />
           <Presentacion
             modo={modoReal}

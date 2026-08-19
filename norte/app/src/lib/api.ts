@@ -565,6 +565,25 @@ export interface Negocio {
   }[]
 }
 
+// ─────────────────────────────────────────────── Licencia
+
+export interface EstadoLicencia {
+  valida: boolean
+  plan: 'prueba' | 'personal' | 'pareja' | 'negocio' | null
+  titular: string | null
+  caducaEn: string | null
+  diasRestantes: number | null
+  maxUsuarios: number
+  usuariosActivos: number
+  heredados: number
+  soloLectura: string[]
+  salud: 'ok' | 'aviso' | 'mal'
+  titulo: string
+  detalle: string
+  soyElDueno: boolean
+  puedoEscribir: boolean
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -802,4 +821,10 @@ export const api = {
       metodo: 'PATCH',
       cuerpo: { participaciones },
     }),
+  licencia: () => pedir<EstadoLicencia>('/licencia'),
+  ponerLicencia: (clave: string) =>
+    pedir<{ estado: EstadoLicencia }>('/licencia', { metodo: 'POST', cuerpo: { clave } }),
+  /** La URL de descarga. No pasa por `pedir`: el navegador la abre y guarda. */
+  urlExportacion: (espacioId: string, formato: 'json' | 'csv') =>
+    `/api/espacios/${espacioId}/exportar${formato === 'csv' ? '.csv' : ''}`,
 }
