@@ -44,4 +44,10 @@ EXPOSE 3012
 # en el Umbrel sea pulsar un botón y no acordarse de un comando: una versión
 # nueva con una tabla nueva se pone al día sola, y si la migración falla el
 # contenedor no arranca en vez de servir con un esquema a medias.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/principal.js"]
+#
+# `DATABASE_URL` se compone antes de llamar a Prisma: la CLI la lee del esquema
+# por su cuenta y no entiende la conexión por piezas. Sin esta línea, la
+# migración falla con «Environment variable not found: DATABASE_URL» y el
+# contenedor entra en bucle de reinicio — pasó en la instalación real desde la
+# tienda de Umbrel.
+CMD ["sh", "-c", "export DATABASE_URL=\"$(node dist/url-bd.js)\" && npx prisma migrate deploy && node dist/principal.js"]
