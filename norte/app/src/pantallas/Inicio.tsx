@@ -47,8 +47,9 @@ export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
         <strong>Documentos</strong> sueltas el extracto o la nómina y Norte los lee. Y para un
         gasto suelto, <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">Ctrl</kbd> +{' '}
         <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">K</kbd> escribiendo «café 3,40
-        ayer». Y en <strong>Deudas</strong> tienes el cuadro de tu hipoteca y qué te ahorrarías
-        amortizando antes de tiempo. Lo siguiente serán las inversiones.
+        ayer». En <strong>Deudas</strong> tienes el cuadro de tu hipoteca y qué te ahorrarías
+        amortizando antes de tiempo, y en <strong>Inversiones</strong>, tu cartera con la
+        rentabilidad real. Lo siguiente será el cuadro completo con el patrimonio neto.
       </Aviso>
 
       <div className="grid gap-5 sm:grid-cols-2">

@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1 a 5 cerradas (316 tests en verde: 203 dominio + 113 API)
+## Estado — fases 1 a 6 cerradas (343 tests en verde: 221 dominio + 122 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -460,10 +460,52 @@ Pendiente de la fase: las revisiones de tipo variable (hoy el cuadro se calcula
 con el tipo actual y la pantalla avisa de que es la foto de ahora), y los ciclos
 de tarjeta persistidos (`ciclos_tarjeta` sigue sin usarse).
 
+## Fase 6 cerrada (19/08/2026): inversiones
+
+`/#/inversiones`. Como en las demás fases, **se guardan los hechos** —compras,
+ventas, dividendos y el último precio con su fecha— y todo lo demás se calcula.
+
+- **Dos rentabilidades y hay que decir cuál es cuál.** La **TIR/XIRR** mide cómo
+  te ha ido *a ti* (depende de cuándo aportaste); la **TWR** mide cómo lo ha
+  hecho la inversión y es la comparable con un índice. Enseñar una sin nombrarla
+  es dar media respuesta.
+- **XIRR: Newton-Raphson y, si no converge, bisección. Y `null` si no hay
+  solución.** El caso de `null` no es teórico: una cartera a la que solo has
+  aportado y que aún no has valorado no tiene TIR. Un número inventado ahí lo
+  usaría alguien para decidir de verdad.
+- Base **act/365**, como la función XIRR de las hojas de cálculo, para que los
+  números cuadren con lo que la gente tiene en su Excel. Por eso perder un 20 %
+  durante 2024 (366 días) sale como −19,95 % anual y no como −20 % redondo.
+- **La TWR está implementada y probada, pero la app la devuelve `null`**: hace
+  falta un histórico de valoraciones de la cartera que Norte todavía no guarda.
+  La pantalla lo dice con todas las letras en vez de calcular una TWR con un
+  solo precio y llamarla comparable con el índice. **Es lo primero que hay que
+  cerrar si se retoma esta fase.**
+- **Coste medio ponderado**, que es lo que enseña el bróker — pero **Hacienda
+  liquida acciones y fondos por FIFO**, así que la plusvalía fiscal de una venta
+  parcial puede no ser esa. La pantalla lo advierte cuando hay plusvalía
+  realizada; callarlo sería dejar que alguien haga la declaración con el número
+  equivocado.
+- Un `split` multiplica participaciones sin tocar el coste (el factor viaja en
+  `participaciones`: 2 en un 2x1). Vender entera una posición la deja **sin
+  coste colgando**: el resto de redondeo se lleva a la plusvalía realizada.
+- **Norte no llama a ninguna API de cotizaciones.** Los precios los pone el
+  usuario y cada uno se guarda **con su fecha**; pasados dos meses la fila lo
+  avisa en ámbar. Un precio sin fecha parece de hoy aunque sea de hace medio año.
+- El umbral de rebalanceo son **puntos porcentuales**, no porcentaje relativo:
+  objetivo 70 con umbral 5 avisa por debajo de 65 o por encima de 75.
+  Rebalancear por cualquier desvío pequeño solo genera comisiones e impuestos.
+
+Verificación: las cifras de los tests salen de una bisección independiente en
+Python (10,0000 % / 7,9994 % / 15,6552 % / −19,9512 %), y además **la TIR de la
+cartera sembrada se comprobó contra ese mismo cálculo independiente sobre los
+flujos reales: 14,7773 % por los dos caminos**.
+
 ## Por dónde seguir
-1. **Fase 6 — Inversiones**: cartera, TWR y TIR (XIRR por Newton-Raphson con
-   respaldo de bisección, y `null` si no converge), asignación objetivo y aviso
-   de rebalanceo con umbral de ±5 pp.
+1. **Fase 7 — Cuadro completo**: el bento con el **patrimonio neto** como cifra
+   heroica, proyección a 30 días con el día de saldo mínimo y el gráfico firma.
+   Al llegar aquí hay que resolver el histórico de valoraciones que le falta a
+   la TWR (`fotos_patrimonio` ya existe en el esquema).
 2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
 3. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado

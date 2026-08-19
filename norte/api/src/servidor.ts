@@ -14,6 +14,7 @@ import { rutasCuentas } from './rutas/cuentas.js'
 import { rutasDeudas } from './rutas/deudas.js'
 import { rutasDocumentos } from './rutas/documentos.js'
 import { rutasEspacios } from './rutas/espacios.js'
+import { rutasInversiones } from './rutas/inversiones.js'
 import { rutasPresupuestos } from './rutas/presupuestos.js'
 import { rutasTarjetas } from './rutas/tarjetas.js'
 import { rutasMovimientos } from './rutas/movimientos.js'
@@ -149,6 +150,7 @@ export async function crearServidor({
   await app.register(rutasPresupuestos, { prisma })
   await app.register(rutasDeudas, { prisma })
   await app.register(rutasTarjetas, { prisma })
+  await app.register(rutasInversiones, { prisma })
 
   return app
 }

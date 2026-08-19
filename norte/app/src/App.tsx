@@ -12,6 +12,7 @@ import { Deudas } from './pantallas/Deudas.js'
 import { Documentos } from './pantallas/Documentos.js'
 import { Entrar } from './pantallas/Entrar.js'
 import { Inicio } from './pantallas/Inicio.js'
+import { Inversiones } from './pantallas/Inversiones.js'
 import { Movimientos } from './pantallas/Movimientos.js'
 import { Presupuesto } from './pantallas/Presupuesto.js'
 import { Muestra } from './pantallas/Muestra.js'
@@ -126,6 +127,7 @@ export function App() {
             <Pestana ruta={ruta} a="/presupuesto" texto="Presupuesto" />
             <Pestana ruta={ruta} a="/cuentas" texto="Cuentas" />
             <Pestana ruta={ruta} a="/deudas" texto="Deudas" />
+            <Pestana ruta={ruta} a="/inversiones" texto="Inversiones" />
             <Pestana ruta={ruta} a="/documentos" texto="Documentos" />
           </div>
         </nav>
@@ -142,6 +144,8 @@ export function App() {
           <Cuentas espacio={activo} />
         ) : ruta === '/deudas' && activo ? (
           <Deudas espacio={activo} />
+        ) : ruta === '/inversiones' && activo ? (
+          <Inversiones espacio={activo} />
         ) : ruta === '/documentos' && activo ? (
           <Documentos espacio={activo} />
         ) : (

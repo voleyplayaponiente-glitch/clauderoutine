@@ -392,6 +392,65 @@ export interface SimulacionAplazado {
   cuotaMinimaViable: number
 }
 
+export interface PosicionCartera {
+  id: string
+  nombre: string
+  isin: string | null
+  ticker: string | null
+  clase: string
+  region: string | null
+  participaciones: number
+  costeTotal: number
+  costeMedio: number
+  dividendos: number
+  plusvaliaRealizada: number
+  ultimoPrecio: number | null
+  fechaValoracion: string | null
+  valor: number
+  coste: number
+  plusvaliaLatente: number
+  rentabilidad: number | null
+  movimientos: {
+    id: string
+    tipo: string
+    fecha: string
+    participaciones: number
+    importe: number
+    comision: number
+  }[]
+}
+
+export interface Cartera {
+  cuentas: {
+    id: string
+    nombre: string
+    broker: string | null
+    tipo: string
+    divisa: string
+    valor: number
+    posiciones: PosicionCartera[]
+  }[]
+  total: {
+    valor: number
+    coste: number
+    plusvaliaLatente: number
+    dividendos: number
+    plusvaliaRealizada: number
+    rentabilidad: number | null
+  }
+  tir: number | null
+  twr: number | null
+  reparto: { total: number; partes: { clase: string; valor: number; porcentaje: number }[] }
+  desvios: {
+    clase: string
+    actual: number
+    objetivo: number
+    desviacion: number
+    ajuste: number
+    fueraDeRango: boolean
+  }[]
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -557,4 +616,26 @@ export const api = {
     pedir<{ ok: true }>(`/espacios/${espacioId}/tarjetas/${id}`, { metodo: 'DELETE' }),
   simularAplazado: (espacioId: string, datos: Record<string, unknown>) =>
     pedir<SimulacionAplazado>(`/espacios/${espacioId}/tarjetas/simular`, { metodo: 'POST', cuerpo: datos }),
+  cartera: (espacioId: string) => pedir<Cartera>(`/espacios/${espacioId}/inversiones`),
+  crearCuentaInversion: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ cuenta: { id: string } }>(`/espacios/${espacioId}/inversiones`, { metodo: 'POST', cuerpo: datos }),
+  crearPosicion: (espacioId: string, cuentaId: string, datos: Record<string, unknown>) =>
+    pedir<{ posicion: { id: string } }>(`/espacios/${espacioId}/inversiones/${cuentaId}/posiciones`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  apuntarInversion: (espacioId: string, posicionId: string, datos: Record<string, unknown>) =>
+    pedir<Cartera>(`/espacios/${espacioId}/inversiones/posiciones/${posicionId}/movimientos`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  ponerPrecio: (espacioId: string, posicionId: string, datos: { ultimoPrecio: number; fechaValoracion?: string }) =>
+    pedir<Cartera>(`/espacios/${espacioId}/inversiones/posiciones/${posicionId}/precio`, {
+      metodo: 'PATCH',
+      cuerpo: datos,
+    }),
+  borrarPosicion: (espacioId: string, posicionId: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/inversiones/posiciones/${posicionId}`, { metodo: 'DELETE' }),
+  guardarObjetivos: (espacioId: string, objetivos: { clase: string; objetivo: number; umbral: number }[]) =>
+    pedir<Cartera>(`/espacios/${espacioId}/inversiones/objetivos`, { metodo: 'PUT', cuerpo: { objetivos } }),
 }
