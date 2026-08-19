@@ -48,7 +48,11 @@ npm run semilla        # usuario demo@norte.local
 - `dominio/` — **motor puro, sin React ni Prisma**. Aquí vive lo que se puede
   probar sin levantar nada: `dinero` (céntimos, `repartir`, `parsearImporte`),
   `roles`, `espacios` (**`decidirAcceso`**, `esCuentaVisiblePara`),
-  `contrasenas`, `categorias-defecto`.
+  `contrasenas`, `categorias-defecto`, y `documentos/` (lectura de extractos y
+  nóminas: tabla, texto de PDF, Norma 43, enmascarado de tarjetas y huellas).
+- `api/src/documentos/` — **lo único que sabe de formatos**: ZIP, `.xlsx`,
+  BIFF8/OLE2 (`.xls`), PDF y CSV. Convierte bytes en cuadrícula o en texto; lo
+  que sale de ahí ya es vocabulario del dominio.
 - `api/` — Fastify + Prisma. `acceso.ts` es **el guardián**: toda ruta que toca
   datos de un espacio pasa por `exigirEspacio`. `servidor.ts` se construye por
   inyección (prisma + configuración) para que los tests levanten la API entera
@@ -116,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1 y 2 cerradas (143 tests en verde)
+## Estado — fases 1, 2 y 3 cerradas (196 tests en verde: 123 dominio + 73 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -180,14 +184,71 @@ que alguien puede dejar abierto sin enterarse.
 - La privacidad de cuentas está cableada en cuentas, movimientos Y recurrentes:
   una cuenta no compartida no aparece ni filtrando por su id.
 
+## Fase 3 cerrada (19/08/2026): documentos
+
+**Un solo buzón** (`/#/documentos`): se suelta el fichero y la app decide qué es
+y cómo leerlo. Nada entra en las cuentas sin pasar por la pantalla de revisión.
+
+Escrito **contra cuatro ficheros reales del usuario** (dos extractos del mismo
+banco en `.xls` y PDF, un extracto del BBVA en `.xlsx` y una nómina de su
+empresa). Los cuatro se leen enteros y bien. Lo que enseñaron:
+
+- **La tabla nunca empieza en A1.** Un extracto tenía la cabecera en la fila 5
+  con la columna A vacía; el otro, en la fila 8. Se busca la fila de cabecera y
+  se traducen las columnas **por nombre**, nunca por posición.
+- **La descripción viene repartida en varias columnas** («Concepto»,
+  «Movimiento», «Observaciones»), a veces repetida palabra por palabra. Se
+  juntan quitando las repetidas.
+- **Un extracto real trae el número de tarjeta completo dentro del concepto.**
+  `documentos/sensibles.ts` lo tapa **antes** de que el texto salga del motor;
+  se comprueba con Luhn para no censurar un «Adeudo nº …» que no es una tarjeta.
+  El fichero original sí se guarda entero: es suyo y está en su máquina.
+- **En un PDF no hay líneas, hay fragmentos con coordenadas.** Se agrupan por
+  altura **con holgura (2,5 pt)**: el guion de «01/07/2026 - 31/07/2026» de la
+  nómina va dibujado dos décimas más abajo que las fechas, y agrupando por Y
+  exacta el periodo de liquidación se perdía. Además el concepto se parte en dos
+  líneas, con la continuación colgando de la que empieza por «Fecha valor:».
+- **La nómina se lee por aritmética, no por posición**: se busca la pareja de
+  números contiguos cuya resta da el líquido. Es una comprobación, no una
+  adivinanza; si no cuadra, devuelve `null` y lo dice. En el recibo real la
+  palabra «líquido» no aparece en ninguna parte: la cifra está marcada con «€».
+- **Norma 43 (`.q43`)** implementado desde la especificación de la AEB. Es el
+  formato bueno —importes ya en céntimos y signo explícito— y la interfaz lo
+  recomienda en voz alta.
+
+Decisiones que conviene no deshacer:
+- **Los formatos se leen sin librería de hojas de cálculo.** La única versión de
+  SheetJS que hay en el registro público de npm (0.18.5) arrastra dos
+  vulnerabilidades sin parchear, y esto procesa ficheros que llegan de fuera.
+  `api/src/documentos/` trae un lector de ZIP (con el `inflate` de Node), otro
+  de `.xlsx` y otro de **BIFF8 dentro de OLE2** para los `.xls` antiguos —que es
+  justo lo que descarga uno de sus bancos—. Del PDF sí se encarga `pdfjs-dist`,
+  **fijado a ≥ 6.2.108**: las versiones anteriores tienen ejecución de código al
+  abrir un PDF preparado.
+- **La lectura no se guarda: se rehace en cada consulta.** Es determinista, y
+  así una mejora del lector se nota en los documentos ya subidos sin volver a
+  subirlos.
+- **Huella estable por apunte** (`fecha|importe|concepto normalizado` + ordinal
+  para los repetidos del mismo día) guardada en `idExterno`. Sale la misma
+  desde el `.xls` y desde el PDF del mismo banco —comprobado con los ficheros
+  reales, 6 de 6—, así que subir los dos no duplica nada. Aplicar dos veces
+  tampoco: `createMany` con `skipDuplicates` sobre el único (cuenta, idExterno).
+- **Los ficheros van a disco, no a la base de datos.** El backup de PostgreSQL
+  tiene que ser pequeño y frecuente; un PDF por columna lo engorda para siempre.
+- **En los tests no hay datos reales de nadie.** Las cuadrículas y los textos
+  reproducen la maquetación exacta de los ficheros del usuario, pero con
+  nombres, cuentas e importes inventados —y en la nómina, inventados **de forma
+  que la resta siga cuadrando**, porque si no la prueba no probaría nada.
+
 ## Por dónde seguir
-1. **Fase 3 — Documentos**: buzón único, lectura de extractos y **nóminas**,
-   revisión antes de aplicar y detección de duplicados.
-2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
+1. **Copias de seguridad automáticas.** Sigue siendo lo más urgente: con lo que
+   pasó en agosto, un `pg_dump` diario no puede esperar más fases.
+2. **Fase 4 — Presupuesto por sobres**: asignación mensual, lo que queda por
+   sobre, y el aviso cuando el ritmo de gasto se sale.
+3. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
-4. Cuando llegue la fase 3, pedirle al usuario **una nómina y un extracto suyos
-   de verdad**: con ficheros inventados la lectura sale bonita en los tests y
-   falla el primer día.
+4. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la
+   instalación manual vieja, ya sustituida por la de la tienda.
 
 ## Decisiones abiertas (no decidir por él)
 - **Canal de venta**: recomendado empezar por autoalojada + web (0 % de

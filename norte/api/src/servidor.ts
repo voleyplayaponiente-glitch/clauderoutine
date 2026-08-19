@@ -1,13 +1,16 @@
 import cookie from '@fastify/cookie'
+import multipart from '@fastify/multipart'
 import rateLimit from '@fastify/rate-limit'
 import type { PrismaClient, Usuario } from '@prisma/client'
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify'
 import { ZodError } from 'zod'
 import { COOKIE_SESION, usuarioDeSesion } from './auth/sesiones.js'
 import type { Configuracion } from './configuracion.js'
+import { TAMANO_MAXIMO } from './documentos/almacen.js'
 import { ErrorApi, noAutenticado } from './errores.js'
 import { rutasAuth } from './rutas/auth.js'
 import { rutasCuentas } from './rutas/cuentas.js'
+import { rutasDocumentos } from './rutas/documentos.js'
 import { rutasEspacios } from './rutas/espacios.js'
 import { rutasMovimientos } from './rutas/movimientos.js'
 import { rutasRecurrentes } from './rutas/recurrentes.js'
@@ -58,6 +61,12 @@ export async function crearServidor({
   })
 
   await app.register(cookie)
+  // La subida de documentos va por multipart. El tope de tamaño se pone también
+  // en la ruta, pero aquí hace de red: el cuerpo JSON sigue limitado a 2 MB y
+  // sin esto un fichero grande se leería entero en memoria antes de rechazarlo.
+  await app.register(multipart, {
+    limits: { fileSize: TAMANO_MAXIMO, files: 1, fields: 10 },
+  })
   await app.register(rateLimit, {
     max: limites.global,
     timeWindow: '1 minute',
@@ -131,6 +140,7 @@ export async function crearServidor({
   await app.register(rutasCuentas, { prisma })
   await app.register(rutasMovimientos, { prisma })
   await app.register(rutasRecurrentes, { prisma })
+  await app.register(rutasDocumentos, { prisma, configuracion })
 
   return app
 }

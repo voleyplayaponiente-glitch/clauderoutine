@@ -40,12 +40,13 @@ export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
         <p className="text-texto-2">Aquí vivirá tu cuadro completo. De momento, los cimientos.</p>
       </header>
 
-      <Aviso titulo="Ya puedes usarla">
-        Están las cuentas, los movimientos y las recurrentes. Apunta un gasto con{' '}
+      <Aviso titulo="Ya no hace falta teclearlo todo">
+        En <strong>Documentos</strong> puedes soltar el extracto del banco o la nómina y Norte los
+        lee: te enseña lo que ha entendido y tú decides qué entra. Si tu banco ofrece el fichero
+        Norma 43 (.q43), usa ese. Para un gasto suelto sigue estando{' '}
         <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">Ctrl</kbd> +{' '}
-        <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">K</kbd> escribiendo algo como
-        «café 3,40 ayer». Lo siguiente que llegará es subir extractos y nóminas para no tener que
-        teclearlo todo.
+        <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">K</kbd>, escribiendo algo como
+        «café 3,40 ayer». Lo siguiente serán los presupuestos por sobres.
       </Aviso>
 
       <div className="grid gap-5 sm:grid-cols-2">

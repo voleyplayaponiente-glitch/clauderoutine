@@ -18,11 +18,13 @@
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
+    "@fastify/multipart": "^10.1.1",
     "@fastify/rate-limit": "^10.2.2",
     "@node-rs/argon2": "^2.0.2",
     "@norte/dominio": "*",
     "@prisma/client": "^6.2.1",
     "fastify": "^5.2.1",
+    "pdfjs-dist": "^6.2.108",
     "zod": "^3.24.1"
   },
   "devDependencies": {

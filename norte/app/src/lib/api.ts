@@ -171,6 +171,57 @@ export interface InvitacionPendiente {
   expiraEn: string
 }
 
+
+export interface DocumentoResumen {
+  id: string
+  nombreOriginal: string
+  mimeType: string
+  tamanoBytes: number
+  tipo: string
+  estado: 'subido' | 'procesando' | 'revision' | 'aplicado' | 'fallido'
+  motivoTipo: string | null
+  error: string | null
+  creadoEn: string
+  movimientos?: number
+}
+
+export interface ApunteLeido {
+  huella: string
+  fecha: string
+  fechaValor?: string
+  concepto: string
+  importe: number
+  saldo?: number
+  divisa: string
+  tarjeta?: string
+  origen: number
+  yaImportado: boolean
+  parecidoA?: { concepto: string; fecha: string }
+}
+
+export interface NominaLeida {
+  empresa: string | null
+  cif: string | null
+  periodo: { desde: string; hasta: string } | null
+  bruto: number | null
+  irpf: number | null
+  cotizaciones: number | null
+  neto: number | null
+}
+
+export interface LecturaDocumento {
+  documento: DocumentoResumen
+  deteccion: { tipo: string; formato: string; motivo: string }
+  error?: string
+  hoja?: string
+  cuenta?: { titular?: string; ibanUltimos4?: string; saldoFinal?: number; divisa?: string }
+  desde?: string
+  hasta?: string
+  avisos?: string[]
+  nomina?: NominaLeida
+  apuntes: ApunteLeido[]
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -250,4 +301,42 @@ export const api = {
       metodo: 'POST',
       cuerpo: {},
     }),
+  documentos: (espacioId: string) =>
+    pedir<{ documentos: DocumentoResumen[] }>(`/espacios/${espacioId}/documentos`),
+  // La subida no pasa por `pedir`: va en multipart y el cuerpo es el propio
+  // `FormData`, así que no puede llevar `content-type` puesto a mano — el
+  // navegador tiene que añadir el separador él.
+  subirDocumento: async (espacioId: string, fichero: File): Promise<{ documento: DocumentoResumen }> => {
+    const formulario = new FormData()
+    formulario.append('fichero', fichero)
+    const respuesta = await fetch(`/api/espacios/${espacioId}/documentos`, {
+      method: 'POST',
+      body: formulario,
+      credentials: 'same-origin',
+    })
+    const texto = await respuesta.text()
+    const datos = texto ? (JSON.parse(texto) as unknown) : {}
+    if (!respuesta.ok) {
+      const error = (datos as { error?: { codigo?: string; mensaje?: string } }).error
+      throw new ErrorDeApi(
+        respuesta.status,
+        error?.codigo ?? 'interno',
+        error?.mensaje ?? 'No se ha podido subir el fichero.',
+      )
+    }
+    return datos as { documento: DocumentoResumen }
+  },
+  lecturaDocumento: (espacioId: string, id: string) =>
+    pedir<LecturaDocumento>(`/espacios/${espacioId}/documentos/${id}/lectura`),
+  aplicarDocumento: (
+    espacioId: string,
+    id: string,
+    datos: { cuentaId: string; categoriaId?: string | null; apuntes: unknown[] },
+  ) =>
+    pedir<{ creados: number; omitidos: number }>(`/espacios/${espacioId}/documentos/${id}/aplicar`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  borrarDocumento: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/documentos/${id}`, { metodo: 'DELETE' }),
 }

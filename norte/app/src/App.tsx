@@ -8,6 +8,7 @@ import { useUi, type Tema } from './estado/ui.js'
 import { api, ErrorDeApi, type Sesion } from './lib/api.js'
 import { ir, useRuta } from './lib/router.js'
 import { Cuentas } from './pantallas/Cuentas.js'
+import { Documentos } from './pantallas/Documentos.js'
 import { Entrar } from './pantallas/Entrar.js'
 import { Inicio } from './pantallas/Inicio.js'
 import { Movimientos } from './pantallas/Movimientos.js'
@@ -118,6 +119,7 @@ export function App() {
             <Pestana ruta={ruta} a="/" texto="Inicio" />
             <Pestana ruta={ruta} a="/movimientos" texto="Movimientos" />
             <Pestana ruta={ruta} a="/cuentas" texto="Cuentas" />
+            <Pestana ruta={ruta} a="/documentos" texto="Documentos" />
           </div>
         </nav>
       )}
@@ -129,6 +131,8 @@ export function App() {
           <Movimientos espacio={activo} />
         ) : ruta === '/cuentas' && activo ? (
           <Cuentas espacio={activo} />
+        ) : ruta === '/documentos' && activo ? (
+          <Documentos espacio={activo} />
         ) : (
           <Inicio espacio={activo} />
         )}
