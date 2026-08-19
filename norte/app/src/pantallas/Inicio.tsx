@@ -5,12 +5,16 @@ import { api, type EspacioResumen } from '../lib/api.js'
 import { ir } from '../lib/router.js'
 
 /**
- * Pantalla de inicio de la fase 1.
+ * Pantalla de inicio.
  *
  * El bento completo con el patrimonio neto es la fase 6; poner aquí un
- * dashboard con cifras inventadas sería enseñar una maqueta y llamarla app. Lo
- * que sí hace ya es lo de esta fase: decir en qué espacio estás, con qué papel,
- * y dejarte abrir la puerta a quien tú decidas.
+ * dashboard con cifras inventadas sería enseñar una maqueta y llamarla app.
+ *
+ * **El texto de esta pantalla cuenta en qué punto está la app, así que hay que
+ * actualizarlo al cerrar cada fase.** Se quedó diciendo «lo siguiente son las
+ * cuentas y los movimientos» cuando esas pestañas ya estaban arriba, y el
+ * usuario lo vio en su instalación: una app que se equivoca sobre sí misma
+ * empieza a no ser creíble en lo demás.
  */
 export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
   if (!espacio) {
@@ -36,10 +40,12 @@ export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
         <p className="text-texto-2">Aquí vivirá tu cuadro completo. De momento, los cimientos.</p>
       </header>
 
-      <Aviso titulo="Fase 1 de 9: cimientos">
-        Están puestos el esquema de datos completo, las cuentas de usuario, el aislamiento entre
-        espacios —con sus tests— y el sistema de diseño. Lo siguiente son las cuentas y los
-        movimientos, y después la lectura de nóminas y extractos.
+      <Aviso titulo="Ya puedes usarla">
+        Están las cuentas, los movimientos y las recurrentes. Apunta un gasto con{' '}
+        <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">Ctrl</kbd> +{' '}
+        <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">K</kbd> escribiendo algo como
+        «café 3,40 ayer». Lo siguiente que llegará es subir extractos y nóminas para no tener que
+        teclearlo todo.
       </Aviso>
 
       <div className="grid gap-5 sm:grid-cols-2">
