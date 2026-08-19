@@ -164,6 +164,14 @@ export interface JuicioExterno {
 const DIAS_TOLERADOS_FUERA = 3
 
 export function juzgarExterno(externo: EstadoExterno | null, ahora: Date): JuicioExterno {
+  // El mensaje manda sobre todo lo demás, esté o no conectado: el servicio solo
+  // escribe uno cuando hay algo que el dueño tiene que saber —el disco lleno, o
+  // una carpeta «norte-copias» creada por error sobre el propio disco del
+  // Umbrel—. Enseñar «sin configurar» encima de eso sería tapar el aviso.
+  if (externo?.mensaje) {
+    return { salud: 'con_problema', titulo: 'Problema con el disco externo', detalle: externo.mensaje }
+  }
+
   if (!externo || (!externo.conectado && !externo.vistoAlgunaVez)) {
     return {
       salud: 'sin_configurar',
@@ -173,10 +181,6 @@ export function juzgarExterno(externo: EstadoExterno | null, ahora: Date): Juici
         'que salga mal, no de que se estropee el disco. Conecta un disco y crea en él una ' +
         'carpeta llamada «norte-copias» para que Norte empiece a llevárselas.',
     }
-  }
-
-  if (externo.conectado && externo.mensaje) {
-    return { salud: 'con_problema', titulo: 'Problema con el disco externo', detalle: externo.mensaje }
   }
 
   if (externo.conectado) {

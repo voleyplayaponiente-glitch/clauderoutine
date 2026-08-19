@@ -79,7 +79,7 @@ minutos() {
 # quedaba sin poder leer el estado justo cuando había un fallo que contar.
 limpiar_texto() {
   [ -n "${1:-}" ] || return 0
-  echo "$1" | tr -d '"\\' | tr '\n\t' '  ' | tr -d '\000-\037' | cut -c1-300
+  echo "$1" | tr -d '"\\' | tr '\n\t' '  ' | tr -d '\000-\037' | cut -c1-300 | sed 's/[[:space:]]*$//'
 }
 
 publicar() {
@@ -225,6 +225,26 @@ apuntar_externo() {
 sincronizar_externo() {
   if ! afuera=$(buscar_externo); then
     apuntar_externo false "" 0 "" ""
+    return 0
+  fi
+
+  # ¿Es de verdad OTRO disco?
+  #
+  # La marca `norte-copias` distingue «hay un disco conectado» de «hay un
+  # directorio vacío», pero no distingue «otro disco» de «el mismo». Si alguien
+  # crea la carpeta en un punto de montaje que no llegó a montarse, acabaría
+  # copiando sobre el propio disco del Umbrel y la app diría que hay copia
+  # fuera. Sería una mentira, y de las peores: la que se descubre el día que se
+  # estropea el disco.
+  # Se exige que las dos lecturas existan: si `df` no dijera nada, dos cadenas
+  # vacías serían «iguales» y el servicio dejaría de copiar a un disco que sí
+  # está bien. Ante la duda, copiar; la marca sigue siendo obligatoria.
+  disco_fuera=$(df -P "$afuera" 2>/dev/null | awk 'NR==2 {print $1}')
+  disco_aqui=$(df -P "$DESTINO" 2>/dev/null | awk 'NR==2 {print $1}')
+  if [ -n "$disco_fuera" ] && [ "$disco_fuera" = "$disco_aqui" ]; then
+    apuntar_externo false "" 0 "" \
+      "La carpeta norte-copias esta en el mismo disco que el Umbrel, no en uno aparte. Comprueba que el disco externo esta montado antes de crearla."
+    decir "AVISO: el destino externo esta en el mismo disco que las copias; no se copia nada"
     return 0
   fi
 

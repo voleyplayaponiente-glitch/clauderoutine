@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1, 2 y 3 cerradas (220 tests en verde: 137 dominio + 83 API)
+## Estado — fases 1, 2 y 3 cerradas (221 tests en verde: 138 dominio + 83 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -307,6 +307,15 @@ El mismo servicio lleva cada copia a un disco conectado al Umbrel. Se monta
 `/media` del host en `/externo`, no un disco concreto, para que valga
 cualquiera.
 
+- **La marca no basta: se comprueba que sea OTRO disco.** `df -P` del destino y
+  del origen; si el dispositivo es el mismo, no se copia nada y se dice por qué.
+  Salió del uso real: al montar el disco, el `mount` falló (no había disco
+  conectado) pero el `mkdir` de la marca sí se ejecutó, y quedó una carpeta
+  `norte-copias` **sobre el disco interno del Umbrel**. Sin esta comprobación, la
+  app habría dicho «copia en el disco externo» copiando sobre el mismo disco que
+  intenta proteger — la peor clase de mentira, la que se descubre el día que se
+  estropea el disco. La comprobación **falla abierta**: si `df` no dijera nada,
+  se copia igual, porque el riesgo de dejar de copiar a un disco bueno es peor.
 - **La marca `norte-copias` es obligatoria y es el corazón del diseño.** Solo se
   escribe dentro de un directorio que contenga una carpeta con ese nombre. Es lo
   único que distingue «el disco está conectado» de «el disco no está y Docker ha

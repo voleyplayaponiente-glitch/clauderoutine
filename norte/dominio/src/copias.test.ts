@@ -146,3 +146,24 @@ describe('juzgar el disco externo', () => {
     expect(juicio.detalle).toBe('Quedan 12 MB libres.')
   })
 })
+
+describe('la carpeta marcada está en el mismo disco', () => {
+  it('lo canta en vez de dar por buena una copia que no protege de nada', () => {
+    // Pasa al crear «norte-copias» en un punto de montaje que no llegó a
+    // montarse: la marca está, pero es el disco del propio Umbrel.
+    const juicio = juzgarExterno(
+      {
+        conectado: false,
+        ruta: null,
+        copias: 0,
+        ultima: null,
+        libresMb: null,
+        mensaje: 'La carpeta norte-copias esta en el mismo disco que el Umbrel, no en uno aparte.',
+        vistoAlgunaVez: false,
+      },
+      AHORA,
+    )
+    expect(juicio.salud).toBe('con_problema')
+    expect(juicio.detalle).toMatch(/mismo disco/)
+  })
+})
