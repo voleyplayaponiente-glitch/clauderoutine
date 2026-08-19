@@ -86,8 +86,8 @@ Los tres están fuera de los contenedores: actualizar la app no los toca.
 ## Copias de seguridad
 
 Se hacen **solas**, sin cron del sistema ni nada que recordar: un cuarto
-contenedor (`norte_copias`) hace una copia al día a las 04:30 y la comprueba
-antes de darla por buena.
+contenedor (`norte_copias`, imagen `norte-copias`) hace una copia al día a las
+04:30 y la comprueba antes de darla por buena.
 
 Cada copia son dos ficheros con el mismo sello de tiempo:
 

@@ -68,14 +68,18 @@ services:
       db:
         condition: service_healthy
 
-  # El servicio de copias usa la MISMA imagen que la base de datos, así que
+  # El servicio de copias es `postgres:16-alpine` con el guion dentro, así que
   # `pg_dump` es exactamente de la versión del servidor: la causa número uno de
   # volcados que fallan en montajes caseros es justo esa diferencia.
+  #
+  # El guion viaja DENTRO de la imagen y no montado desde el disco. Montarlo no
+  # funciona en la tienda de Umbrel —umbreld solo copia el compose y la ficha, y
+  # resuelve las rutas relativas desde su propio directorio—, y una imagen es
+  # además lo único que se actualiza solo.
   copias:
-    image: postgres:16-alpine
+    image: ghcr.io/voleyplayaponiente-glitch/norte-copias:latest
     container_name: norte_copias
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "/copias.sh"]
     environment:
       # La hora es la del contenedor. Con el huso puesto, «04:30» son las 4:30
       # de la madrugada de aquí y no las 6:30, que es lo que pasaría en UTC.
@@ -91,7 +95,6 @@ services:
       # escribir en él. Llenarlo del todo dejaría copias a medias.
       NORTE_EXTERNO_MINIMO_MB: ${NORTE_EXTERNO_MINIMO_MB:-500}
     volumes:
-      - ./copias.sh:/copias.sh:ro
       - ${APP_DATA_DIR:-.}/copias:/copias
       - ${APP_DATA_DIR:-.}/documentos:/documentos:ro
       - ${APP_DATA_DIR:-.}/peticion-copia:/peticion

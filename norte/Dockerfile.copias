@@ -1,0 +1,21 @@
+# Imagen del servicio de copias.
+#
+# Es `postgres:16-alpine` con el guion dentro, y no hay más. Que sea la MISMA
+# imagen que la base de datos no es economía: es lo que garantiza que `pg_dump`
+# sea exactamente de la versión del servidor, que es la causa número uno de
+# volcados que fallan en montajes caseros. Las capas ya están descargadas en el
+# Umbrel, así que esta imagen ocupa lo que ocupa el guion.
+#
+# El guion va DENTRO de la imagen y no montado desde el disco. Se intentó lo
+# segundo y no funciona en la tienda de Umbrel: umbreld solo copia
+# `docker-compose.yml` y `umbrel-app.yml` a la carpeta de la app, y además
+# resuelve las rutas relativas del compose desde SU directorio, no desde el de
+# la app. El resultado era un directorio vacío llamado `copias.sh`, un `sh` que
+# no leía ninguna línea y un contenedor que salía con código 0 sin hacer nada
+# ni decir nada.
+FROM postgres:16-alpine
+
+COPY umbrel/copias.sh /copias.sh
+RUN chmod +x /copias.sh
+
+ENTRYPOINT ["/bin/sh", "/copias.sh"]

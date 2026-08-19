@@ -1,8 +1,9 @@
 # Publica las imágenes de Norte para instalarla en el Umbrel.
 #
-# Son dos imágenes porque son dos piezas distintas:
-#   · norte-web  → nginx con la interfaz compilada
-#   · norte-api  → el servidor (Fastify + Prisma)
+# Son tres imágenes porque son tres piezas distintas:
+#   · norte-web     → nginx con la interfaz compilada
+#   · norte-api     → el servidor (Fastify + Prisma)
+#   · norte-copias  → PostgreSQL 16 con el guion de las copias de seguridad
 # La base de datos es la imagen oficial de PostgreSQL: no hay nada que publicar.
 #
 # La de la API solo se reconstruye si cambia `norte/api` o `norte/dominio`.
@@ -116,6 +117,25 @@ jobs:
 
           echo "api=$construir" >> "$GITHUB_OUTPUT"
 
+          # Lo mismo para la imagen de las copias, que es diminuta pero tiene
+          # que existir: sin ella el contenedor no arranca y no hay respaldo.
+          copias=false
+          if ! git diff --quiet HEAD~1 HEAD -- norte/umbrel/copias.sh norte/Dockerfile.copias; then
+            copias=true
+            echo "Cambió el guion de copias."
+          fi
+          token=$(curl -sf "https://ghcr.io/token?scope=repository:${{ github.repository_owner }}/norte-copias:pull&service=ghcr.io" | jq -r '.token // empty')
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+            "https://ghcr.io/v2/${{ github.repository_owner }}/norte-copias/manifests/latest")
+          if [ "$codigo" != "200" ]; then
+            copias=true
+            echo "La imagen de copias no se puede descargar (HTTP $codigo): se construye."
+          fi
+
+          echo "copias=$copias" >> "$GITHUB_OUTPUT"
+
       - name: Aplicación (nginx)
         uses: docker/build-push-action@v6
         with:
@@ -140,5 +160,19 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/norte-api:latest
             ghcr.io/${{ github.repository_owner }}/norte-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Copias de seguridad (PostgreSQL + guion)
+        if: steps.cambios.outputs.copias == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: norte
+          file: norte/Dockerfile.copias
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/norte-copias:latest
+            ghcr.io/${{ github.repository_owner }}/norte-copias:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

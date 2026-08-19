@@ -241,15 +241,32 @@ Decisiones que conviene no deshacer:
 
 ## Copias de seguridad automáticas (19/08/2026)
 
-Un cuarto contenedor, `copias`, con **la misma imagen que la base de datos**
-(`postgres:16-alpine`): así `pg_dump` es exactamente de la versión del servidor,
-que es la causa número uno de volcados que fallan en montajes caseros. Sin
-imagen nueva que publicar y sin visibilidad de GHCR que tocar.
+Un cuarto contenedor, `copias`: `postgres:16-alpine` **con el guion dentro**
+(`Dockerfile.copias` → `ghcr.io/…/norte-copias`). Que sea la misma base que la
+base de datos garantiza que `pg_dump` es exactamente de la versión del
+servidor, que es la causa número uno de volcados que fallan en montajes
+caseros; y las capas ya están descargadas por el servicio `db`, así que la
+imagen no pesa nada.
 
-El script es `umbrel/copias.sh` y **está duplicado** en
-`bespain-umbrel-store/bespain-norte/copias.sh`: la ficha de una app de Umbrel no
-puede referirse a ficheros de otro repositorio. Si se toca uno, hay que copiar
-el otro (los dos compose lo montan como `./copias.sh:/copias.sh:ro`).
+### El guion NO se monta desde el disco (lección cara, 19/08/2026)
+
+El primer intento montaba `./copias.sh:/copias.sh:ro`. En la instalación de la
+tienda **no funciona**, por dos motivos que hay que recordar:
+
+1. **umbreld solo copia `docker-compose.yml` y `umbrel-app.yml`** a
+   `~/umbrel/app-data/<app>/`. Cualquier otro fichero de la carpeta de la app
+   en el repositorio de la tienda **no llega al Umbrel**.
+2. **Las rutas relativas del compose se resuelven desde el directorio de
+   umbreld**, no desde el de la app. El `docker inspect` lo enseñó:
+   `/opt/umbreld/source/modules/apps/legacy-compat/copias.sh -> /copias.sh`.
+
+Resultado: Docker creaba un **directorio vacío** llamado `copias.sh`, `sh` no
+leía ninguna línea y el contenedor salía con **código 0** — sin error, sin log,
+sin copias. El síntoma engañoso es ese `Exited (0)`: parece que terminó bien.
+
+Regla que se deriva: **en una app de la tienda de Umbrel, todo lo que no sea el
+compose o la ficha tiene que ir dentro de una imagen.** Rutas absolutas con
+`${APP_DATA_DIR}` sí funcionan (los volúmenes de datos se montaron bien).
 
 Decisiones que sostienen el diseño:
 - **Se escribe a `.parcial` y se renombra al final.** Un volcado interrumpido no
@@ -311,6 +328,8 @@ cualquiera.
   contenedor.** Se decidió no usar `propagation: rslave` para no arriesgar que
   el servicio no arranque en su máquina; a cambio, hay que reiniciar la app tras
   conectar un disco, y la propia app lo dice.
+- El montaje de `/media` **sí** funciona porque es una ruta absoluta; lo que
+  falla en la tienda son las relativas (ver arriba).
 
 Un fallo que solo apareció al ejecutarlo de verdad: `pg_dump` mete un
 **tabulador** en sus mensajes de error, y un tabulador crudo dentro de una
