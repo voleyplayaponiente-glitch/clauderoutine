@@ -12,6 +12,7 @@ import { Documentos } from './pantallas/Documentos.js'
 import { Entrar } from './pantallas/Entrar.js'
 import { Inicio } from './pantallas/Inicio.js'
 import { Movimientos } from './pantallas/Movimientos.js'
+import { Presupuesto } from './pantallas/Presupuesto.js'
 import { Muestra } from './pantallas/Muestra.js'
 
 export function App() {
@@ -79,7 +80,7 @@ export function App() {
   return (
     <div className="min-h-dvh bg-fondo">
       <header className="material sticky top-0 z-20 border-b border-linea bg-sup-1/80">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-5">
+        <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-4 sm:gap-4 sm:px-5">
           <button onClick={() => ir('/')} className="flex items-center" aria-label="Ir al inicio">
             <Logotipo tamano={24} />
           </button>
@@ -89,7 +90,7 @@ export function App() {
               value={activo?.id}
               onChange={(e) => elegirEspacio(e.target.value)}
               aria-label="Espacio"
-              className="h-9 rounded-campo border border-linea bg-sup-2 px-2.5 text-sm text-texto-1"
+              className="h-9 min-w-0 max-w-32 shrink rounded-campo border border-linea bg-sup-2 px-2.5 text-sm text-texto-1"
             >
               {espacios.map((espacio) => (
                 <option key={espacio.id} value={espacio.id}>
@@ -99,7 +100,7 @@ export function App() {
             </select>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex min-w-0 shrink items-center gap-2">
             <SelectorTema />
             <Boton
               variante="fantasma"
@@ -113,11 +114,15 @@ export function App() {
         </div>
       </header>
 
+      {/* Las pestañas se desplazan en horizontal en vez de ensanchar la página:
+          con cinco ya no caben en 375 px, y una barra que empuja el ancho del
+          documento descoloca TODAS las pantallas, no solo esta. */}
       {activo && (
         <nav className="border-b border-linea bg-sup-1">
-          <div className="mx-auto flex max-w-5xl gap-1 px-5">
+          <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <Pestana ruta={ruta} a="/" texto="Inicio" />
             <Pestana ruta={ruta} a="/movimientos" texto="Movimientos" />
+            <Pestana ruta={ruta} a="/presupuesto" texto="Presupuesto" />
             <Pestana ruta={ruta} a="/cuentas" texto="Cuentas" />
             <Pestana ruta={ruta} a="/documentos" texto="Documentos" />
           </div>
@@ -129,6 +134,8 @@ export function App() {
           <Muestra />
         ) : ruta === '/movimientos' && activo ? (
           <Movimientos espacio={activo} />
+        ) : ruta === '/presupuesto' && activo ? (
+          <Presupuesto espacio={activo} />
         ) : ruta === '/cuentas' && activo ? (
           <Cuentas espacio={activo} />
         ) : ruta === '/documentos' && activo ? (
@@ -162,7 +169,7 @@ function Pestana({ ruta, a, texto }: { ruta: string; a: string; texto: string })
     <button
       onClick={() => ir(a)}
       aria-current={activa ? 'page' : undefined}
-      className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors ${
+      className={`-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm transition-colors ${
         activa
           ? 'border-marca font-medium text-texto-1'
           : 'border-transparent text-texto-2 hover:text-texto-1'

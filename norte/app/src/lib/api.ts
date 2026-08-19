@@ -245,6 +245,55 @@ export interface EstadoDeCopias {
   carpeta: string
 }
 
+export interface Sobre {
+  categoriaId: string
+  categoria: string
+  tipo: 'fijo' | 'variable' | 'discrecional'
+  esencial: boolean
+  padreId: string | null
+  asignado: number
+  arrastrado: number
+  gastado: number
+  previsto: number
+  rollover: boolean
+  presupuesto: number
+  disponible: number
+  disponibleTrasPrevisto: number
+  porcentajeGastado: number
+  ritmo: 'holgado' | 'justo' | 'pasado' | 'sin_asignar'
+  porDia: number | null
+}
+
+export interface EstadoPresupuesto {
+  mes: string
+  calendario: { porcentajeTranscurrido: number; diasRestantes: number }
+  sobres: Sobre[]
+  resumen: {
+    ingresos: number
+    asignado: number
+    gastado: number
+    previsto: number
+    sinAsignar: number
+    disponible: number
+    sobresPasados: number
+    sobresEnRiesgo: number
+  }
+  ingresos: { confirmado: number; previsto: number; total: number }
+  sinClasificar: { gastado: number; previsto: number }
+  cerrado: boolean
+}
+
+export interface PropuestaPresupuesto {
+  mes: string
+  meses: string[]
+  propuestas: {
+    categoriaId: string
+    propuesto: number
+    base: 'mediana' | 'ultimo_mes' | 'sin_historico'
+    mesesMirados: number
+  }[]
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -364,4 +413,23 @@ export const api = {
     pedir<{ ok: true }>(`/espacios/${espacioId}/documentos/${id}`, { metodo: 'DELETE' }),
   copias: () => pedir<EstadoDeCopias>('/copias'),
   copiaAhora: () => pedir<{ pedida: true }>('/copias/ahora', { metodo: 'POST', cuerpo: {} }),
+  presupuesto: (espacioId: string, mes: string) =>
+    pedir<EstadoPresupuesto>(`/espacios/${espacioId}/presupuesto?mes=${mes}`),
+  asignarSobre: (espacioId: string, mes: string, categoriaId: string, datos: { asignado: number; rollover?: boolean }) =>
+    pedir<EstadoPresupuesto>(`/espacios/${espacioId}/presupuesto/lineas/${categoriaId}?mes=${mes}`, {
+      metodo: 'PUT',
+      cuerpo: datos,
+    }),
+  asignarSobres: (espacioId: string, mes: string, lineas: { categoriaId: string; asignado: number }[]) =>
+    pedir<EstadoPresupuesto>(`/espacios/${espacioId}/presupuesto/lineas?mes=${mes}`, {
+      metodo: 'PUT',
+      cuerpo: { lineas },
+    }),
+  propuestaPresupuesto: (espacioId: string, mes: string) =>
+    pedir<PropuestaPresupuesto>(`/espacios/${espacioId}/presupuesto/propuesta?mes=${mes}`),
+  cerrarMes: (espacioId: string, mes: string) =>
+    pedir<{ mes: string; siguiente: string; arrastrados: number }>(
+      `/espacios/${espacioId}/presupuesto/cerrar?mes=${mes}`,
+      { metodo: 'POST', cuerpo: {} },
+    ),
 }

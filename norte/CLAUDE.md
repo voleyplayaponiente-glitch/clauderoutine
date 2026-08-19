@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1, 2 y 3 cerradas (221 tests en verde: 138 dominio + 83 API)
+## Estado — fases 1 a 4 cerradas (254 tests en verde: 158 dominio + 96 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -355,9 +355,61 @@ Lo que **sigue sin cubrir**: si el disco externo vive enchufado al Umbrel, un
 robo o un incendio se lleva las dos copias. Una tercera fuera de casa (otra
 máquina, o cifrada en la nube) sigue pendiente.
 
+## Fase 4 cerrada (19/08/2026): presupuesto por sobres
+
+`/#/presupuesto`. La pantalla gira alrededor de **una sola cifra**: lo que queda
+sin repartir. Mientras no sea cero hay dinero sin un trabajo asignado, y ese es
+el método entero.
+
+- **Las cuentas se calculan al vuelo** desde los movimientos. En la base solo se
+  guarda lo que el usuario decide: cuánto asigna y si arrastra. Guardar el gasto
+  agregado sería tener dos verdades sobre lo mismo, y la copia siempre es la que
+  se queda vieja. Lo único que se persiste calculado es la **foto del cierre**
+  (`periodos_presupuesto`), para que el histórico no cambie si mañana se corrige
+  un movimiento viejo.
+- **El ritmo manda sobre el total.** «Llevas el 60 % de la compra» no dice nada;
+  el día 10 es una alarma y el día 28 una buena noticia. Cada barra lleva la
+  marca del día del mes y hay 5 puntos de margen antes de avisar.
+- **El gasto por día descuenta lo previsto.** Se vio en pantalla, no en los
+  tests: el sobre de vivienda con 750 € y el alquiler domiciliado sin pasar
+  decía «750 € disponible, 58 €/día». Gastarlos habría dejado el recibo al
+  descubierto. Ahora `porDia` sale de `disponibleTrasPrevisto` y la fila nombra
+  lo previsto.
+- **Los ingresos solo cuentan si están clasificados como ingreso.** En un
+  extracto real, un traspaso de 5.000 € entre cuentas propias entra como apunte
+  positivo; sumarlo daría un presupuesto con miles de euros que no existen. Si
+  no hay nada clasificado, sale cero y la pantalla explica por qué. Hay test.
+- **El arrastre lleva lo que sobra Y lo que falta.** Arrastrar solo lo bueno
+  convierte el presupuesto en un marcador amable.
+- **La propuesta usa la mediana** en variables y discrecionales (la revisión del
+  coche no puede volverse el presupuesto mensual de transporte) y **el último
+  mes** en los fijos (un recibo no es una distribución). Cada propuesta viaja
+  con su `base`, para que la pantalla pueda decir de dónde sale el número.
+- El presupuesto respeta la **visibilidad de cuentas**: en un espacio
+  compartido no puede ser la puerta de atrás para ver el gasto de la cuenta
+  privada de otro. Hay test.
+
+Dos cosas que solo aparecieron **mirando la pantalla en el navegador**:
+1. **El padre también es un sobre.** La primera versión solo pintaba las hojas,
+   y como el juego de categorías por defecto tiene gasto directamente en «Ocio»
+   o «Vivienda», la pantalla llegó a decir «1 sobre pasado» sin que se pudiera
+   ver cuál.
+2. **Cuarenta sobres a cero son una hoja de cálculo, no una pantalla.** Se
+   enseñan los que están en uso y el resto queda tras un botón; en un espacio
+   recién creado se enseñan todos.
+
+Y un fallo que **arrastraban todas las pantallas**: con cinco pestañas, la barra
+de navegación ya no cabía en 375 px y **empujaba el ancho del documento entero**.
+Se arregló con `overflow-x-auto` en la barra y dejando encoger los selectores de
+la cabecera. Medido con Playwright: `scrollWidth` 375 en las cuatro pantallas.
+
+Pendiente de la fase: los métodos `base_cero` y `50-30-20` del enum
+`MetodoPresupuesto` siguen sin implementar; hoy todo es `sobres`.
+
 ## Por dónde seguir
-1. **Fase 4 — Presupuesto por sobres**: asignación mensual, lo que queda por
-   sobre, y el aviso cuando el ritmo de gasto se sale.
+1. **Fase 5 — Deudas y tarjetas**: cuadros de amortización, simulador
+   (reducir cuota vs. reducir plazo), ciclos de tarjeta y coste del revolving.
+   Es la fase con más fórmulas: batería completa de tests.
 2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
 3. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado
