@@ -451,6 +451,31 @@ export interface Cartera {
   }[]
 }
 
+export interface Cuadro {
+  patrimonio: {
+    activos: number
+    pasivos: number
+    neto: number
+    componentes: { nombre: string; clase: string; valor: number; esPasivo: boolean }[]
+  }
+  variacionMes: { absoluta: number; porcentaje: number | null } | null
+  historico: {
+    puntos: { mes: string; neto: number }[]
+    hayBastante: boolean
+    variacionPeriodo: { absoluta: number; porcentaje: number | null } | null
+  }
+  proyeccion: {
+    dias: { fecha: string; saldo: number; movimiento: number }[]
+    minimo: { fecha: string; saldo: number }
+    saldoFinal: number
+    primerDiaEnNegativo: string | null
+  }
+  liquido: number
+  valorCartera: number
+  vencimientos: { fecha: string; importe: number; concepto: string }[]
+  documentosPorRevisar: number
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -594,7 +619,7 @@ export const api = {
     pedir<{ deuda: Deuda }>(`/espacios/${espacioId}/deudas`, { metodo: 'POST', cuerpo: datos }),
   borrarDeuda: (espacioId: string, id: string) =>
     pedir<{ ok: true }>(`/espacios/${espacioId}/deudas/${id}`, { metodo: 'DELETE' }),
-  cuadro: (espacioId: string, id: string) =>
+  cuadroDeDeuda: (espacioId: string, id: string) =>
     pedir<{ cuadro: FilaCuadro[]; resumen: ResumenCuadro }>(`/espacios/${espacioId}/deudas/${id}/cuadro`),
   simularAmortizacion: (espacioId: string, id: string, datos: { trasCuota: number; importe: number }) =>
     pedir<{ reducirPlazo: OpcionAmortizacion; reducirCuota: OpcionAmortizacion }>(
@@ -638,4 +663,10 @@ export const api = {
     pedir<{ ok: true }>(`/espacios/${espacioId}/inversiones/posiciones/${posicionId}`, { metodo: 'DELETE' }),
   guardarObjetivos: (espacioId: string, objetivos: { clase: string; objetivo: number; umbral: number }[]) =>
     pedir<Cartera>(`/espacios/${espacioId}/inversiones/objetivos`, { metodo: 'PUT', cuerpo: { objetivos } }),
+  cuadro: (espacioId: string) => pedir<Cuadro>(`/espacios/${espacioId}/cuadro`),
+  guardarFoto: (espacioId: string) =>
+    pedir<{ guardada: true; mes: string }>(`/espacios/${espacioId}/cuadro/foto`, {
+      metodo: 'POST',
+      cuerpo: {},
+    }),
 }

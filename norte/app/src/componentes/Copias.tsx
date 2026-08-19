@@ -69,7 +69,9 @@ export function Copias() {
     <Tarjeta titulo="Copias de seguridad">
       <div className="flex flex-wrap items-start gap-3">
         <span className={`mt-1.5 size-2.5 shrink-0 rounded-full ${PUNTO[juicio.salud]}`} aria-hidden />
-        <div className="min-w-0 flex-1">
+        {/* `basis-56`: sin una base mínima el texto se encoge hasta una columna
+            de tres palabras por línea antes de que el botón decida bajar. */}
+        <div className="min-w-0 flex-1 basis-56">
           <p className="font-medium">{juicio.titulo}</p>
           <p className="text-sm leading-relaxed text-texto-2">{juicio.detalle}</p>
           {ultima && (

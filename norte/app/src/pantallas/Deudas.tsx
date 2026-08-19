@@ -356,7 +356,7 @@ function Opcion({
 function CuadroCompleto({ espacio, deuda }: { espacio: EspacioResumen; deuda: Deuda }) {
   const cuadro = useQuery({
     queryKey: ['cuadro', deuda.id],
-    queryFn: () => api.cuadro(espacio.id, deuda.id),
+    queryFn: () => api.cuadroDeDeuda(espacio.id, deuda.id),
   })
   if (cuadro.isLoading) return <Esqueleto className="mt-4 h-40 w-full" />
   if (!cuadro.data) return null

@@ -36,7 +36,7 @@ Otras dos derivas del prompt original, decididas y justificadas:
 cd norte
 npm install
 npm run dev            # API en :3012 + interfaz en :5173 (Vite reenvía /api)
-npm test               # motor (81) + API (62) = 143 tests
+npm test               # motor (234) + API (132) = 366 tests
 # Si no hay PostgreSQL (contenedor nuevo): norte/scripts/bd-desarrollo.sh
 npm run test:dominio   # solo el motor, sin base de datos
 npm run build          # dominio + api + app
@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1 a 6 cerradas (343 tests en verde: 221 dominio + 122 API)
+## Estado — fases 1 a 7 cerradas (366 tests en verde: 234 dominio + 132 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -501,13 +501,82 @@ Python (10,0000 % / 7,9994 % / 15,6552 % / −19,9512 %), y además **la TIR de 
 cartera sembrada se comprobó contra ese mismo cálculo independiente sobre los
 flujos reales: 14,7773 % por los dos caminos**.
 
+## Fase 7 cerrada (19/08/2026): el cuadro completo
+
+`/#/` deja de ser una pantalla de bienvenida y pasa a ser **el cuadro**: una
+sola petición (`GET /cuadro`) y un bento con el **patrimonio neto** como cifra
+heroica, la **proyección a 30 días** y **lo que viene**.
+
+- **Todo se calcula al pedirlo, menos una cosa.** El patrimonio sale de las
+  cuentas, las deudas y las carteras en el momento; lo único que se guarda es
+  la **foto mensual** (`fotos_patrimonio`), que la pantalla escribe una vez al
+  entrar cada mes. Sin esa foto no hay histórico posible: el patrimonio de
+  marzo no se puede reconstruir desde los saldos de hoy.
+- **Nada se cuenta dos veces.** Una hipoteca es a la vez una `Deuda` y —si el
+  usuario la creó así— una cuenta de tipo `deuda`; lo mismo con las carteras.
+  `cuadro.ts` lleva un conjunto `yaContadas` con las cuentas que ya están
+  representadas por otra entidad. Sin eso el patrimonio salía con la hipoteca
+  restada dos veces.
+- **La proyección NO extrapola el gasto variable.** Solo entra lo comprometido:
+  previstos, cuotas de deuda recalculadas del cuadro de amortización y recibos
+  de tarjeta. Proyectar «lo que sueles gastar» produce una línea que se cumple
+  bonita en la pantalla y nunca en el banco. La pantalla **lo dice**, porque una
+  proyección optimista sin explicar de qué está hecha es una trampa.
+- Se enseña el **día del saldo mínimo**, no el saldo final: quedarse a 40 € el
+  día 2 y acabar el mes con 3.000 € es un problema que el saldo final esconde.
+- **La variación sin base es `null`, no 0 %.** Con patrimonio anterior cero, un
+  «+∞ %» o un «+0 %» serían las dos igual de falsos; se enseña solo el importe.
+- El histórico necesita **dos puntos** para ser una serie (`hayBastante`). Con
+  uno, la tarjeta explica que hará falta un mes más en vez de pintar una raya.
+
+### El gráfico (`componentes/Grafico.tsx`)
+Una sola serie, área al 10 %, línea de 2 px, rejilla sólida recesiva, punto
+final con anillo del color del panel y **etiquetas directas selectivas**. Sin
+leyenda: con una serie, el título ya la nombra. Cruz + globo al apuntar, flechas
+del teclado, y **tabla debajo** — el globo añade, nunca es la única vía al dato.
+
+Tres cosas que solo se vieron **mirando la pantalla**, no en los tests:
+1. **Un `<svg width="640">` empuja a su contenedor.** El componente arrancaba
+   con un ancho por defecto antes de medir, y ese ancho inflaba la rejilla del
+   bento hasta 680 px: el móvil desbordaba (`scrollWidth` 502 en un viewport de
+   375) aunque cada tarjeta pareciera correcta. Ahora **no se pinta nada hasta
+   medir** y los hijos de la rejilla llevan `min-w-0`.
+2. **El globo fijo en el último punto parece un globo atascado**, y además se
+   salía del panel. Solo aparece al apuntar o al enfocar; el valor del final va
+   como etiqueta directa dentro del SVG, que es su sitio.
+3. **«Acabas con 17.226 €» repetía la etiqueta directa** y competía con la frase
+   del saldo mínimo. El texto del punto destacado es ahora opcional y solo se
+   escribe cuando hay algo que no está ya dicho (que te quedas en negativo).
+
+El color de alerta del gráfico es un token **distinto** del `--negativo` de los
+textos (`--grafico-alerta`): el rojo de texto del modo oscuro se salía de la
+banda de luminosidad que exige el validador de la paleta. Comprobado con el
+validador, no a ojo.
+
+### La semilla ya trae los 18 meses
+`npm run semilla` deja el cuadro con contenido: cuentas, hipoteca y préstamo de
+coche, cartera indexada con 18 aportaciones, los recibos que vienen y 18 fotos
+del patrimonio. **El histórico se camina hacia atrás desde el patrimonio de
+hoy**, con pasos mensuales fijos (no aleatorios, para que la semilla sea
+reproducible). El primer intento sembraba cifras sueltas y el gráfico enseñaba
+un escalón del **+33 %** entre el último mes y el presente: no era un fallo del
+código ni un dato, era la semilla mintiendo. Y **los datos entran por las rutas
+de la API**, no escribiendo tablas a mano, para que la semilla no pueda producir
+estados que la aplicación no sabe producir.
+
+Verificado en navegador con la semilla puesta: los dos temas, el globo que
+aparece y desaparece al apuntar y queda dentro del panel, y **`scrollWidth` 375
+en un viewport de 375**.
+
+Pendiente de la fase: la **TWR sigue devolviendo `null`**. `fotos_patrimonio`
+guarda el patrimonio del espacio entero, no la valoración de la cartera, que es
+lo que hace falta para encadenar subperiodos. Es una foto más, de la cartera,
+en el mismo sitio donde ya se escribe la del patrimonio.
+
 ## Por dónde seguir
-1. **Fase 7 — Cuadro completo**: el bento con el **patrimonio neto** como cifra
-   heroica, proyección a 30 días con el día de saldo mínimo y el gráfico firma.
-   Al llegar aquí hay que resolver el histórico de valoraciones que le falta a
-   la TWR (`fotos_patrimonio` ya existe en el esquema).
-2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
-   pide el encargo. Hoy solo crea usuario, espacios y categorías.
+1. **Fase 8 — Informes y exportación** (ver `../PLAN_NORTE.md`).
+2. **La foto de la cartera**, para poder dar la TWR. Es lo último que queda
+   abierto de la fase 6 y el sitio donde ponerla ya existe.
 3. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado
    remoto). El disco externo protege del disco roto, no del robo ni del fuego.
 4. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la

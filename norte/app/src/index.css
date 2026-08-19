@@ -40,6 +40,13 @@
   --marca-clara: #3ab4f5;
   --marca-tenue: #e7f1fd;
 
+  /* Color de alerta PARA GRÁFICOS, distinto del `--negativo` de los textos.
+     Una marca en un gráfico y una cifra en rojo tienen requisitos distintos:
+     el validador de la paleta exige que el tono de la marca caiga dentro de una
+     banda de luminosidad para que se distinga bajo daltonismo sobre el fondo
+     del panel. El rojo de texto del modo oscuro se salía de esa banda. */
+  --grafico-alerta: #c4302b;
+
   --sombra-contacto: 0 1px 2px rgb(11 14 19 / 0.06);
   --sombra-ambiental: 0 12px 32px -12px rgb(11 14 19 / 0.16);
 }
@@ -68,6 +75,10 @@
   --marca-clara: #6fd6ff;
   --marca-tenue: #10233a;
 
+  /* Un paso más oscuro que `--negativo` (#ff5b52), que se salía de la banda de
+     luminosidad del modo oscuro. Comprobado con el validador. */
+  --grafico-alerta: #f2554a;
+
   --sombra-contacto: 0 1px 2px rgb(0 0 0 / 0.5);
   --sombra-ambiental: 0 16px 40px -16px rgb(0 0 0 / 0.7);
 }
@@ -87,6 +98,7 @@
   --color-marca: var(--marca);
   --color-marca-clara: var(--marca-clara);
   --color-marca-tenue: var(--marca-tenue);
+  --color-grafico-alerta: var(--grafico-alerta);
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Segoe UI', Roboto,
     'Helvetica Neue', sans-serif;

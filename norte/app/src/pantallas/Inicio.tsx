@@ -1,15 +1,25 @@
+import { formatearDinero } from '@norte/dominio'
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Copias } from '../componentes/Copias.js'
-import { Aviso, Boton, Campo, EstadoVacio, Etiqueta, Tarjeta } from '../componentes/ui.js'
-import { api, type EspacioResumen } from '../lib/api.js'
+import { GraficoArea } from '../componentes/Grafico.js'
+import { Aviso, Boton, Campo, Cifra, Esqueleto, EstadoVacio, Etiqueta, Tarjeta } from '../componentes/ui.js'
+import { api, type Cuadro, type EspacioResumen } from '../lib/api.js'
 import { ir } from '../lib/router.js'
 
 /**
- * Pantalla de inicio.
+ * El cuadro.
  *
- * El bento completo con el patrimonio neto es la fase 6; poner aquí un
- * dashboard con cifras inventadas sería enseñar una maqueta y llamarla app.
+ * Una sola cifra manda: **el patrimonio neto**. El saldo de la cuenta sube
+ * cuando pides un préstamo y eso no es haber mejorado; activos menos pasivos sí
+ * lo dice. Es la única cifra heroica de la pantalla — poner tres números
+ * gigantes es no elegir.
+ *
+ * Debajo, las dos preguntas que se hacen todos los días: cómo va el patrimonio
+ * y si el saldo aguanta el mes. La segunda se responde con **el día de saldo
+ * mínimo**, no con el saldo final: acabar el mes con 800 € no consuela si el
+ * día 12 te quedas en −40.
  *
  * **El texto de esta pantalla cuenta en qué punto está la app, así que hay que
  * actualizarlo al cerrar cada fase.** Se quedó diciendo «lo siguiente son las
@@ -31,48 +41,15 @@ export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-[-0.02em]">{espacio.nombre}</h1>
-          <Etiqueta tono="marca">{nombreTipo(espacio.tipo)}</Etiqueta>
-          <Etiqueta>{nombreRol(espacio.rol)}</Etiqueta>
-        </div>
-        <p className="text-texto-2">Aquí vivirá tu cuadro completo. De momento, los cimientos.</p>
+    <div className="mx-auto flex max-w-5xl flex-col gap-5 px-5 py-8">
+      <header className="flex flex-wrap items-center gap-3">
+        <h1 className="text-3xl font-semibold tracking-[-0.02em]">{espacio.nombre}</h1>
+        <Etiqueta tono="marca">{nombreTipo(espacio.tipo)}</Etiqueta>
+        <Etiqueta>{nombreRol(espacio.rol)}</Etiqueta>
       </header>
 
-      <Aviso titulo="Dale un trabajo a cada euro">
-        En <strong>Presupuesto</strong> repartes el mes en sobres y cada barra lleva la marca del
-        día: así sabes si vas adelantado, no solo cuánto llevas gastado. En{' '}
-        <strong>Documentos</strong> sueltas el extracto o la nómina y Norte los lee. Y para un
-        gasto suelto, <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">Ctrl</kbd> +{' '}
-        <kbd className="rounded bg-sup-3 px-1.5 py-0.5 text-texto-2">K</kbd> escribiendo «café 3,40
-        ayer». En <strong>Deudas</strong> tienes el cuadro de tu hipoteca y qué te ahorrarías
-        amortizando antes de tiempo, y en <strong>Inversiones</strong>, tu cartera con la
-        rentabilidad real. Lo siguiente será el cuadro completo con el patrimonio neto.
-      </Aviso>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Tarjeta titulo="Tus datos, en tu servidor">
-          <p className="text-sm leading-relaxed text-texto-2">
-            Norte guarda en PostgreSQL, dentro de tu Umbrel. Limpiar el navegador, cambiar de móvil
-            o entrar desde otro equipo ya no pierde nada: esto es lo que arregla el problema de
-            siempre.
-          </p>
-        </Tarjeta>
-
-        <Tarjeta titulo="Sistema de diseño">
-          <p className="mb-4 text-sm leading-relaxed text-texto-2">
-            Los componentes con los que se construye todo lo demás, en los dos temas.
-          </p>
-          <Boton variante="secundario" tamano="pequeno" onClick={() => ir('/muestra')}>
-            Ver el muestrario
-          </Boton>
-        </Tarjeta>
-      </div>
-
+      <CuadroCompleto espacio={espacio} />
       <Copias />
-
       <Compartir espacio={espacio} />
 
       <Tarjeta titulo="Nuevo espacio">
@@ -83,6 +60,188 @@ export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
       </Tarjeta>
     </div>
   )
+}
+
+function CuadroCompleto({ espacio }: { espacio: EspacioResumen }) {
+  const cuadro = useQuery({ queryKey: ['cuadro', espacio.id], queryFn: () => api.cuadro(espacio.id) })
+
+  /**
+   * La foto del patrimonio del mes se guarda al abrir la pantalla, y es
+   * idempotente. Sin cron y sin tarea en el servidor.
+   *
+   * La contrapartida se dice en la propia tarjeta del gráfico: **un mes en el
+   * que no abras Norte no tendrá punto**.
+   */
+  const foto = useMutation({ mutationFn: () => api.guardarFoto(espacio.id) })
+  useEffect(() => {
+    if (espacio.rol !== 'lector') foto.mutate()
+    // Una vez por espacio y carga: no es un efecto que deba repetirse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [espacio.id])
+
+  if (cuadro.isLoading) return <Esqueleto className="h-72 w-full" />
+  if (!cuadro.data) return null
+  const datos = cuadro.data
+
+  return (
+    <>
+      <Patrimonio cuadro={datos} />
+      <div className="grid gap-5 lg:grid-cols-2 [&>*]:min-w-0">
+        <Proyeccion cuadro={datos} />
+        <Vencimientos cuadro={datos} />
+      </div>
+    </>
+  )
+}
+
+function Patrimonio({ cuadro }: { cuadro: Cuadro }) {
+  const { patrimonio, variacionMes, historico } = cuadro
+  const puntos = historico.puntos.map((punto) => ({
+    etiqueta: new Date(punto.mes).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' }),
+    valor: punto.neto,
+  }))
+
+  return (
+    <Tarjeta>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.08em] text-texto-3">Patrimonio neto</p>
+          {/* La única cifra heroica de la pantalla. */}
+          <p className="cifra-heroe text-5xl font-semibold sm:text-6xl">
+            {formatearDinero(patrimonio.neto)}
+          </p>
+          <p className="mt-1 text-sm text-texto-2">
+            {formatearDinero(patrimonio.activos, { sinDecimales: true })} en activos −{' '}
+            {formatearDinero(patrimonio.pasivos, { sinDecimales: true })} en deudas
+          </p>
+          {variacionMes && (
+            <p
+              className={`mt-1 text-sm ${
+                variacionMes.absoluta >= 0 ? 'text-positivo' : 'text-negativo'
+              }`}
+            >
+              {formatearDinero(variacionMes.absoluta, { conSigno: true, sinDecimales: true })}
+              {variacionMes.porcentaje !== null &&
+                ` (${variacionMes.porcentaje > 0 ? '+' : ''}${variacionMes.porcentaje.toLocaleString('es-ES', { maximumFractionDigits: 1 })} %)`}{' '}
+              desde el mes pasado
+            </p>
+          )}
+        </div>
+
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <div>
+            <dt className="text-xs uppercase tracking-[0.08em] text-texto-3">Líquido</dt>
+            <dd className="cifra">{formatearDinero(cuadro.liquido, { sinDecimales: true })}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-[0.08em] text-texto-3">Invertido</dt>
+            <dd className="cifra">{formatearDinero(cuadro.valorCartera, { sinDecimales: true })}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="mt-5 border-t border-linea pt-4">
+        {historico.hayBastante ? (
+          <>
+            <p className="mb-1 text-sm font-medium text-texto-2">Evolución del patrimonio neto</p>
+            <GraficoArea puntos={puntos} titulo="Evolución del patrimonio neto" alto={180} />
+          </>
+        ) : (
+          <p className="text-sm leading-relaxed text-texto-2">
+            El gráfico de evolución aparecerá cuando haya <strong>al menos dos meses</strong> de
+            fotos. Norte guarda una cada mes, la primera vez que abres esta pantalla — así que un
+            mes en el que no entres se quedará sin punto. Una línea de un solo punto se leería como
+            «plano», y eso sería mentir con un dibujo.
+          </p>
+        )}
+      </div>
+    </Tarjeta>
+  )
+}
+
+function Proyeccion({ cuadro }: { cuadro: Cuadro }) {
+  const { proyeccion } = cuadro
+  const puntos = proyeccion.dias.map((dia) => ({
+    etiqueta: new Date(dia.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    valor: dia.saldo,
+  }))
+  const indiceMinimo = proyeccion.dias.findIndex((d) => d.fecha === proyeccion.minimo.fecha)
+  const enNegativo = proyeccion.primerDiaEnNegativo !== null
+
+  return (
+    <Tarjeta titulo="Los próximos 30 días">
+      <p className="mb-1 text-sm text-texto-2">
+        Tu saldo más bajo será de{' '}
+        <strong className={enNegativo ? 'text-negativo' : ''}>
+          {formatearDinero(proyeccion.minimo.saldo)}
+        </strong>{' '}
+        el {fechaLarga(proyeccion.minimo.fecha)}.
+      </p>
+      <GraficoArea
+        puntos={puntos}
+        titulo="Proyección del saldo a 30 días"
+        alto={170}
+        lineaCero
+        destacado={{
+          indice: indiceMinimo,
+          alerta: enNegativo,
+          // Sin negativo no hay nada que añadir: el mínimo ya está en la frase
+          // de arriba y el saldo final es la etiqueta directa del gráfico.
+          texto: enNegativo
+            ? `Te quedas en negativo el ${fechaLarga(proyeccion.primerDiaEnNegativo!)}.`
+            : undefined,
+        }}
+      />
+      <p className="mt-3 text-xs leading-relaxed text-texto-3">
+        Solo entra lo que ya está comprometido: recibos previstos, cuotas de deudas y recibos de
+        tarjeta. <strong>No se extrapola el gasto variable</strong>, porque una línea inventada se
+        cumple bonita en la pantalla y nunca en el banco.
+      </p>
+    </Tarjeta>
+  )
+}
+
+function Vencimientos({ cuadro }: { cuadro: Cuadro }) {
+  return (
+    <Tarjeta titulo="Lo que viene">
+      {cuadro.documentosPorRevisar > 0 && (
+        <div className="mb-4">
+          <Aviso titulo="Tienes documentos por revisar">
+            {cuadro.documentosPorRevisar} documento{cuadro.documentosPorRevisar === 1 ? '' : 's'} sin
+            aplicar.{' '}
+            <button className="underline" onClick={() => ir('/documentos')}>
+              Ir a Documentos
+            </button>
+          </Aviso>
+        </div>
+      )}
+
+      {cuadro.vencimientos.length === 0 ? (
+        <p className="text-sm leading-relaxed text-texto-2">
+          No hay nada comprometido en los próximos 30 días. Si tienes recibos que se repiten,
+          créalos como recurrentes y aparecerán aquí solos.
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-linea">
+          {cuadro.vencimientos.map((vencimiento, i) => (
+            <li key={`${vencimiento.fecha}-${i}`} className="flex items-center gap-3 py-2">
+              <span className="w-16 shrink-0 text-sm text-texto-3">{fechaCorta(vencimiento.fecha)}</span>
+              <span className="min-w-0 flex-1 truncate text-sm">{vencimiento.concepto}</span>
+              <Cifra centimos={vencimiento.importe} tamano="pequena" colorear />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Tarjeta>
+  )
+}
+
+function fechaLarga(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
+}
+
+function fechaCorta(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
 }
 
 function CrearEspacio() {
