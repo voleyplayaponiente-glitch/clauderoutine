@@ -9,6 +9,7 @@ import type { Configuracion } from './configuracion.js'
 import { TAMANO_MAXIMO } from './documentos/almacen.js'
 import { ErrorApi, noAutenticado } from './errores.js'
 import { rutasAuth } from './rutas/auth.js'
+import { rutasCopias } from './rutas/copias.js'
 import { rutasCuentas } from './rutas/cuentas.js'
 import { rutasDocumentos } from './rutas/documentos.js'
 import { rutasEspacios } from './rutas/espacios.js'
@@ -141,6 +142,7 @@ export async function crearServidor({
   await app.register(rutasMovimientos, { prisma })
   await app.register(rutasRecurrentes, { prisma })
   await app.register(rutasDocumentos, { prisma, configuracion })
+  await app.register(rutasCopias, { prisma, configuracion })
 
   return app
 }

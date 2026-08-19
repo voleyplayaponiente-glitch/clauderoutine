@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Copias } from '../componentes/Copias.js'
 import { Aviso, Boton, Campo, EstadoVacio, Etiqueta, Tarjeta } from '../componentes/ui.js'
 import { api, type EspacioResumen } from '../lib/api.js'
 import { ir } from '../lib/router.js'
@@ -67,6 +68,8 @@ export function Inicio({ espacio }: { espacio: EspacioResumen | undefined }) {
           </Boton>
         </Tarjeta>
       </div>
+
+      <Copias />
 
       <Compartir espacio={espacio} />
 

@@ -76,16 +76,77 @@ servir con un esquema a medias.
 
 ## Dónde viven los datos
 
-- `${APP_DATA_DIR}/postgres` — la base de datos. **Esto es lo que hay que
-  respaldar.**
+- `${APP_DATA_DIR}/postgres` — la base de datos.
 - `${APP_DATA_DIR}/documentos` — los PDF de nóminas y extractos subidos.
+- `${APP_DATA_DIR}/copias` — las copias de seguridad ya hechas.
 
-Los dos están fuera de los contenedores: actualizar la app no los toca.
+Los tres están fuera de los contenedores: actualizar la app no los toca.
 
-Copia manual, en caliente:
+## Copias de seguridad
+
+Se hacen **solas**, sin cron del sistema ni nada que recordar: un cuarto
+contenedor (`norte_copias`) hace una copia al día a las 04:30 y la comprueba
+antes de darla por buena.
+
+Cada copia son dos ficheros con el mismo sello de tiempo:
+
+```
+norte-2026-08-19-0430.dump                 la base de datos (formato -Fc)
+norte-2026-08-19-0430-documentos.tar.gz    los extractos y nóminas subidos
+```
+
+Se guardan las **7 últimas diarias** y la más reciente de cada uno de los
+**12 últimos meses**; el resto se borra solo.
+
+El estado se ve **desde la propia app**, en la pantalla de inicio: si el
+servicio se para o una copia falla, ahí lo dice, y hay un botón para hacer una
+copia en el momento. Es a propósito: una copia que falla en silencio es peor
+que no tener copias, porque da la tranquilidad sin dar el respaldo.
+
+Para verlo desde el terminal:
 
 ```bash
-sudo docker exec norte_db pg_dump -U norte norte | gzip > norte-$(date +%F).sql.gz
+sudo docker logs --tail 20 norte_copias
+cat ~/norte-datos/copias/estado.json
+```
+
+### Llévatelas fuera del Umbrel
+
+Una copia que vive en la misma máquina que el original no protege de que se
+estropee esa máquina. De vez en cuando:
+
+```bash
+rsync -av umbrel@umbrel.local:~/norte-datos/copias/ ~/copias-norte/
+```
+
+### Restaurar
+
+Con Norte parado, para que nadie escriba mientras se restaura:
+
+```bash
+cd ~/norte-app/norte/umbrel
+sudo docker compose stop web api copias
+
+# La base de datos, sobre una vacía
+sudo docker compose exec -T db dropdb -U norte --if-exists norte
+sudo docker compose exec -T db createdb -U norte norte
+sudo docker compose exec -T db pg_restore -U norte -d norte --no-owner \
+  < ~/norte-datos/copias/norte-2026-08-19-0430.dump
+
+# Los documentos
+tar -xzf ~/norte-datos/copias/norte-2026-08-19-0430-documentos.tar.gz \
+  -C ~/norte-datos/documentos
+
+sudo docker compose start api web copias
+```
+
+Comprobado de punta a punta: volcado de una base con datos reales de la app,
+restaurado en una base limpia y verificado que vuelven las mismas filas.
+
+Si quieres mirar dentro de una copia sin restaurarla:
+
+```bash
+sudo docker compose exec -T db pg_restore --list < ~/norte-datos/copias/norte-….dump
 ```
 
 ## Antes de tocar nada del Umbrel

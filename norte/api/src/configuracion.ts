@@ -30,6 +30,12 @@ const esquema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   NORTE_DATOS_DIR: z.string().default('./datos'),
+  // Dónde deja sus copias el servicio de respaldo. La API solo LEE de aquí:
+  // en el Umbrel el volumen va montado en solo lectura a propósito.
+  NORTE_COPIAS_DIR: z.string().default('./copias'),
+  // El único hueco de escritura hacia el servicio de copias: el botón «hacer
+  // una copia ahora» deja este fichero y el servicio lo recoge en un minuto.
+  NORTE_COPIAS_PETICION: z.string().default('./copias-peticion/copia-ahora'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 })
 
@@ -39,6 +45,8 @@ export interface Configuracion {
   puerto: number
   cookieSegura: boolean
   datosDir: string
+  copiasDir: string
+  copiasPeticion: string
   entorno: 'development' | 'test' | 'production'
 }
 
@@ -75,6 +83,8 @@ export function leerConfiguracion(env: NodeJS.ProcessEnv = process.env): Configu
     puerto: datos.NORTE_PUERTO,
     cookieSegura: datos.NORTE_COOKIE_SEGURA,
     datosDir: datos.NORTE_DATOS_DIR,
+    copiasDir: datos.NORTE_COPIAS_DIR,
+    copiasPeticion: datos.NORTE_COPIAS_PETICION,
     entorno: datos.NODE_ENV,
   }
 }

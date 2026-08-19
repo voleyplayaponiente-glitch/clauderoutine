@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1, 2 y 3 cerradas (196 tests en verde: 123 dominio + 73 API)
+## Estado — fases 1, 2 y 3 cerradas (213 tests en verde: 132 dominio + 81 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -146,9 +146,8 @@ pantalla de inicio pintada y sin errores. Es donde vive; sus datos están ahí.
   **Esa es la carpeta que hay que respaldar.**
 - Su `.env` (contraseña de Postgres y secreto de sesión) está solo en el Umbrel.
   No hay copia en ningún otro sitio.
-- **Aún no hay copias de seguridad automáticas.** El `pg_dump` está documentado
-  en `umbrel/README.md` pero nadie lo ejecuta solo. Con lo que pasó en agosto,
-  esto no puede quedarse mucho tiempo así.
+- **Copias de seguridad: hechas y automáticas desde el 19/08/2026** (ver más
+  abajo). Antes de eso solo había un `pg_dump` documentado que nadie ejecutaba.
 
 ## El registro está CERRADO (18/08/2026)
 La primera cuenta de una instalación es libre; a partir de ahí **solo se entra
@@ -240,13 +239,63 @@ Decisiones que conviene no deshacer:
   nombres, cuentas e importes inventados —y en la nómina, inventados **de forma
   que la resta siga cuadrando**, porque si no la prueba no probaría nada.
 
+## Copias de seguridad automáticas (19/08/2026)
+
+Un cuarto contenedor, `copias`, con **la misma imagen que la base de datos**
+(`postgres:16-alpine`): así `pg_dump` es exactamente de la versión del servidor,
+que es la causa número uno de volcados que fallan en montajes caseros. Sin
+imagen nueva que publicar y sin visibilidad de GHCR que tocar.
+
+El script es `umbrel/copias.sh` y **está duplicado** en
+`bespain-umbrel-store/bespain-norte/copias.sh`: la ficha de una app de Umbrel no
+puede referirse a ficheros de otro repositorio. Si se toca uno, hay que copiar
+el otro (los dos compose lo montan como `./copias.sh:/copias.sh:ro`).
+
+Decisiones que sostienen el diseño:
+- **Se escribe a `.parcial` y se renombra al final.** Un volcado interrumpido no
+  puede llegar a parecerse a una copia buena.
+- **Cada copia se comprueba** (`pg_restore --list` y `tar -tzf`) antes de darla
+  por buena. Un fichero de 0 bytes también «existe».
+- **El estado se publica** en `copias/estado.json` y hay un **latido** cada 5
+  minutos. La app lo lee y lo enseña **en la pantalla de inicio**: una copia que
+  falla en silencio es peor que no tener copias, porque da la tranquilidad sin
+  dar el respaldo. El latido es lo que distingue «todo bien» de «el contenedor
+  murió después de escribir que todo iba bien».
+- La condición del temporizador es «hoy todavía no hay copia **y** ya ha pasado
+  la hora», no «son las 04:30»: un reinicio a las 04:31 no se salta el día.
+- **Retención por nombre de fichero**, sin aritmética de fechas: 7 diarias + la
+  más reciente de cada uno de los últimos 12 meses. Se decide leyendo el nombre
+  porque `date -d` sobre cadenas se comporta distinto en cada imagen.
+- En el shell del contenedor, `$(( 08 * 60 ))` es un **octal inválido** y
+  abortaría el script a las ocho de la mañana. Los ceros a la izquierda se
+  quitan a mano en `minutos()`.
+- La API monta la carpeta de copias en **solo lectura**; para el botón «hacer
+  una copia ahora» hay un segundo volumen minúsculo donde deja una señal que el
+  servicio recoge en menos de un minuto. Un fallo de la API no puede borrar el
+  respaldo, y no hace falta meter `pg_dump` en la imagen de Node (Debian
+  bookworm trae el cliente 15, que **se niega** a volcar un servidor 16).
+- `GET /api/copias` y `POST /api/copias/ahora` son **solo para el dueño de la
+  instalación** = el usuario más antiguo, que es el único que pudo crearse sin
+  invitación. No hay rol de administrador todavía y no hacía falta inventarlo.
+
+Verificado de verdad, no solo con tests: se volcó una base con datos reales de
+la app, se restauró en otra vacía y se comprobó que vuelven las mismas filas
+(usuarios, espacios, cuentas, movimientos, documentos y las 69 categorías). La
+retención se probó con 28 copias falsas repartidas por 13 meses y dejó
+exactamente las 18 esperadas.
+
+Lo que **no** cubre y hay que decirle al usuario: las copias viven en el mismo
+Umbrel. Protegen de un borrado, de una migración mal hecha o de un contenedor
+roto; no protegen de que se estropee el disco. Sacarlas de ahí (`rsync`) sigue
+siendo manual y está en `umbrel/README.md`.
+
 ## Por dónde seguir
-1. **Copias de seguridad automáticas.** Sigue siendo lo más urgente: con lo que
-   pasó en agosto, un `pg_dump` diario no puede esperar más fases.
-2. **Fase 4 — Presupuesto por sobres**: asignación mensual, lo que queda por
+1. **Fase 4 — Presupuesto por sobres**: asignación mensual, lo que queda por
    sobre, y el aviso cuando el ritmo de gasto se sale.
-3. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
+2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
+3. Sacar las copias fuera del Umbrel de forma automática (a un disco USB o a
+   otra máquina). Hoy el `rsync` está documentado pero es manual.
 4. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la
    instalación manual vieja, ya sustituida por la de la tienda.
 

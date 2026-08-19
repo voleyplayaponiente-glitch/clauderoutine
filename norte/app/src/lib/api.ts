@@ -222,6 +222,20 @@ export interface LecturaDocumento {
   apuntes: ApunteLeido[]
 }
 
+export interface EstadoDeCopias {
+  estado: {
+    ultima: string | null
+    fichero: string | null
+    bytes: number
+    copias: number
+    ok: boolean
+    mensaje: string | null
+  } | null
+  servicioVivo: boolean
+  copias: { sello: string; fecha: string; bytes: number; conDocumentos: boolean }[]
+  carpeta: string
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -339,4 +353,6 @@ export const api = {
     }),
   borrarDocumento: (espacioId: string, id: string) =>
     pedir<{ ok: true }>(`/espacios/${espacioId}/documentos/${id}`, { metodo: 'DELETE' }),
+  copias: () => pedir<EstadoDeCopias>('/copias'),
+  copiaAhora: () => pedir<{ pedida: true }>('/copias/ahora', { metodo: 'POST', cuerpo: {} }),
 }
