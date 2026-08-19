@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1 a 4 cerradas (254 tests en verde: 158 dominio + 96 API)
+## Estado — fases 1 a 5 cerradas (316 tests en verde: 203 dominio + 113 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -406,10 +406,64 @@ la cabecera. Medido con Playwright: `scrollWidth` 375 en las cuatro pantallas.
 Pendiente de la fase: los métodos `base_cero` y `50-30-20` del enum
 `MetodoPresupuesto` siguen sin implementar; hoy todo es `sobres`.
 
+## Fase 5 cerrada (19/08/2026): deudas y tarjetas
+
+`/#/deudas`. Es la fase con más fórmulas y la que más tests tiene.
+
+**Las cifras esperadas de los tests están calculadas aparte, con aritmética
+decimal exacta en Python, no sacadas de la propia implementación.** Un test que
+compara el código consigo mismo solo prueba que no ha cambiado. Referencias
+usadas: 150.000 € al 3 % a 360 meses → cuota 632,41 € e intereses 77.665,33 €;
+12.000 € al 7,5 % a 60 → 240,46 €; TAE de un TIN del 20 % → 21,9391 %;
+3.000 € al 24 % con mínimo del 3 % y suelo de 30 € → 159 meses y 7.436,34 €.
+
+- **Todo en céntimos y redondeando en CADA periodo**, que es lo que hace un
+  banco. Calcular en euros y redondear al final da cuadros que no cuadran con
+  el recibo. **La última cuota se ajusta** para cerrar exactamente en cero.
+- Sistemas **francés, alemán y americano**. Con interés cero la fórmula
+  francesa se indefine: se trata aparte, porque un préstamo familiar al 0 % es
+  un préstamo, no un caso raro.
+- **La comisión se resta del ahorro.** Un simulador que enseña «te ahorras
+  8.400 €» y esconde los 500 € de comisión está vendiendo, no informando. La
+  pantalla enseña **siempre las dos opciones juntas** —reducir plazo y reducir
+  cuota— porque elegir sin ver las dos cifras no es elegir.
+- `mesesParaCuota` **lanza** si la cuota no cubre ni los intereses, en vez de
+  devolver `NaN` y dejar que se convierta en un cuadro imposible más abajo.
+- **Avalancha vs bola de nieve** simuladas mes a mes, con los mínimos de las
+  deudas ya liquidadas reinvertidos. Si en un mes entero la deuda total no baja,
+  se devuelve `meses: null`: la respuesta honesta no es un número grande, es
+  «así esto no se acaba».
+- **Revolving**: el interés se devenga ANTES de calcular el mínimo, como en los
+  contratos (por eso el 3 % de 3.000 € da 91,80 € y no 90). Y cuando la cuota no
+  supera al interés se dice «nunca se liquida» y **cuánto haría falta** para que
+  empiece a bajar.
+- **El cuadro no se guarda: se calcula** desde el préstamo más las
+  amortizaciones registradas. `cuadro_amortizacion` queda libre para cuando
+  lleguen las revisiones de tipo variable, donde ya no se deduce de un solo tipo.
+- Las tarjetas cuelgan de una cuenta `tarjeta_credito`, así que **el consumo del
+  ciclo se calcula** de los movimientos. El número que casi ninguna app enseña y
+  que aquí va en grande: **cuántos días de financiación gratis te quedan si
+  compras hoy**.
+
+Detalle de calendario que importa: el día de pago es **la primera vez que llega
+ese día después del corte**, no «el mes siguiente». Con corte el 25 y pago el 5
+es el 5 del mes que viene; con corte el 5 y pago el 25, el 25 del mismo mes. Y
+un corte el 31 cae el último día de los meses que no lo tienen.
+
+Verificado en navegador: simulador de amortización, registro real de una
+amortización (5.190 € de interés ahorrado) y simulador de revolving. Cuando la
+deuda más pequeña es además la más cara, las dos estrategias coinciden y **la
+pantalla lo dice** en vez de enseñar dos cuadros idénticos, que parecería un
+fallo.
+
+Pendiente de la fase: las revisiones de tipo variable (hoy el cuadro se calcula
+con el tipo actual y la pantalla avisa de que es la foto de ahora), y los ciclos
+de tarjeta persistidos (`ciclos_tarjeta` sigue sin usarse).
+
 ## Por dónde seguir
-1. **Fase 5 — Deudas y tarjetas**: cuadros de amortización, simulador
-   (reducir cuota vs. reducir plazo), ciclos de tarjeta y coste del revolving.
-   Es la fase con más fórmulas: batería completa de tests.
+1. **Fase 6 — Inversiones**: cartera, TWR y TIR (XIRR por Newton-Raphson con
+   respaldo de bisección, y `null` si no converge), asignación objetivo y aviso
+   de rebalanceo con umbral de ±5 pp.
 2. La semilla debe crecer con cada fase hasta los **18 meses de histórico** que
    pide el encargo. Hoy solo crea usuario, espacios y categorías.
 3. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado

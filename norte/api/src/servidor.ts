@@ -11,9 +11,11 @@ import { ErrorApi, noAutenticado } from './errores.js'
 import { rutasAuth } from './rutas/auth.js'
 import { rutasCopias } from './rutas/copias.js'
 import { rutasCuentas } from './rutas/cuentas.js'
+import { rutasDeudas } from './rutas/deudas.js'
 import { rutasDocumentos } from './rutas/documentos.js'
 import { rutasEspacios } from './rutas/espacios.js'
 import { rutasPresupuestos } from './rutas/presupuestos.js'
+import { rutasTarjetas } from './rutas/tarjetas.js'
 import { rutasMovimientos } from './rutas/movimientos.js'
 import { rutasRecurrentes } from './rutas/recurrentes.js'
 
@@ -145,6 +147,8 @@ export async function crearServidor({
   await app.register(rutasDocumentos, { prisma, configuracion })
   await app.register(rutasCopias, { prisma, configuracion })
   await app.register(rutasPresupuestos, { prisma })
+  await app.register(rutasDeudas, { prisma })
+  await app.register(rutasTarjetas, { prisma })
 
   return app
 }

@@ -294,6 +294,104 @@ export interface PropuestaPresupuesto {
   }[]
 }
 
+export interface ResumenCuadro {
+  cuotas: number
+  totalPagado: number
+  totalIntereses: number
+  porCadaEuro: number
+  ultimaFecha: string | null
+}
+
+export interface Deuda {
+  id: string
+  nombre: string
+  tipo: string
+  entidad: string | null
+  principalOriginal: number
+  tin: number
+  taeEquivalente: number
+  plazoMeses: number
+  sistema: string
+  tipoVariable: boolean
+  diferencial: number | null
+  revisionMeses: number | null
+  comisionAmortizacion: number
+  fechaPrimerPago: string
+  cuota: number
+  cuotaActual: number
+  saldoPendiente: number
+  cuotasPagadas: number
+  proximoPago: { fecha: string; cuota: number } | null
+  resumen: ResumenCuadro
+  amortizaciones: {
+    id: string
+    fecha: string
+    importe: number
+    reducePlazo: boolean
+    comision: number
+    interesAhorrado: number
+  }[]
+}
+
+export interface FilaCuadro {
+  numero: number
+  fecha: string
+  cuota: number
+  interes: number
+  capital: number
+  saldoVivo: number
+}
+
+export interface OpcionAmortizacion {
+  comision: number
+  interesAhorrado: number
+  ahorroNeto: number
+  cuotasAhorradas: number
+  nuevaCuota: number
+  ultimaFecha: string | null
+  liquidaLaDeuda: boolean
+}
+
+export interface Estrategias {
+  extra: number
+  deudas: number
+  avalancha: { meses: number | null; interesTotal: number; liquidaciones: { nombre: string; mes: number }[] } | null
+  bolaDeNieve: { meses: number | null; interesTotal: number; liquidaciones: { nombre: string; mes: number }[] } | null
+  sobrecosteBolaDeNieve?: number
+  mesesDeDiferencia?: number | null
+}
+
+export interface Tarjeta {
+  id: string
+  cuentaId: string
+  nombre: string
+  ultimos4: string | null
+  limite: number
+  diaCorte: number
+  diaPago: number
+  modalidad: string
+  tin: number | null
+  minimoPorcentaje: number
+  minimoSuelo: number
+  ciclo: { desde: string; hasta: string; fechaPago: string }
+  cicloAnterior: { desde: string; hasta: string; fechaPago: string }
+  diasHastaCorte: number
+  diasGratisSiComprasHoy: number
+  consumidoCiclo: number
+  dispuesto: number
+  utilizacion: number
+}
+
+export interface SimulacionAplazado {
+  meses: number | null
+  interesTotal: number
+  pagadoTotal: number
+  primeraCuota: number
+  porCadaEuro: number | null
+  nuncaSeLiquida: boolean
+  cuotaMinimaViable: number
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -432,4 +530,31 @@ export const api = {
       `/espacios/${espacioId}/presupuesto/cerrar?mes=${mes}`,
       { metodo: 'POST', cuerpo: {} },
     ),
+  deudas: (espacioId: string) => pedir<{ deudas: Deuda[] }>(`/espacios/${espacioId}/deudas`),
+  crearDeuda: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ deuda: Deuda }>(`/espacios/${espacioId}/deudas`, { metodo: 'POST', cuerpo: datos }),
+  borrarDeuda: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/deudas/${id}`, { metodo: 'DELETE' }),
+  cuadro: (espacioId: string, id: string) =>
+    pedir<{ cuadro: FilaCuadro[]; resumen: ResumenCuadro }>(`/espacios/${espacioId}/deudas/${id}/cuadro`),
+  simularAmortizacion: (espacioId: string, id: string, datos: { trasCuota: number; importe: number }) =>
+    pedir<{ reducirPlazo: OpcionAmortizacion; reducirCuota: OpcionAmortizacion }>(
+      `/espacios/${espacioId}/deudas/${id}/simular`,
+      { metodo: 'POST', cuerpo: datos },
+    ),
+  amortizar: (espacioId: string, id: string, datos: { trasCuota: number; importe: number; reducePlazo: boolean }) =>
+    pedir<{ deuda: Deuda }>(`/espacios/${espacioId}/deudas/${id}/amortizaciones`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  estrategias: (espacioId: string, extra: number) =>
+    pedir<Estrategias>(`/espacios/${espacioId}/deudas/estrategias?extra=${extra}`),
+
+  tarjetas: (espacioId: string) => pedir<{ tarjetas: Tarjeta[] }>(`/espacios/${espacioId}/tarjetas`),
+  crearTarjeta: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ tarjeta: Tarjeta }>(`/espacios/${espacioId}/tarjetas`, { metodo: 'POST', cuerpo: datos }),
+  borrarTarjeta: (espacioId: string, id: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/tarjetas/${id}`, { metodo: 'DELETE' }),
+  simularAplazado: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<SimulacionAplazado>(`/espacios/${espacioId}/tarjetas/simular`, { metodo: 'POST', cuerpo: datos }),
 }
