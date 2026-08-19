@@ -8,6 +8,7 @@ import { useUi, type Tema } from './estado/ui.js'
 import { api, ErrorDeApi, type Sesion } from './lib/api.js'
 import { ir, useRuta } from './lib/router.js'
 import { Cuentas } from './pantallas/Cuentas.js'
+import { Compartido } from './pantallas/Compartido.js'
 import { Deudas } from './pantallas/Deudas.js'
 import { Documentos } from './pantallas/Documentos.js'
 import { Entrar } from './pantallas/Entrar.js'
@@ -105,6 +106,7 @@ export function App() {
           <div className="ml-auto flex min-w-0 shrink items-center gap-2">
             <SelectorTema />
             <Boton
+              className="shrink-0"
               variante="fantasma"
               tamano="pequeno"
               cargando={salir.isPending}
@@ -128,6 +130,9 @@ export function App() {
             <Pestana ruta={ruta} a="/cuentas" texto="Cuentas" />
             <Pestana ruta={ruta} a="/deudas" texto="Deudas" />
             <Pestana ruta={ruta} a="/inversiones" texto="Inversiones" />
+            {activo.tipo !== 'personal' && (
+              <Pestana ruta={ruta} a="/compartido" texto="Compartido" />
+            )}
             <Pestana ruta={ruta} a="/documentos" texto="Documentos" />
           </div>
         </nav>
@@ -146,6 +151,8 @@ export function App() {
           <Deudas espacio={activo} />
         ) : ruta === '/inversiones' && activo ? (
           <Inversiones espacio={activo} />
+        ) : ruta === '/compartido' && activo ? (
+          <Compartido espacio={activo} />
         ) : ruta === '/documentos' && activo ? (
           <Documentos espacio={activo} />
         ) : (
@@ -200,7 +207,10 @@ function SelectorTema() {
       value={tema}
       onChange={(e) => cambiarTema(e.target.value as Tema)}
       aria-label="Tema"
-      className="h-9 rounded-campo border border-linea bg-sup-2 px-2.5 text-sm text-texto-1"
+      // Encogible como el de espacio: con un nombre de espacio largo («La
+      // empresa»), este selector empujaba el botón de Salir fuera de la
+      // pantalla en 375 px y desbordaba el documento entero.
+      className="h-9 min-w-0 max-w-28 shrink rounded-campo border border-linea bg-sup-2 px-2.5 text-sm text-texto-1"
     >
       {opciones.map((o) => (
         <option key={o.valor} value={o.valor}>

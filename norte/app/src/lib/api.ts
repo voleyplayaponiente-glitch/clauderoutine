@@ -476,6 +476,95 @@ export interface Cuadro {
   documentosPorRevisar: number
 }
 
+// ─────────────────────────────────────────────── Espacios compartidos
+
+export type TipoReparto = 'mitades' | 'proporcional_ingresos' | 'porcentaje_manual' | 'importe_fijo'
+
+export interface MiembroDelEspacio {
+  usuarioId: string
+  nombre: string
+  email: string
+  rol: 'propietario' | 'editor' | 'lector'
+  participacion: number
+}
+
+export interface RepartoGuardado {
+  id: string
+  nombre: string
+  tipo: TipoReparto
+  partes: { usuarioId: string; porcentaje: number; importeFijo: number }[]
+}
+
+export interface CuentaCompartida {
+  desde: string | null
+  hasta: string
+  total: number
+  saldos: { usuarioId: string; nombre: string; pagado: number; debido: number; saldo: number }[]
+  pagos: {
+    deUsuarioId: string
+    aUsuarioId: string
+    deNombre: string
+    aNombre: string
+    importe: number
+  }[]
+  gastos: {
+    id: string
+    fecha: string
+    concepto: string
+    importe: number
+    pagadoPor: string
+    pagadoPorNombre: string
+  }[]
+  tardios: { id: string; fecha: string; concepto: string; importe: number }[]
+  sinReparto: { id: string; fecha: string; concepto: string; importe: number }[]
+  /** Los ingresos con los que se ha repartido, si alguna regla va por ingresos. */
+  ingresosUsados: {
+    mes: string
+    personas: { usuarioId: string; nombre: string; ingreso: number }[]
+  }[]
+}
+
+export interface LiquidacionGuardada {
+  id: string
+  desde: string
+  hasta: string
+  estado: 'pendiente' | 'saldada'
+  saldadaEn: string | null
+  pagos: {
+    id: string
+    deUsuarioId: string
+    aUsuarioId: string
+    deNombre: string
+    aNombre: string
+    importe: number
+    pagadoEn: string | null
+  }[]
+}
+
+export interface Negocio {
+  resultado: number
+  aviso: string | null
+  socios: {
+    usuarioId: string
+    nombre: string
+    participacion: number
+    aportado: number
+    retirado: number
+    beneficioAsignado: number
+    beneficioCobrado: number
+    saldo: number
+  }[]
+  movimientos: {
+    id: string
+    usuarioId: string
+    nombre: string
+    tipo: 'aportacion' | 'retirada' | 'reparto_beneficios'
+    importe: number
+    fecha: string
+    notas: string | null
+  }[]
+}
+
 export const api = {
   yo: () => pedir<Sesion>('/auth/yo'),
   estadoPuerta: () => pedir<EstadoPuerta>('/auth/estado'),
@@ -668,5 +757,49 @@ export const api = {
     pedir<{ guardada: true; mes: string }>(`/espacios/${espacioId}/cuadro/foto`, {
       metodo: 'POST',
       cuerpo: {},
+    }),
+  repartos: (espacioId: string) =>
+    pedir<{ repartos: RepartoGuardado[]; miembros: MiembroDelEspacio[] }>(
+      `/espacios/${espacioId}/repartos`,
+    ),
+  crearReparto: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ reparto: { id: string } }>(`/espacios/${espacioId}/repartos`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  guardarReparto: (espacioId: string, repartoId: string, datos: Record<string, unknown>) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/repartos/${repartoId}`, {
+      metodo: 'PATCH',
+      cuerpo: datos,
+    }),
+  borrarReparto: (espacioId: string, repartoId: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/repartos/${repartoId}`, { metodo: 'DELETE' }),
+  cuentaCompartida: (espacioId: string) =>
+    pedir<CuentaCompartida>(`/espacios/${espacioId}/cuenta`),
+  liquidaciones: (espacioId: string) =>
+    pedir<{ liquidaciones: LiquidacionGuardada[] }>(`/espacios/${espacioId}/liquidaciones`),
+  cerrarPeriodo: (espacioId: string) =>
+    pedir<{ liquidacion: { id: string } }>(`/espacios/${espacioId}/liquidaciones`, {
+      metodo: 'POST',
+      cuerpo: {},
+    }),
+  saldarLiquidacion: (espacioId: string, liquidacionId: string) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/liquidaciones/${liquidacionId}/saldar`, {
+      metodo: 'POST',
+      cuerpo: {},
+    }),
+  negocio: (espacioId: string) => pedir<Negocio>(`/espacios/${espacioId}/negocio`),
+  apuntarCapital: (espacioId: string, datos: Record<string, unknown>) =>
+    pedir<{ movimiento: { id: string } }>(`/espacios/${espacioId}/negocio/capital`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+  guardarParticipaciones: (
+    espacioId: string,
+    participaciones: { usuarioId: string; participacion: number }[],
+  ) =>
+    pedir<{ ok: true }>(`/espacios/${espacioId}/participaciones`, {
+      metodo: 'PATCH',
+      cuerpo: { participaciones },
     }),
 }

@@ -9,6 +9,7 @@ import type { Configuracion } from './configuracion.js'
 import { TAMANO_MAXIMO } from './documentos/almacen.js'
 import { ErrorApi, noAutenticado } from './errores.js'
 import { rutasAuth } from './rutas/auth.js'
+import { rutasCompartido } from './rutas/compartido.js'
 import { rutasCopias } from './rutas/copias.js'
 import { rutasCuadro } from './rutas/cuadro.js'
 import { rutasCuentas } from './rutas/cuentas.js'
@@ -153,6 +154,7 @@ export async function crearServidor({
   await app.register(rutasTarjetas, { prisma })
   await app.register(rutasInversiones, { prisma })
   await app.register(rutasCuadro, { prisma })
+  await app.register(rutasCompartido, { prisma })
 
   return app
 }

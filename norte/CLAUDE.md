@@ -36,7 +36,7 @@ Otras dos derivas del prompt original, decididas y justificadas:
 cd norte
 npm install
 npm run dev            # API en :3012 + interfaz en :5173 (Vite reenvía /api)
-npm test               # motor (234) + API (132) = 366 tests
+npm test               # motor (265) + API (148) = 413 tests
 # Si no hay PostgreSQL (contenedor nuevo): norte/scripts/bd-desarrollo.sh
 npm run test:dominio   # solo el motor, sin base de datos
 npm run build          # dominio + api + app
@@ -120,7 +120,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — fases 1 a 7 cerradas (366 tests en verde: 234 dominio + 132 API)
+## Estado — fases 1 a 8 cerradas (413 tests en verde: 265 dominio + 148 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -573,13 +573,126 @@ guarda el patrimonio del espacio entero, no la valoración de la cartera, que es
 lo que hace falta para encadenar subperiodos. Es una foto más, de la cartera,
 en el mismo sitio donde ya se escribe la del patrimonio.
 
+## Fase 8 cerrada (19/08/2026): espacios compartidos
+
+`/#/compartido`, y **la pestaña solo aparece donde tiene sentido**: en un
+espacio personal no hay nada que compartir, así que no hay pestaña muerta.
+
+La pantalla gira alrededor de **una frase**: «Marta le pasa 354,87 € a Demo».
+Todo lo demás —los saldos, los gastos, las reglas— está para justificar esa
+frase. Una aplicación de gastos compartidos que te obliga a interpretar una
+tabla ha fallado en lo único que le pedías.
+
+### Las tres decisiones que sostienen la fase
+- **Quién pagó sale del dueño de la cuenta**, no de un campo que rellenar y que
+  alguien olvidará. El hecho ya está en la base; inventar un campo «pagador»
+  sería crear una segunda verdad que se puede contradecir con la primera.
+- **La cuenta se calcula; lo único que se guarda es el cierre.** Mientras el
+  periodo está abierto, corregir un gasto corrige la cuenta. Al cerrar se
+  persisten `liquidaciones` + `pagos_liquidacion`, porque un acuerdo entre dos
+  personas **sí** es un hecho. Y el cierre **recalcula en el servidor**: quien
+  firma no puede ser quien decide las cifras.
+- **Un gasto compartido de una cuenta privada entra en la cuenta común, pero
+  sin decir de qué cuenta salió.** Quien comparte un gasto está diciendo «esto
+  lo pagué yo y te toca la mitad», así que el otro tiene que ver el concepto y
+  el importe para poder estar de acuerdo; lo que no tiene por qué ver es dónde
+  lo tiene domiciliado. La respuesta de `/cuenta` **no lleva `cuentaId` ni
+  nombre de cuenta**, y hay un test que comprueba que el nombre de la cuenta
+  privada no aparece en ninguna parte del JSON.
+
+### El reparto (`dominio/reparto.ts`)
+Cuatro tipos, y cada uno tiene que saber responder a «¿y si el gasto es de
+12,35 €?» sin perder un céntimo. Todos pasan por `repartir`, así que **la suma
+de las cuotas es exactamente el importe**, siempre.
+- `proporcional_ingresos` es el que la gente quiere de verdad cuando los
+  sueldos son distintos, y el que ninguna app de dividir cuentas hace bien.
+- **Sin ingresos anotados NO parte a medias por su cuenta**: lanza y lo explica.
+  Repartir «según los ingresos» cuando no hay ingresos sería cambiarle el
+  acuerdo a alguien sin decírselo.
+- `importe_fijo` significa «Ana pone 400 € y el resto se lo reparten los
+  demás», que es un acuerdo real y muy común. Si nadie queda para el resto, o
+  si los fijos ya se pasan del gasto, la regla no vale para ese importe y se
+  dice en vez de estirarla.
+- **Y la pantalla enseña con qué ingresos se ha repartido**, mes a mes. Repartir
+  según los ingresos sin enseñar los ingresos es pedir un acto de fe, y el que
+  sale perdiendo nunca se fía. Si alguna cifra sale a cero, se marca en rojo.
+
+### Las transferencias son las mínimas, de verdad (`dominio/liquidacion.ts`)
+El esquema prometía «el algoritmo minimiza cuántas filas hacen falta: nadie
+quiere hacer seis bizums», así que se ha implementado de verdad y no con el
+método codicioso de siempre. Se busca **la mejor partición en subgrupos que
+sumen cero** (programación dinámica sobre submáscaras) y dentro de cada
+subgrupo se cierra el codicioso. El resultado es `n − nº de subgrupos`, que es
+el mínimo demostrable.
+
+El caso que lo justifica está en los tests: con saldos
+`[−5, −6, +5, +5, −2, +3]` el codicioso necesita **cinco** transferencias y la
+partición **cuatro**. Se encontró buscando por fuerza bruta en Python un
+contraejemplo del codicioso, y los mínimos de todos los casos de prueba están
+comprobados con esa misma búsqueda exhaustiva independiente.
+
+Es exponencial, así que se hace exacto hasta **12 personas** —una pareja, un
+piso compartido, tres socios: el caso real— y por encima se cae al codicioso,
+que sigue dando como mucho n−1. Y el resultado es **determinista**: una
+liquidación que baila al recargar no se le puede enseñar a nadie.
+
+### Lo que solo se vio haciendo el flujo entero en el navegador
+**Cerrar el periodo dejaba los cinco gastos recién pagados bajo un aviso
+grande de «no entran en esta cuenta».** Era literalmente cierto y sonaba a
+catástrofe justo después de haber pagado. El fallo era conceptual: se estaba
+usando «tiene fecha anterior al cierre» para dos cosas distintas.
+
+`clasificarPorPlazo` separa ahora tres cajones comparando **cuándo se apuntó**
+el gasto con **cuándo se cerró** el periodo:
+- lo que estaba ahí al cerrar → **ya liquidado**, desaparece sin ruido;
+- lo apuntado *después* del cierre con fecha de antes → **llegó tarde**, y de
+  eso sí hay que avisar, porque se ha quedado fuera sin que nadie lo decidiera;
+- lo demás → el periodo en curso.
+
+También salió de mirar la pantalla que **con el nombre «La empresa» en el
+selector de espacio, el botón de Salir se salía de la pantalla en 375 px** y
+desbordaba el documento entero (382). El selector de tema no encogía. Es el
+mismo tipo de fallo que la barra de pestañas de la fase 4: en la cabecera,
+todo lo que puede crecer tiene que poder encoger.
+
+### Modo negocio
+En un espacio `negocio`, la sociedad va **primero** y los gastos compartidos
+son lo accesorio. Cada socio tiene su **cuenta corriente con la sociedad**:
+
+    saldo = aportado − retirado + lo que le toca del resultado − lo ya cobrado
+
+- Las participaciones **tienen que sumar 100** y solo las cambia el propietario:
+  repartir quién posee cuánto de una sociedad no es tarea de un editor.
+- **Una pérdida se reparte igual que un beneficio.** El socio que no quiere
+  verla en su saldo es justo el que más necesita verla.
+- La pantalla dice en voz alta que **no es contabilidad oficial**, es el acuerdo
+  entre los socios. Para lo oficial está la gestoría.
+
+Comprobado contra la semilla: 7 meses × (14.500 − 8.900) = 39.200 € de
+resultado; 60/40 → 23.520 / 15.680; saldos 41.520 y 24.180. Y el reparto de la
+casa (354,87 €) se comprobó con el mismo cálculo hecho aparte en Python.
+
+### La semilla trae ya los tres espacios
+Personal, **Casa** (con Marta de verdad, sueldos distintos y cinco gastos
+comunes pagados por los dos) y **La empresa** (dos socios al 60/40, capital
+aportado y una retirada). Sin una segunda persona con sus propios gastos, la
+pantalla de compartido no se puede juzgar: el caso interesante es justo el de
+dos personas que pagan cosas distintas.
+
+Pendiente de la fase: elegir el reparto de un gasto concreto se hace hoy con la
+regla única del espacio; si hay varias reglas, el gasto sale en «sin reparto»
+y hay que asignarla en Movimientos, donde **todavía no hay selector de regla**.
+
 ## Por dónde seguir
-1. **Fase 8 — Informes y exportación** (ver `../PLAN_NORTE.md`).
-2. **La foto de la cartera**, para poder dar la TWR. Es lo último que queda
+1. **Fase 9 — Venta y pulido**: licencias, informes en PDF, accesibilidad y
+   rendimiento (ver `../PLAN_NORTE.md`). Es la última.
+2. **El selector de regla de reparto en Movimientos**, para poder tener más de
+   una regla en un espacio. Es lo único que queda abierto de la fase 8.
+3. **La foto de la cartera**, para poder dar la TWR. Es lo último que queda
    abierto de la fase 6 y el sitio donde ponerla ya existe.
-3. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado
+4. Una tercera copia **fuera de casa** (otra máquina o almacenamiento cifrado
    remoto). El disco externo protege del disco roto, no del robo ni del fuego.
-4. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la
+5. Limpieza pendiente en el Umbrel: `~/norte-app` y `~/norte-datos` son la
    instalación manual vieja, ya sustituida por la de la tienda.
 
 ## Decisiones abiertas (no decidir por él)

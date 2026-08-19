@@ -47,7 +47,7 @@ async function sembrar() {
     nombre: 'Personal',
     tipo: 'personal',
   })
-  await crearEspacio(prisma, { usuarioId: usuario.id, nombre: 'Casa', tipo: 'pareja' })
+  const casa = await crearEspacio(prisma, { usuarioId: usuario.id, nombre: 'Casa', tipo: 'pareja' })
 
   // Se entra por la puerta, no se falsifica una sesión: el registro está
   // cerrado y esta cuenta puede no ser la primera de la instalación.
@@ -161,6 +161,146 @@ async function sembrar() {
     })
   }
   await post('/cuadro/foto', {})
+
+  await sembrarCasa()
+  await sembrarNegocio()
+
+  /**
+   * El espacio de pareja. Hace falta una segunda persona de verdad —con su
+   * cuenta y sus gastos— o la pantalla de compartido no enseña nada: el caso
+   * interesante es justo el de dos personas que pagan cosas distintas.
+   */
+  async function sembrarCasa() {
+    const pareja = await prisma.usuario.create({
+      data: {
+        email: 'pareja@norte.local',
+        nombre: 'Marta',
+        hashContrasena: await cifrarContrasena(contrasena),
+      },
+    })
+    await prisma.miembroEspacio.create({
+      data: { espacioId: casa.id, usuarioId: pareja.id, rol: 'editor' },
+    })
+
+    const enCasa = (ruta: string, cuerpo: Record<string, unknown>, quien = cookie) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/espacios/${casa.id}${ruta}`,
+        headers: { cookie: quien },
+        payload: cuerpo,
+      })
+
+    const entradaPareja = await app.inject({
+      method: 'POST',
+      url: '/api/auth/entrar',
+      payload: { email: pareja.email, contrasena },
+    })
+    const galleta = entradaPareja.cookies.find((c) => c.name === COOKIE_SESION)!
+    const cookiePareja = `${COOKIE_SESION}=${galleta.value}`
+
+    const cuentaMia = ((await enCasa('/cuentas', {
+      nombre: 'Corriente de Demo', tipo: 'corriente', saldoInicial: 180_000,
+    })).json() as { cuenta: { id: string } }).cuenta.id
+    const cuentaSuya = ((await enCasa('/cuentas', {
+      nombre: 'Corriente de Marta', tipo: 'corriente', saldoInicial: 140_000,
+    }, cookiePareja)).json() as { cuenta: { id: string } }).cuenta.id
+
+    // Sueldos distintos: es lo que hace interesante el reparto proporcional.
+    const ingreso = await prisma.categoria.findFirst({
+      where: { espacioId: casa.id, flujo: 'ingreso' },
+    })
+    await enCasa('/movimientos', {
+      cuentaId: cuentaMia, importe: 244_360, fecha: dentroDe(-12),
+      concepto: 'Nómina', categoriaId: ingreso?.id,
+    })
+    await enCasa('/movimientos', {
+      cuentaId: cuentaSuya, importe: 178_000, fecha: dentroDe(-12),
+      concepto: 'Nómina', categoriaId: ingreso?.id,
+    }, cookiePareja)
+
+    await enCasa('/repartos', {
+      nombre: 'Gastos comunes',
+      tipo: 'proporcional_ingresos',
+      partes: [{ usuarioId: usuario.id }, { usuarioId: pareja.id }],
+    })
+
+    const comunes: [string, number, string, number][] = [
+      [cuentaMia, -95_000, 'Alquiler', -10],
+      [cuentaMia, -6_240, 'Luz', -8],
+      [cuentaSuya, -14_320, 'Compra semanal', -6],
+      [cuentaSuya, -4_500, 'Internet', -4],
+      [cuentaMia, -8_800, 'Cena fuera', -2],
+    ]
+    for (const [cuentaId, importe, concepto, dias] of comunes) {
+      await enCasa(
+        '/movimientos',
+        { cuentaId, importe, fecha: dentroDe(dias), concepto, esCompartido: true },
+        cuentaId === cuentaSuya ? cookiePareja : cookie,
+      )
+    }
+  }
+
+
+  /**
+   * Un espacio de negocio con dos socios. Sin él, el modo negocio solo se
+   * podría mirar creando la sociedad a mano, y lo que hay que poder juzgar es
+   * la pantalla llena.
+   */
+  async function sembrarNegocio() {
+    const empresa = await crearEspacio(prisma, {
+      usuarioId: usuario.id,
+      nombre: 'La empresa',
+      tipo: 'negocio',
+    })
+    const socio = await prisma.usuario.findUnique({ where: { email: 'pareja@norte.local' } })
+    await prisma.miembroEspacio.create({
+      data: { espacioId: empresa.id, usuarioId: socio!.id, rol: 'editor', participacion: 40 },
+    })
+    await prisma.miembroEspacio.updateMany({
+      where: { espacioId: empresa.id, usuarioId: usuario.id },
+      data: { participacion: 60 },
+    })
+
+    const enEmpresa = (ruta: string, cuerpo: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/espacios/${empresa.id}${ruta}`,
+        headers: { cookie },
+        payload: cuerpo,
+      })
+
+    const bancoId = ((await enEmpresa('/cuentas', {
+      nombre: 'Cuenta de la empresa', tipo: 'corriente', saldoInicial: 850_000,
+    })).json() as { cuenta: { id: string } }).cuenta.id
+
+    const ingreso = await prisma.categoria.findFirst({
+      where: { espacioId: empresa.id, flujo: 'ingreso' },
+    })
+    const gasto = await prisma.categoria.findFirst({
+      where: { espacioId: empresa.id, flujo: 'gasto' },
+    })
+    for (let mes = 0; mes < 7; mes++) {
+      const fecha = new Date(Date.UTC(new Date().getUTCFullYear(), mes, 10)).toISOString().slice(0, 10)
+      await enEmpresa('/movimientos', {
+        cuentaId: bancoId, importe: 1_450_000, fecha, concepto: 'Facturación', categoriaId: ingreso?.id,
+      })
+      await enEmpresa('/movimientos', {
+        cuentaId: bancoId, importe: -890_000, fecha, concepto: 'Gastos del mes', categoriaId: gasto?.id,
+      })
+    }
+
+    await enEmpresa('/negocio/capital', {
+      usuarioId: usuario.id, tipo: 'aportacion', importe: 1_800_000, fecha: '2024-01-15',
+      notas: 'Capital inicial',
+    })
+    await enEmpresa('/negocio/capital', {
+      usuarioId: socio!.id, tipo: 'aportacion', importe: 1_200_000, fecha: '2024-01-15',
+      notas: 'Capital inicial',
+    })
+    await enEmpresa('/negocio/capital', {
+      usuarioId: socio!.id, tipo: 'retirada', importe: 350_000, fecha: dentroDe(-40),
+    })
+  }
 
   console.log(`Sembrado. Entra con ${email} / ${contrasena}`)
   await app.close()
