@@ -135,6 +135,65 @@ Verificado en navegador (Chromium, capturas en la conversación): registro real,
 sesión que sobrevive a recargar, los dos temas, 375 px sin desbordamiento
 horizontal y sin errores de consola.
 
+## ESTADO OPERATIVO / ENTREGA (20/08/2026) — leer esto primero
+
+Norte está **terminado y publicado**. Las nueve fases, más el licenciamiento y
+una revisión de seguridad. Vive en la tienda del Umbrel del usuario.
+
+### Versiones publicadas en la tienda (`bespain-umbrel-store`, app `bespain-norte`)
+El repositorio de la tienda es **`voleyplayaponiente-glitch/bespain-umbrel-store`**,
+clonado en `/workspace/bespain-umbrel-store` en las sesiones de trabajo. Cada
+despliegue sube `bespain-norte/umbrel-app.yml` (versión + `releaseNotes`).
+
+    0.4.0  documentos        0.7.0  inversiones
+    0.5.0  presupuesto       0.8.0  compartido
+    0.6.0  deudas/tarjetas   0.9.0  → renombrado, ver 1.0.0
+    1.0.0  exportación, informes y licencias (cierra las 9 fases)
+    1.0.1  revisión de seguridad  ← ÚLTIMA
+
+El bucle de release, ya probado muchas veces y que NO hay que reinventar:
+correr los dos suites → clon limpio con la misma secuencia del CI → commit →
+push a la rama → esperar `imagen-norte.yml` en verde → comprobar que las 3
+imágenes de GHCR (`norte-web`, `norte-api`, `norte-copias`) se bajan con token
+anónimo → subir la ficha de la tienda. `norte-api`/`norte-copias` solo se
+reconstruyen si cambian `api/` o `dominio/`; `norte-web` si cambia `app/` o el
+propio `nginx*.conf`.
+
+### La licencia del usuario (Julio)
+- **Ya tiene su licencia**: plan `negocio`, **perpetua**, hasta 10 usuarios, a
+  nombre de «Julio Nieto». Se la di en el chat para que la pegue en Ajustes.
+- **No la necesita para nada** hoy: su instalación y quien tenga invitado están
+  cubiertos por la cláusula de anterioridad (`HEREDADOS_HASTA = 2026-08-20`).
+  La licencia solo hace falta para invitar a gente NUEVA a partir de ahora.
+
+### La clave PRIVADA de firma de licencias (crítico)
+- Es una Ed25519. La **pública** que valida Norte está en
+  `api/src/licencia/clave.ts` (`PUBLICA_POR_DEFECTO`); se puede cambiar con
+  `NORTE_CLAVE_LICENCIAS`.
+- La **privada NO está en el repositorio** (la excluye `.gitignore`:
+  `*.privada.pem`). La primera se generó en esta sesión y se le pasó al usuario
+  por el chat; por eso se le recomendó **generar un par nuevo con
+  `npm run licencia -- claves` antes del primer cliente** y guardar ese, que
+  nunca habrá viajado. Si el usuario lo hace, hay que poner la nueva pública en
+  `clave.ts` o en `NORTE_CLAVE_LICENCIAS`.
+- **No hay revocación** (la comprobación es sin conexión, a propósito): una
+  clave robada obliga a rotar el par y reemitir las licencias de los clientes.
+- Emitir: `npm run licencia -- emitir --titular "Ana" --plan pareja --meses 12`.
+
+### Deberes de seguridad que dependen del USUARIO (no del código)
+1. El **secreto de sesión** de su `.env`: el esquema exige 32 caracteres pero
+   no mide entropía. Si lo escribió a mano, cambiarlo por `openssl rand -base64 48`.
+2. La cookie va **sin `secure`** porque el Umbrel sirve por http en la red local
+   —correcto ahí—. Si algún día expone Norte a internet: https delante y
+   `NORTE_COOKIE_SEGURA=true`. La config ya lo avisa al arrancar.
+
+### Lo que queda abierto (nada bloquea; por orden de utilidad)
+1. Selector de regla de reparto en Movimientos (única cosa abierta de la fase 8).
+2. La foto de la cartera para poder dar la TWR (única de la fase 6).
+3. Que un abogado revise `/#/legal` antes de vender a un tercero.
+4. Tercera copia fuera de casa (el disco externo no protege de robo/incendio).
+5. Limpiar en el Umbrel `~/norte-app` y `~/norte-datos` (instalación manual vieja).
+
 ## INSTALADA Y VERIFICADA POR EL USUARIO (17/08/2026, 22:12)
 Corre en su Umbrel en **`http://192.168.1.20:3012`**. Cuenta creada
 (`julionietocristobal@gmail.com`), espacio Personal con sus categorías, la
