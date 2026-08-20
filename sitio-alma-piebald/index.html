@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ALMA PIEBALD · IA que trabaja en negocios de verdad</title>
+<meta name="description" content="Publicidad, contenido y agentes de inteligencia artificial para negocios reales. Sin humo, sin permanencia y con las ventas a la vista. Diagnóstico de veinte minutos gratis.">
+<meta name="theme-color" content="#0E0C0B">
+<link rel="canonical" href="https://almapiebald.es/">
+
+<!-- DEPLOY STEP: sustituir por la URL real en vivo antes de publicar -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ALMA PIEBALD">
+<meta property="og:title" content="ALMA PIEBALD · IA que trabaja en negocios de verdad">
+<meta property="og:description" content="Dos naturalezas, un solo cuerpo. El oficio de siempre y la máquina que no duerme, en el mismo negocio.">
+<meta property="og:url" content="https://almapiebald.es/">
+<meta property="og:image" content="https://almapiebald.es/assets/hero-ending.jpg">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Ccircle cx='24' cy='24' r='22'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg clip-path='url(%23c)'%3E%3Crect width='48' height='48' fill='%23261a12'/%3E%3Cpath d='M26 -6 C 14 8, 36 16, 21 27 C 10 35, 32 42, 27 54 L 56 54 L 56 -6 Z' fill='%23E9A542'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Manrope:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-mode="booting">
+
+<!-- ══ capa de fondo fija: el ambiente de toda la página ══ -->
+<div class="env" aria-hidden="true">
+  <div class="env__wash"></div>
+  <canvas class="env__dust" id="dust"></canvas>
+  <div class="env__grain"></div>
+</div>
+
+<!-- ══ la costura: línea vertical que se dibuja con el scroll ══ -->
+<svg class="seam" viewBox="0 0 4 1000" preserveAspectRatio="none" aria-hidden="true">
+  <path id="seamPath" d="M2 0 C 2 120, 3.4 180, 2 260 C 0.6 340, 3.4 400, 2 500 C 0.6 600, 3.4 660, 2 760 C 0.6 860, 3 920, 2 1000" fill="none" stroke="url(#seamGrad)" stroke-width="1.4"/>
+  <defs>
+    <linearGradient id="seamGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8A5A38"/>
+      <stop offset=".5" stop-color="#E9A542"/>
+      <stop offset="1" stop-color="#8A5A38"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- ══════════════ CABECERA ══════════════ -->
+<header class="nav" id="nav">
+  <a class="nav__brand" href="#top" aria-label="ALMA PIEBALD, ir al principio">
+    <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+      <defs><clipPath id="markClip"><circle cx="24" cy="24" r="22"/></clipPath></defs>
+      <g clip-path="url(#markClip)">
+        <rect width="48" height="48" fill="var(--earth-deep)"/>
+        <path class="mark__coat" d="M26 -6 C 14 8, 36 16, 21 27 C 10 35, 32 42, 27 54 L 56 54 L 56 -6 Z" fill="var(--accent)"/>
+      </g>
+      <circle cx="24" cy="24" r="22" fill="none" stroke="var(--panel-edge)" stroke-width="1.5"/>
+    </svg>
+    <span class="nav__word">ALMA <em>PIEBALD</em></span>
+  </a>
+  <nav class="nav__links" aria-label="Secciones">
+    <a href="#servicios">Qué hacemos</a>
+    <a href="#proceso">Cómo</a>
+    <a href="#precio">Precio</a>
+    <a href="#faq">Preguntas</a>
+  </nav>
+  <a class="btn btn--wa nav__cta" href="https://wa.me/34681044795?text=Hola%2C%20quiero%20el%20diagn%C3%B3stico%20de%20veinte%20minutos." target="_blank" rel="noopener">
+    <svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2A9.9 9.9 0 0 0 2.1 11.9c0 1.75.46 3.46 1.33 4.97L2 22l5.28-1.38a9.9 9.9 0 0 0 4.76 1.21h.01A9.9 9.9 0 0 0 22 11.93 9.9 9.9 0 0 0 12.04 2Zm5.79 14.05c-.24.68-1.42 1.3-1.96 1.35-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.94-4.69-4.13-.14-.19-1.12-1.49-1.12-2.84s.71-2.02.96-2.29c.25-.27.55-.34.73-.34s.37 0 .53.01c.17.01.4-.06.62.48.24.57.8 1.96.87 2.1.07.14.12.3.02.49-.1.19-.15.3-.29.47-.14.16-.3.36-.43.49-.14.14-.29.29-.12.57.17.28.75 1.24 1.61 2.01 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.11.07.66-.17 1.34Z"/></svg>
+    WhatsApp
+  </a>
+</header>
+
+<main id="top">
+
+<!-- ══════════════ HÉROE ══════════════ -->
+<section class="hero" id="hero">
+  <div class="hero__stage">
+
+    <!-- lienzo del recorrido: vídeo cuando existe, telón dibujado siempre -->
+    <div class="hero__canvas">
+      <div class="curtain" aria-hidden="true">
+        <div class="curtain__earth"></div>
+        <div class="curtain__amber"></div>
+        <div class="curtain__braid"></div>
+      </div>
+      <img class="hero__poster" id="heroPoster" alt="" aria-hidden="true">
+      <video class="hero__video" id="heroVideo" playsinline muted preload="none" tabindex="-1" aria-hidden="true"></video>
+      <div class="hero__vignette" aria-hidden="true"></div>
+      <div class="hero__scrim" id="heroScrim" aria-hidden="true"></div>
+    </div>
+
+    <!-- anillo de carga honesto -->
+    <div class="ring" id="ring" hidden aria-hidden="true">
+      <svg viewBox="0 0 44 44"><circle class="ring__track" cx="22" cy="22" r="19"/><circle class="ring__fill" id="ringFill" cx="22" cy="22" r="19"/></svg>
+      <span class="ring__pct" id="ringPct">0%</span>
+    </div>
+
+    <!-- ─── las bandas del recorrido (solo modo scrub) ─── -->
+    <div class="bands" id="bands" aria-hidden="true">
+      <p class="band" data-band="0"><span class="band__line">Dos naturalezas.</span></p>
+      <p class="band" data-band="1"><span class="band__line">El oficio de siempre.</span></p>
+      <p class="band" data-band="2"><span class="band__line">La máquina que no duerme.</span></p>
+      <p class="band" data-band="3"><span class="band__line">En el mismo cuerpo.</span></p>
+    </div>
+
+    <!-- ─── el reposo: donde la página se asienta ─── -->
+    <div class="settle" id="settle">
+      <p class="eyebrow">ALMA PIEBALD</p>
+      <h1 class="settle__h">Ponemos la IA a trabajar en negocios de verdad.</h1>
+      <p class="settle__p">Publicidad, contenido y agentes que atienden solos. Sin humo, sin permanencia y con las ventas a la vista.</p>
+      <div class="settle__cta">
+        <a class="btn btn--wa btn--big" href="https://wa.me/34681044795?text=Hola%2C%20quiero%20el%20diagn%C3%B3stico%20de%20veinte%20minutos." target="_blank" rel="noopener">
+          <svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2A9.9 9.9 0 0 0 2.1 11.9c0 1.75.46 3.46 1.33 4.97L2 22l5.28-1.38a9.9 9.9 0 0 0 4.76 1.21h.01A9.9 9.9 0 0 0 22 11.93 9.9 9.9 0 0 0 12.04 2Zm5.79 14.05c-.24.68-1.42 1.3-1.96 1.35-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.94-4.69-4.13-.14-.19-1.12-1.49-1.12-2.84s.71-2.02.96-2.29c.25-.27.55-.34.73-.34s.37 0 .53.01c.17.01.4-.06.62.48.24.57.8 1.96.87 2.1.07.14.12.3.02.49-.1.19-.15.3-.29.47-.14.16-.3.36-.43.49-.14.14-.29.29-.12.57.17.28.75 1.24 1.61 2.01 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.11.07.66-.17 1.34Z"/></svg>
+          Hablar por WhatsApp
+        </a>
+        <span class="settle__micro">Veinte minutos. Gratis. Sin compromiso.</span>
+      </div>
+    </div>
+
+    <div class="scrollcue" id="scrollcue" aria-hidden="true"><span></span></div>
+  </div>
+</section>
+
+<!-- ══════════════ EL PROBLEMA ══════════════ -->
+<section class="sec sec--problem" id="problema">
+  <div class="wrap">
+    <p class="eyebrow reveal">El problema de siempre</p>
+    <h2 class="h2 reveal">Te mandan informes.<br>Tú necesitas ventas.</h2>
+    <div class="problem">
+      <div class="problem__text">
+        <p class="lede reveal">Impresiones, alcance, seguidores ganados. Un PDF precioso cada mes y ni una línea sobre cuánto has vendido.</p>
+        <p class="reveal">La agencia factura por horas de gestión, así que cuantas más horas, mejor le va. A ti eso no te paga las nóminas.</p>
+        <p class="punch reveal">Aquí se cobra por lo que se mueve, no por lo que se tarda.</p>
+      </div>
+      <div class="ledger reveal" aria-hidden="true">
+        <div class="ledger__side ledger__side--old">
+          <span class="ledger__tag">Su informe</span>
+          <ul><li>Impresiones</li><li>Alcance</li><li>Seguidores</li><li>Interacciones</li><li class="ledger__void">Ventas</li></ul>
+        </div>
+        <div class="ledger__side ledger__side--new">
+          <span class="ledger__tag">El nuestro</span>
+          <ul><li>Ventas</li><li>Coste por cliente</li><li>Margen que queda</li><li class="ledger__void">Lo demás</li></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ QUÉ HACEMOS ══════════════ -->
+<section class="sec" id="servicios">
+  <div class="wrap">
+    <p class="eyebrow reveal">Qué hacemos</p>
+    <h2 class="h2 reveal">Cuatro cosas, bien hechas.</h2>
+    <div class="cards">
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><path d="M10 66 L34 46 L58 56 L82 24 L110 14"/><circle cx="110" cy="14" r="4"/><path d="M10 72 L110 72" class="axis"/><path d="M34 46 L34 72" class="tick"/><path d="M82 24 L82 72" class="tick"/></g></svg>
+        </div>
+        <h3>Publicidad que aprende sola</h3>
+        <p>Campañas en Meta, Google, TikTok y LinkedIn. La IA prueba cien variantes mientras tú duermes y apaga sola lo que no vende.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><rect x="10" y="18" width="44" height="44" rx="4"/><path d="M26 30 L40 40 L26 50 Z"/><rect x="62" y="18" width="20" height="44" rx="3"/><rect x="88" y="18" width="20" height="44" rx="3"/><path d="M66 52 L72 44 L78 52" class="tick"/><path d="M92 52 L98 40 L104 52" class="tick"/></g></svg>
+        </div>
+        <h3>Contenido a ritmo de máquina</h3>
+        <p>Vídeo, foto de producto y publicaciones para todo el mes, generados y revisados por una persona antes de salir.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><path d="M18 20 h50 a6 6 0 0 1 6 6 v20 a6 6 0 0 1 -6 6 h-32 l-12 10 v-10 h-6 a6 6 0 0 1 -6 -6 v-20 a6 6 0 0 1 6 -6z"/><circle cx="34" cy="36" r="2.5"/><circle cx="45" cy="36" r="2.5"/><circle cx="56" cy="36" r="2.5"/><circle cx="96" cy="46" r="13" fill="none" stroke="var(--earth)" stroke-width="1.8"/><path d="M96 39 v8 l6 3" class="tick"/></g></svg>
+        </div>
+        <h3>Agentes que atienden solos</h3>
+        <p>Responden WhatsApp y web a cualquier hora, cualifican al que pregunta y te pasan solo al que va en serio.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><rect x="14" y="14" width="70" height="52" rx="4"/><path d="M14 28 h70" class="axis"/><circle cx="22" cy="21" r="2"/><circle cx="30" cy="21" r="2"/><path d="M26 40 h34 M26 48 h46 M26 56 h24"/><path d="M92 20 h18 l8 8 v30 h-26 z" fill="none" stroke="var(--earth)" stroke-width="1.8"/><path d="M110 20 v8 h8" class="tick"/><path d="M98 40 h12 M98 48 h8" class="tick"/></g></svg>
+        </div>
+        <h3>Web, Kit Digital y facturación</h3>
+        <p>La web, la factura electrónica y la ayuda pública tramitada. Sin cutreweb y sin desaparecer al mes siguiente.</p>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CÓMO TRABAJAMOS ══════════════ -->
+<section class="sec sec--alt" id="proceso">
+  <div class="wrap">
+    <p class="eyebrow reveal">Cómo trabajamos</p>
+    <h2 class="h2 reveal">Tres pasos y ninguna sorpresa.</h2>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step__n" data-n="01">01</span>
+        <div class="step__body">
+          <h3>Miramos</h3>
+          <p>Veinte minutos mirando tu negocio para encontrar dónde se te va el tiempo y dónde se te escapa el dinero. Gratis y sin compromiso.</p>
+        </div>
+        <div class="step__art" aria-hidden="true"><svg viewBox="0 0 90 90"><g class="draw"><circle cx="38" cy="38" r="22"/><path d="M54 54 L76 76"/><path d="M30 38 h16 M38 30 v16" class="tick"/></g></svg></div>
+      </li>
+      <li class="step reveal">
+        <span class="step__n" data-n="02">02</span>
+        <div class="step__body">
+          <h3>Montamos</h3>
+          <p>En dos semanas está funcionando lo primero. Empezamos por un solo problema concreto, no por una plataforma entera.</p>
+        </div>
+        <div class="step__art" aria-hidden="true"><svg viewBox="0 0 90 90"><g class="draw"><rect x="14" y="46" width="26" height="26" rx="3"/><rect x="48" y="46" width="26" height="26" rx="3"/><rect x="31" y="18" width="26" height="26" rx="3"/><path d="M27 46 L44 44 M61 46 L44 44" class="tick"/></g></svg></div>
+      </li>
+      <li class="step reveal">
+        <span class="step__n" data-n="03">03</span>
+        <div class="step__body">
+          <h3>Medimos</h3>
+          <p>Un panel con lo único que importa: cuánto entra, cuánto cuesta traerlo y cuánto queda. Lo abres tú cuando quieras.</p>
+        </div>
+        <div class="step__art" aria-hidden="true"><svg viewBox="0 0 90 90"><g class="draw"><path d="M14 74 h62" class="axis"/><rect x="20" y="52" width="12" height="22"/><rect x="38" y="38" width="12" height="36"/><rect x="56" y="24" width="12" height="50"/><path d="M20 60 L74 20" class="tick"/></g></svg></div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════ LA CUENTA DE LAS DOS CAPAS (momento interactivo) ══════════════ -->
+<section class="sec" id="calculadora">
+  <div class="wrap">
+    <p class="eyebrow reveal">Échale la cuenta</p>
+    <h2 class="h2 reveal">¿Cuánto de tu semana puede llevar la otra capa?</h2>
+
+    <div class="calc reveal" id="calc">
+      <div class="calc__ask">
+        <label class="calc__q" for="calcRange">Horas a la semana que se te van en tareas que se repiten</label>
+        <div class="calc__slider">
+          <div class="calc__track">
+            <input id="calcRange" type="range" min="2" max="30" step="1" value="11"
+                   aria-describedby="calcOut">
+            <p class="calc__scale" aria-hidden="true"><span>2 h</span><span>30 h</span></p>
+          </div>
+          <output class="calc__val" id="calcHrs" for="calcRange">11 h</output>
+        </div>
+      </div>
+
+      <div class="calc__coat" aria-hidden="true">
+        <div class="calc__coat-dark"><span>Sigue siendo tuyo <b id="calcPctDark">38%</b></span></div>
+        <div class="calc__coat-amber" id="calcCoat"><span>Lo lleva la máquina <b id="calcPctAmber">62%</b></span></div>
+      </div>
+
+      <p class="calc__out" id="calcOut" role="status">
+        Recuperas <strong id="calcBig">38</strong> horas al mes.
+        <span class="calc__sub" id="calcSub">Casi una semana entera de trabajo que vuelve a ser tuya.</span>
+      </p>
+    </div>
+
+    <p class="calc__foot reveal">Es una estimación con lo que vemos en negocios parecidos, no una promesa. Tu cifra de verdad sale del diagnóstico de veinte minutos.</p>
+  </div>
+</section>
+
+<!-- ══════════════ LA PRUEBA ══════════════ -->
+<section class="sec sec--alt" id="prueba">
+  <div class="wrap">
+    <p class="eyebrow reveal">Sin maquillaje</p>
+    <h2 class="h2 reveal">Somos nuevos.<br>Esto es lo que sí podemos enseñarte.</h2>
+    <p class="lede reveal">No vamos a inventarnos testimonios. Te dejamos los tres datos por los que existe esta empresa.</p>
+    <div class="stats">
+      <div class="stat reveal"><span class="stat__n" data-count="41">41</span><span class="stat__u">%</span><p>de las pymes españolas usa IA a diario. Las otras seis de cada diez son tu ventaja mientras dure.</p></div>
+      <div class="stat reveal"><span class="stat__n" data-count="1">1</span><span class="stat__u">ª</span><p>queja con las agencias: el informe lleno de alcance y sin una línea sobre ventas.</p></div>
+      <div class="stat reveal"><span class="stat__n" data-count="0">0</span><span class="stat__u">€</span><p>cuesta el diagnóstico, porque el miedo número uno con la IA no es técnico. Es no saber por dónde empezar.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ PRECIO ══════════════ -->
+<section class="sec" id="precio">
+  <div class="wrap">
+    <p class="eyebrow reveal">Lo que cuesta</p>
+    <h2 class="h2 reveal">Los números, antes de que preguntes.</h2>
+    <div class="prices">
+      <article class="price reveal">
+        <h3>Arranque</h3>
+        <p class="price__n">450 <span>€ / mes</span></p>
+        <ul><li>Un canal de publicidad</li><li>Contenido para el mes</li><li>Panel de ventas</li><li>Una persona al teléfono</li></ul>
+      </article>
+      <article class="price price--mid reveal">
+        <span class="price__flag">El que más se contrata</span>
+        <h3>Las dos capas</h3>
+        <p class="price__n">890 <span>€ / mes</span></p>
+        <ul><li>Todos los canales de publicidad</li><li>Contenido y vídeo generado</li><li>Un agente que atiende solo</li><li>Panel de ventas y revisión cada quince días</li></ul>
+      </article>
+      <article class="price reveal">
+        <h3>A medida</h3>
+        <p class="price__n">Hablamos</p>
+        <ul><li>Varias sedes o varios idiomas</li><li>Agentes conectados a tu sistema</li><li>Kit Digital y factura electrónica</li><li>Formación para tu equipo</li></ul>
+      </article>
+    </div>
+    <p class="prices__foot reveal">El diagnóstico de veinte minutos no cuesta nada y no lleva compromiso. Si después no te encaja, te quedas con lo que hemos visto.</p>
+  </div>
+</section>
+
+<!-- ══════════════ PREGUNTAS ══════════════ -->
+<section class="sec sec--alt" id="faq">
+  <div class="wrap wrap--narrow">
+    <p class="eyebrow reveal">Preguntas de verdad</p>
+    <h2 class="h2 reveal">Lo que nos preguntan siempre.</h2>
+    <div class="faq">
+      <details class="reveal"><summary>¿Y si la IA se equivoca?</summary><p>Se equivoca, claro. Por eso nada sale sin que lo mire una persona, y por eso empezamos por un trozo pequeño del negocio en vez de por todo a la vez. Si algo falla, se apaga en un minuto y sigues como estabas.</p></details>
+      <details class="reveal"><summary>¿Va a sonar todo a robot?</summary><p>Los agentes hablan con tus palabras, no con las de un manual. Y cuando la conversación se pone seria, te la pasan a ti. Un cliente enfadado no habla con una máquina.</p></details>
+      <details class="reveal"><summary>¿Qué pasa con los datos de mis clientes?</summary><p>Se quedan donde deben, con contrato de encargado de tratamiento firmado y borrado cuando lo pidas. Te decimos qué herramienta toca qué dato, por escrito.</p></details>
+      <details class="reveal"><summary>¿Cuánto tarda en verse algo?</summary><p>Lo primero funcionando en dos semanas. Resultados de venta, entre uno y tres meses. Quien te prometa ventas en treinta días te está vendiendo humo.</p></details>
+      <details class="reveal"><summary>¿Hay permanencia?</summary><p>No. Mes a mes. Si un mes no te aportamos, lo dejas y te llevas todo lo montado, cuentas y accesos incluidos.</p></details>
+      <details class="reveal"><summary>No sé por dónde empezar, y me da algo de corte.</summary><p>Es lo que más nos dicen. Nadie te ha explicado nunca cómo aplicar esto a un negocio como el tuyo. Para eso son los veinte minutos.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CIERRE ══════════════ -->
+<section class="sec sec--close" id="contacto">
+  <div class="wrap wrap--narrow center">
+    <svg class="mark mark--big reveal" viewBox="0 0 48 48" aria-hidden="true">
+      <defs><clipPath id="markClip2"><circle cx="24" cy="24" r="22"/></clipPath></defs>
+      <g clip-path="url(#markClip2)">
+        <rect width="48" height="48" fill="var(--earth-deep)"/>
+        <path d="M26 -6 C 14 8, 36 16, 21 27 C 10 35, 32 42, 27 54 L 56 54 L 56 -6 Z" fill="var(--accent)"/>
+      </g>
+      <circle cx="24" cy="24" r="22" fill="none" stroke="var(--panel-edge)" stroke-width="1.5"/>
+    </svg>
+    <h2 class="h2 reveal">Cuéntanos qué te quita el tiempo.</h2>
+    <p class="lede reveal">Escríbenos por WhatsApp con una frase. Te decimos en el momento si esto es para ti o si todavía no te hace falta.</p>
+    <a class="btn btn--wa btn--big reveal" href="https://wa.me/34681044795?text=Hola%2C%20quiero%20el%20diagn%C3%B3stico%20de%20veinte%20minutos." target="_blank" rel="noopener">
+      <svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2A9.9 9.9 0 0 0 2.1 11.9c0 1.75.46 3.46 1.33 4.97L2 22l5.28-1.38a9.9 9.9 0 0 0 4.76 1.21h.01A9.9 9.9 0 0 0 22 11.93 9.9 9.9 0 0 0 12.04 2Zm5.79 14.05c-.24.68-1.42 1.3-1.96 1.35-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.94-4.69-4.13-.14-.19-1.12-1.49-1.12-2.84s.71-2.02.96-2.29c.25-.27.55-.34.73-.34s.37 0 .53.01c.17.01.4-.06.62.48.24.57.8 1.96.87 2.1.07.14.12.3.02.49-.1.19-.15.3-.29.47-.14.16-.3.36-.43.49-.14.14-.29.29-.12.57.17.28.75 1.24 1.61 2.01 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.11.07.66-.17 1.34Z"/></svg>
+      Hablar por WhatsApp
+    </a>
+    <p class="micro reveal">Contesta una persona. Suele tardar menos de una hora en horario de oficina.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__grid">
+    <div>
+      <p class="foot__brand">ALMA <em>PIEBALD</em></p>
+      <p class="foot__claim">Dos naturalezas, un solo cuerpo.</p>
+    </div>
+    <nav class="foot__links" aria-label="Pie">
+      <a href="#servicios">Qué hacemos</a>
+      <a href="#proceso">Cómo trabajamos</a>
+      <a href="#precio">Precio</a>
+      <a href="#faq">Preguntas</a>
+    </nav>
+    <p class="foot__note">Las imágenes y el vídeo de esta página están generados con IA por nosotros mismos. Es la mejor carta de presentación que tenemos.</p>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
