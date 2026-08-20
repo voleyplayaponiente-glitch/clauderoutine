@@ -21,4 +21,5 @@ RUN npm run build -w @norte/app
 FROM nginx:1.27-alpine
 COPY --from=build /repo/app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-cabeceras.conf /etc/nginx/norte-cabeceras.conf
 EXPOSE 80

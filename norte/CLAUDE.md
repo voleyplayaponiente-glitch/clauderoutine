@@ -36,7 +36,7 @@ Otras dos derivas del prompt original, decididas y justificadas:
 cd norte
 npm install
 npm run dev            # API en :3012 + interfaz en :5173 (Vite reenvía /api)
-npm test               # motor (278) + API (157) = 435 tests
+npm test               # motor (278) + API (163) = 441 tests
 npm run licencia -- claves          # par de claves para emitir licencias
 npm run licencia -- emitir --titular "Ana" --plan pareja --meses 12
 # Si no hay PostgreSQL (contenedor nuevo): norte/scripts/bd-desarrollo.sh
@@ -122,7 +122,7 @@ npm run semilla        # usuario demo@norte.local
   cacheado, el aviso no se enteraría nunca. Probado simulando un despliegue
   contra la IP de red.
 
-## Estado — LAS NUEVE FASES CERRADAS (435 tests en verde: 278 dominio + 157 API)
+## Estado — LAS NUEVE FASES CERRADAS + revisión de seguridad (441 tests: 278 dominio + 163 API)
 Hecho: monorepo, **esquema completo** (37 modelos: cuentas, movimientos,
 documentos, nóminas, presupuestos, deudas, tarjetas, inversiones, repartos,
 liquidaciones, patrimonio, licencias), migración inicial, registro/entrada con
@@ -798,6 +798,71 @@ hoy.
 Y un detalle que se vio en el informe impreso: un total de cero gastos se
 enseñaba como **«-0,00 €»**, que parece un fallo del programa. `formatearDinero`
 normaliza el cero negativo.
+
+## Revisión de seguridad (20/08/2026)
+
+Repaso de toda la superficie de ataque buscando dónde podrían atacarnos, con
+cuatro agujeros reales encontrados y cerrados. Lo que ya estaba bien y por qué,
+para no tocarlo por error, y lo que se arregló.
+
+### Lo que ya estaba bien (no deshacer)
+- **Sesiones**: cookie `httpOnly`, `sameSite: lax`, y en la base el **HMAC** del
+  testigo, no el testigo. Robar la base no da sesiones.
+- **Contraseñas** Argon2id; mismo mensaje y hash señuelo en el login para no
+  delatar quién tiene cuenta por el tiempo de respuesta.
+- **Aislamiento entre espacios** con `exigirEspacio` y 13 tests de fuga; 404 y
+  no 403 a quien no es miembro.
+- **Ruta de ficheros** = SHA-256 del contenido, con un guardián `rutaAbsoluta`
+  que impide salir de la carpeta de documentos: nada de lo que escribe el
+  usuario entra en una ruta (sin *path traversal*).
+- **Errores**: la traza se registra por dentro y fuera sale un mensaje genérico
+  sin `stack` ni nombres de tabla. Comprobado con peticiones reales.
+- **La API y la base NO publican puerto**: solo se llega por nginx. Una puerta.
+- **Lectores de OLE2/ZIP** ya tenían tope contra bucles infinitos de cadenas.
+
+### Lo que se arregló
+1. **Bomba de descompresión (ZIP/`.xlsx`).** `deflate` comprime ceros >1000:1;
+   un `.xlsx` de pocos KB podía pedir gigas al inflarse y tumbar el servidor —y
+   la lectura se rehace en CADA consulta, así que se pagaba cada vez. Ahora
+   `inflateRawSync` va con `maxOutputLength`, y hay tope por entrada (64 MB) y
+   total (128 MB) y de nº de entradas. Test: un fichero-ataque <300 KB que se
+   expande a 200 MB se corta con `ErrorZipDesmedido`.
+2. **`.xls` (OLE2) preparado.** Un tamaño de sector fuera del rango 7–12 de la
+   especificación (`1 << 16` = 64 KB) disparaba las cuentas; y una cadena de
+   sectores podía apuntar un millón de veces al mismo y pedir 60 GB al juntar.
+   Ahora se valida la potencia de sector y el tope de la cadena sale del tamaño
+   real del fichero. Test con cabecera OLE2 imposible.
+3. **Inyección de fórmulas en el CSV exportado.** Excel ejecuta como fórmula
+   cualquier celda que empiece por `=`, `+`, `-` o `@` (y `=cmd|…` llega a
+   lanzar comandos). En un espacio COMPARTIDO es un ataque de verdad: un miembro
+   escribe un concepto `=…` y el ordenador del otro lo ejecuta al abrir SU
+   exportación. `textoDePersona` antepone un apóstrofo a los campos de texto de
+   persona (concepto, comercio, etiquetas, notas); el importe —que empieza por
+   `-` legítimamente— va por `campo`, sin tocar. Dos tests.
+4. **PDF con miles de páginas.** Se leen las primeras 300 y se dice; uno
+   preparado con decenas de miles dejaba el servidor minutos por consulta.
+
+### Cabeceras de seguridad en nginx (`nginx-cabeceras.conf`)
+CSP (`default-src 'self'`, `script-src 'self'` sin inline, `object-src 'none'`,
+`frame-ancestors`), `X-Content-Type-Options: nosniff`, `X-Frame-Options`,
+`Referrer-Policy: no-referrer`, `Permissions-Policy` y `server_tokens off`.
+
+**La trampa que se esquivó**: en nginx `add_header` NO se hereda en un
+`location` que tenga su propio `add_header`. Con las cabeceras solo en el
+bloque `server`, las rutas que ponen su `Cache-Control` (el index, los assets,
+el service worker) se habrían quedado SIN CSP — justo las que sirven el HTML y
+el JS. Por eso van en un `include` que se repite en cada `location`.
+
+Verificado **con nginx de verdad** sirviendo la app compilada: las cabeceras
+salen en `/`, `/index.html`, `/api/…`, `/assets/…` y `/version.json`. La app
+entera funciona bajo el CSP sin una sola violación en consola. Y el **control
+negativo**: inyectar un `<script>` inline y otro externo desde la consola —lo
+que haría un XSS colado— los bloquea los dos (`window.__xss` no se ejecuta).
+
+Lo que **no** cubre esta revisión, dicho claro: un `.env` con secreto de sesión
+débil (el esquema exige 32 caracteres pero no mide entropía), y que en el Umbrel
+la cookie viaja sin `secure` por el http de la red local —correcto ahí,
+peligroso si se expone a internet, y la config ya avisa en voz alta—.
 
 ## Por dónde seguir
 1. **El selector de regla de reparto en Movimientos**, para poder tener más de

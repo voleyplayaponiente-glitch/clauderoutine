@@ -29,8 +29,17 @@ interface Ole {
 function abrirOle(datos: Buffer): Ole {
   if (!esXlsAntiguo(datos)) throw new Error('No es un fichero compuesto de Microsoft.')
 
-  const tamSector = 1 << datos.readUInt16LE(30)
-  const tamMini = 1 << datos.readUInt16LE(32)
+  // La potencia del tamaño de sector va de 7 a 12 según la especificación
+  // (128 a 4096 bytes). Un valor fuera de rango no es un Excel raro, es un
+  // fichero roto o preparado: `1 << 16` daría sectores de 64 KB y las cuentas
+  // de más abajo se dispararían.
+  const potenciaSector = datos.readUInt16LE(30)
+  const potenciaMini = datos.readUInt16LE(32)
+  if (potenciaSector < 7 || potenciaSector > 12 || potenciaMini < 2 || potenciaMini > 12) {
+    throw new Error('El fichero no es un .xls válido (tamaño de sector imposible).')
+  }
+  const tamSector = 1 << potenciaSector
+  const tamMini = 1 << potenciaMini
   const sectoresFat = datos.readUInt32LE(44)
   const primerDirectorio = datos.readUInt32LE(48)
   const corteMini = datos.readUInt32LE(56)
@@ -66,12 +75,19 @@ function abrirOle(datos: Buffer): Ole {
     for (let i = 0; i < tamSector / 4; i++) fat.push(datos.readUInt32LE(base + i * 4))
   }
 
+  // Más sectores de los que caben en el fichero es, siempre, una cadena que se
+  // repite: cada sector distinto ocupa sitio real en el fichero. El «+ 16» es
+  // holgura para cabeceras. Con el tope antiguo (un millón a secas), un
+  // fichero de 15 MB podía apuntar un millón de veces al mismo sector y pedir
+  // 60 GB al juntarlos.
+  const maxSectores = Math.ceil(datos.length / tamSector) + 16
+
   function cadena(primero: number, fatUsada: number[]): number[] {
     const sectores: number[] = []
     let actual = primero
     // El tope evita que un fichero corrupto (o malicioso) meta el lector en un
     // bucle infinito con una cadena que se muerde la cola.
-    while (actual !== 0xfffffffe && actual !== 0xffffffff && sectores.length < 1_000_000) {
+    while (actual !== 0xfffffffe && actual !== 0xffffffff && sectores.length < maxSectores) {
       sectores.push(actual)
       const siguiente = fatUsada[actual]
       if (siguiente === undefined) break
@@ -81,6 +97,11 @@ function abrirOle(datos: Buffer): Ole {
   }
 
   function juntar(sectores: number[]): Buffer {
+    // Cinturón además de los tirantes de `maxSectores`: juntar jamás puede
+    // producir más bytes de los que tiene el propio fichero por cuatro.
+    if (sectores.length * tamSector > datos.length * 4) {
+      throw new Error('El fichero no es un .xls válido (las cadenas de sectores no cuadran con su tamaño).')
+    }
     const trozos = sectores.map((s) => datos.subarray(desplazamiento(s), desplazamiento(s) + tamSector))
     return Buffer.concat(trozos)
   }

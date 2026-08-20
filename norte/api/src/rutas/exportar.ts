@@ -34,6 +34,21 @@ function campo(valor: unknown): string {
   return /[";\n\r]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto
 }
 
+/**
+ * Un campo de texto que ha escrito una persona. Además de entrecomillar, se
+ * neutraliza la **inyección de fórmulas**: Excel ejecuta como fórmula cualquier
+ * celda que empiece por `=`, `+`, `-` o `@` (y las hojas de cálculo llegan a
+ * lanzar comandos con `=cmd|…`). En un espacio compartido esto es un ataque de
+ * verdad: un miembro escribe un concepto que empieza por `=` y el ordenador
+ * del otro lo ejecuta al abrir SU exportación. El apóstrofo delante le dice a
+ * Excel «esto es texto» y no se ve en la celda.
+ */
+function textoDePersona(valor: unknown): string {
+  if (valor === null || valor === undefined) return ''
+  const texto = String(valor)
+  return campo(/^[=+\-@\t\r]/.test(texto) ? `'${texto}` : texto)
+}
+
 function euros(centimos: bigint | number): string {
   const entero = typeof centimos === 'bigint' ? centimos : BigInt(Math.round(centimos))
   const negativo = entero < 0n
@@ -214,21 +229,25 @@ export async function rutasExportar(app: FastifyInstance, opciones: { prisma: Pr
       'Fecha', 'Cuenta', 'Concepto', 'Comercio', 'Categoria',
       'Importe', 'Estado', 'Compartido', 'Etiquetas', 'Notas',
     ]
+    // Lo que sale de la base tal cual (fechas, estados, el importe que
+    // generamos nosotros) va con `campo`; lo que escribió una persona —o vino
+    // de un extracto— va con `textoDePersona`. El importe empieza por `-` a
+    // menudo y es legítimo: por eso la neutralización no puede ser general.
     const filas = movimientos.map((movimiento) =>
       [
-        comoIso(movimiento.fecha),
-        porId.get(movimiento.cuentaId) ?? '',
-        movimiento.concepto,
-        movimiento.comercio,
-        movimiento.categoriaId ? (nombreCategoria.get(movimiento.categoriaId) ?? '') : '',
-        euros(movimiento.importe),
-        movimiento.estado,
-        movimiento.esCompartido ? 'si' : 'no',
-        movimiento.etiquetas.join(', '),
-        movimiento.notas,
-      ]
-        .map(campo)
-        .join(';'),
+        campo(comoIso(movimiento.fecha)),
+        textoDePersona(porId.get(movimiento.cuentaId) ?? ''),
+        textoDePersona(movimiento.concepto),
+        textoDePersona(movimiento.comercio),
+        textoDePersona(
+          movimiento.categoriaId ? (nombreCategoria.get(movimiento.categoriaId) ?? '') : '',
+        ),
+        campo(euros(movimiento.importe)),
+        campo(movimiento.estado),
+        campo(movimiento.esCompartido ? 'si' : 'no'),
+        textoDePersona(movimiento.etiquetas.join(', ')),
+        textoDePersona(movimiento.notas),
+      ].join(';'),
     )
 
     const nombre = (espacio?.nombre ?? 'norte').replace(/[^\p{L}\p{N}]+/gu, '-').toLowerCase()

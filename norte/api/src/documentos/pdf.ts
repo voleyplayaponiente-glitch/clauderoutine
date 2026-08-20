@@ -36,9 +36,17 @@ export async function leerTextoDePdf(datos: Buffer): Promise<string> {
    */
   const HOLGURA = 2.5
 
+  // La lectura se rehace en cada consulta, así que el coste de un PDF se paga
+  // cada vez que alguien mira el documento. Un extracto real de un año entero
+  // anda por las 30 páginas; uno preparado puede declarar decenas de miles y
+  // dejar el servidor ocupado minutos con cada petición. Se leen las primeras
+  // y se dice, en vez de intentarlo todo y no responder.
+  const MAX_PAGINAS = 300
+  const totalPaginas = Math.min(documento.numPages, MAX_PAGINAS)
+
   const paginas: string[] = []
   try {
-    for (let n = 1; n <= documento.numPages; n++) {
+    for (let n = 1; n <= totalPaginas; n++) {
       const pagina = await documento.getPage(n)
       const contenido = await pagina.getTextContent()
 
@@ -73,6 +81,9 @@ export async function leerTextoDePdf(datos: Buffer): Promise<string> {
     }
   } finally {
     await tarea.destroy()
+  }
+  if (documento.numPages > MAX_PAGINAS) {
+    paginas.push(`[Norte solo ha leído las primeras ${MAX_PAGINAS} páginas de ${documento.numPages}.]`)
   }
   return paginas.join('\n')
 }

@@ -13,13 +13,35 @@ import { inflateRawSync } from 'node:zlib'
 const FIN_DIRECTORIO = 0x06054b50
 const ENTRADA_DIRECTORIO = 0x02014b50
 
+/**
+ * Topes contra una bomba de descompresión. Este lector procesa ficheros que
+ * llegan de fuera, y `deflate` comprime ceros mejor que 1000:1: sin tope, un
+ * `.xlsx` de 15 MB puede pedir gigas de memoria al inflarse y tirar el
+ * servidor entero. Los límites están muy por encima de cualquier extracto
+ * real —el `sheet1.xml` de un año de movimientos no llega a 10 MB— y muy por
+ * debajo de lo que hace daño.
+ */
+const MAX_ENTRADAS = 1_000
+const MAX_DESCOMPRIMIDO_ENTRADA = 64 * 1024 * 1024
+const MAX_DESCOMPRIMIDO_TOTAL = 128 * 1024 * 1024
+
+export class ErrorZipDesmedido extends Error {
+  constructor() {
+    super(
+      'El fichero se expande muchísimo al descomprimirlo, que es lo que hacen los ficheros ' +
+        'preparados para agotar la memoria del servidor. No se sigue leyendo.',
+    )
+  }
+}
+
 export function abrirZip(datos: Buffer): Map<string, Buffer> {
   const fin = buscarFinDeDirectorio(datos)
   if (fin === -1) throw new Error('El fichero no es un ZIP válido (no encuentro el directorio central).')
 
-  const entradas = datos.readUInt16LE(fin + 10)
+  const entradas = Math.min(datos.readUInt16LE(fin + 10), MAX_ENTRADAS)
   let cursor = datos.readUInt32LE(fin + 16)
   const ficheros = new Map<string, Buffer>()
+  let totalDescomprimido = 0
 
   for (let i = 0; i < entradas; i++) {
     if (datos.readUInt32LE(cursor) !== ENTRADA_DIRECTORIO) break
@@ -38,10 +60,26 @@ export function abrirZip(datos: Buffer): Map<string, Buffer> {
     const inicio = desplazamiento + 30 + localNombre + localExtra
     const bruto = datos.subarray(inicio, inicio + comprimido)
 
-    if (metodo === 0) ficheros.set(nombre, Buffer.from(bruto))
-    else if (metodo === 8) ficheros.set(nombre, inflateRawSync(bruto))
+    if (metodo === 0) {
+      ficheros.set(nombre, Buffer.from(bruto))
+      totalDescomprimido += bruto.length
+    } else if (metodo === 8) {
+      let inflado: Buffer
+      try {
+        inflado = inflateRawSync(bruto, { maxOutputLength: MAX_DESCOMPRIMIDO_ENTRADA })
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') {
+          throw new ErrorZipDesmedido()
+        }
+        throw error
+      }
+      ficheros.set(nombre, inflado)
+      totalDescomprimido += inflado.length
+    }
     // Cualquier otro método de compresión no lo produce ningún Excel: se ignora
     // la entrada en vez de fingir que se ha leído.
+
+    if (totalDescomprimido > MAX_DESCOMPRIMIDO_TOTAL) throw new ErrorZipDesmedido()
 
     cursor += 46 + largoNombre + largoExtra + largoComentario
   }
