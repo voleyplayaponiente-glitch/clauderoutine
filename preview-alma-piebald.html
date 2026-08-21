@@ -1,0 +1,1240 @@
+<title>ALMA PIEBALD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Manrope:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════
+   ALMA PIEBALD · dos naturalezas, un solo cuerpo
+   ══════════════════════════════════════════════════════════════ */
+
+:root{
+  --canvas:#0E0C0B;
+  --canvas-deep:#080706;
+  --panel:#191512;
+  --panel-edge:#2A231D;
+  --accent:#E9A542;
+  --accent-hover:#F7BC63;
+  --accent-muted:rgba(233,165,66,.16);
+  --earth:#8A5A38;
+  --earth-deep:#261A12;
+  --text-primary:#F4EFE8;
+  --text-secondary:#A2968A;
+
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Manrope","Helvetica Neue",Arial,sans-serif;
+  --mono:"Space Mono",ui-monospace,"Courier New",monospace;
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --gut:clamp(20px,5vw,64px);
+  --maxw:1180px;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--canvas);color:var(--text-primary);
+  font-family:var(--body);font-size:clamp(16px,1.05vw,17.5px);line-height:1.62;
+  font-weight:400;letter-spacing:.005em;
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
+img,svg,video,canvas{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{margin:0;font-family:var(--display);font-weight:600;line-height:1.05;letter-spacing:-.02em}
+p{margin:0 0 1.1em}
+ul,ol,dl{margin:0;padding:0;list-style:none}
+::selection{background:var(--accent);color:#1a1208}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+/* ── capa de ambiente fija ─────────────────────────────────── */
+.env{position:fixed;inset:0;z-index:0;pointer-events:none}
+.env__wash{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(120% 80% at 78% 8%, rgba(233,165,66,.10), transparent 58%),
+    radial-gradient(90% 70% at 12% 92%, rgba(138,90,56,.13), transparent 62%),
+    linear-gradient(180deg,var(--canvas) 0%,var(--canvas-deep) 55%,var(--canvas) 100%);
+}
+.env__dust{position:absolute;inset:0;width:100%;height:100%;opacity:.5}
+.env__grain{
+  position:absolute;inset:-50%;opacity:.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── la costura vertical ───────────────────────────────────── */
+.seam{
+  position:fixed;left:max(10px,2.2vw);top:0;width:4px;height:100vh;z-index:1;
+  pointer-events:none;opacity:.5;
+}
+.seam path{stroke-dasharray:1;stroke-dashoffset:1;transition:none}
+@media (max-width:860px){.seam{display:none}}
+
+/* ── cabecera ──────────────────────────────────────────────── */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:60;
+  display:flex;align-items:center;gap:clamp(14px,3vw,40px);
+  padding:14px var(--gut);
+  background:linear-gradient(180deg,rgba(14,12,11,.86),rgba(14,12,11,0));
+  backdrop-filter:blur(2px);
+  transition:background .5s var(--ease),padding .5s var(--ease),border-color .5s var(--ease);
+  border-bottom:1px solid transparent;
+}
+.nav[data-stuck="1"]{
+  background:rgba(12,10,9,.9);backdrop-filter:blur(14px) saturate(1.1);
+  border-bottom-color:var(--panel-edge);padding-top:10px;padding-bottom:10px;
+}
+.nav__brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+.mark{width:30px;height:30px;flex:none}
+.mark--big{width:56px;height:56px;margin:0 auto 26px}
+.nav__word{font-family:var(--display);font-weight:900;font-size:16px;letter-spacing:.11em;text-transform:uppercase}
+.nav__word em{font-style:normal;font-weight:400;color:var(--text-secondary)}
+.nav__links{display:flex;gap:clamp(14px,2vw,28px);font-size:14.5px;color:var(--text-secondary)}
+.nav__links a{position:relative;padding:4px 0;transition:color .3s var(--ease)}
+.nav__links a::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--accent);transform:scaleX(0);transform-origin:left;
+  transition:transform .45s var(--ease-out);
+}
+.nav__links a:hover{color:var(--text-primary)}
+.nav__links a:hover::after{transform:scaleX(1)}
+@media (max-width:820px){.nav__links{display:none}}
+
+/* ── botones ───────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:11px 20px;border-radius:999px;
+  font-family:var(--body);font-weight:700;font-size:14.5px;letter-spacing:.01em;
+  border:1px solid transparent;cursor:pointer;
+  transition:transform .35s var(--ease-out),box-shadow .35s var(--ease),background .3s var(--ease);
+}
+.btn--wa{background:var(--accent);color:#1D1206;box-shadow:0 1px 0 rgba(255,255,255,.24) inset,0 8px 26px rgba(233,165,66,.16)}
+.btn--wa:hover{background:var(--accent-hover);transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 14px 38px rgba(233,165,66,.28)}
+.btn--wa:active{transform:translateY(0)}
+.btn--big{padding:16px 30px;font-size:16.5px}
+.ico-wa{width:18px;height:18px;fill:currentColor;flex:none}
+@media (max-width:520px){.nav__cta span{display:none}}
+
+/* ══════════════ HÉROE ══════════════ */
+.hero{position:relative;z-index:2;height:700vh}
+body[data-mode="static"] .hero{height:auto}
+
+.hero__stage{
+  position:sticky;top:0;height:100svh;min-height:520px;
+  overflow:hidden;display:grid;place-items:center;
+}
+body[data-mode="static"] .hero__stage{position:relative;height:100svh}
+
+.hero__canvas{position:absolute;inset:0;overflow:hidden}
+.hero__poster,.hero__video{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .9s var(--ease);
+}
+.hero__poster[data-on="1"],.hero__video[data-on="1"]{opacity:1}
+
+/* el telón dibujado: siempre está, aunque no haya vídeo */
+.curtain{position:absolute;inset:0;overflow:hidden;background:
+  radial-gradient(75% 100% at 62% 0%, rgba(233,165,66,.20), transparent 62%),
+  linear-gradient(175deg,#15100C 0%,#0B0908 62%,#120D0A 100%)}
+.curtain__earth,.curtain__amber{
+  position:absolute;top:-14%;height:128%;width:clamp(120px,17vw,250px);
+  filter:blur(26px);opacity:.62;
+}
+.curtain__earth{
+  left:36%;
+  background:linear-gradient(180deg,transparent,var(--earth) 22%,#6B4227 62%,transparent);
+  animation:fall 15s linear infinite;
+}
+.curtain__amber{
+  left:56%;
+  background:linear-gradient(180deg,transparent,var(--accent) 26%,#C4802A 66%,transparent);
+  animation:fall 12s linear infinite reverse;
+}
+.curtain__braid{
+  position:absolute;left:44%;top:44%;width:22vw;height:52vh;
+  background:radial-gradient(closest-side,rgba(233,165,66,.34),transparent 72%);
+  filter:blur(38px);animation:breathe 7s ease-in-out infinite;
+}
+@keyframes fall{from{transform:translateY(-9%) scaleY(1)}50%{transform:translateY(0) scaleY(1.05)}to{transform:translateY(9%) scaleY(1)}}
+@keyframes breathe{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.1)}}
+
+.hero__vignette{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 92% at 50% 42%, transparent 42%, rgba(6,5,4,.62) 100%);
+}
+/* capa 1 de legibilidad: scrim local que se ahonda solo con su banda */
+.hero__scrim{
+  position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(100deg, rgba(6,5,4,.9) 0%, rgba(6,5,4,.72) 34%, rgba(6,5,4,.18) 62%, transparent 82%);
+}
+
+/* anillo de carga */
+.ring{position:absolute;bottom:8vh;left:50%;transform:translateX(-50%);width:44px;height:44px;z-index:5}
+.ring svg{transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:2}
+.ring__track{stroke:rgba(244,239,232,.14)}
+.ring__fill{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:119.4;stroke-dashoffset:119.4;transition:stroke-dashoffset .3s linear}
+.ring__pct{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:9.5px;color:var(--text-secondary)}
+
+/* ── bandas del recorrido ──────────────────────────────────── */
+.bands{
+  position:absolute;inset:0;z-index:4;pointer-events:none;
+  display:grid;align-content:center;
+  padding-left:clamp(24px,7vw,110px);padding-right:57%;
+}
+body[data-mode="static"] .bands{display:none}
+.band{
+  grid-area:1/1;margin:0;opacity:0;
+  font-family:var(--display);font-weight:600;
+  font-size:clamp(30px,5.4vw,72px);line-height:1.02;letter-spacing:-.028em;
+  /* capa 2 de legibilidad: sombra real, no un truco de opacidad */
+  text-shadow:0 2px 30px rgba(0,0,0,.92),0 1px 4px rgba(0,0,0,.85);
+  will-change:opacity,transform;
+}
+.band__line{display:inline-block}
+
+/* ── el reposo ─────────────────────────────────────────────── */
+.settle{
+  position:absolute;z-index:5;left:clamp(24px,7vw,110px);right:57%;
+  opacity:0;pointer-events:none;
+  text-shadow:0 2px 30px rgba(0,0,0,.9);
+}
+.settle[data-on="1"]{pointer-events:auto}
+body[data-mode="static"] .settle{
+  position:relative;left:auto;right:auto;opacity:1;pointer-events:auto;
+  max-width:640px;margin:0 auto;padding:0 var(--gut);text-align:center;z-index:5;
+}
+.settle__h{font-size:clamp(31px,4.6vw,60px);margin-bottom:.5em;font-weight:600}
+.settle__p{color:var(--text-secondary);font-size:clamp(15.5px,1.35vw,19px);max-width:30em;margin-bottom:1.9em}
+body[data-mode="static"] .settle__p{margin-left:auto;margin-right:auto}
+.settle__cta{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+body[data-mode="static"] .settle__cta{justify-content:center}
+.settle__micro{font-family:var(--mono);font-size:11.5px;color:var(--text-secondary);letter-spacing:.02em}
+
+.eyebrow{
+  font-family:var(--mono);font-size:11.5px;font-weight:700;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--accent);
+  margin:0 0 1.15em;
+}
+.scrollcue{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:5;transition:opacity .5s var(--ease)}
+.scrollcue span{display:block;width:1px;height:44px;background:linear-gradient(180deg,transparent,var(--accent));animation:cue 2.4s var(--ease) infinite}
+@keyframes cue{0%{transform:scaleY(0);transform-origin:top}45%{transform:scaleY(1);transform-origin:top}55%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+body[data-mode="static"] .scrollcue{display:none}
+
+/* ══════════════ SECCIONES ══════════════ */
+.sec{position:relative;z-index:2;padding:clamp(80px,11vw,148px) 0}
+.sec--alt{background:linear-gradient(180deg,transparent,rgba(9,7,6,.62) 12%,rgba(9,7,6,.62) 88%,transparent)}
+.sec--close{padding-bottom:clamp(96px,13vw,180px)}
+.wrap{width:min(100% - var(--gut)*2,var(--maxw));margin-inline:auto}
+.wrap--narrow{width:min(100% - var(--gut)*2,760px)}
+.center{text-align:center}
+.h2{font-size:clamp(28px,4.1vw,54px);margin-bottom:.7em;max-width:16em}
+.center .h2{margin-inline:auto}
+.lede{font-size:clamp(17px,1.5vw,21px);color:var(--text-secondary);max-width:34em}
+.center .lede{margin-inline:auto}
+.micro{font-family:var(--mono);font-size:12px;color:var(--text-secondary);margin-top:1.5em}
+.punch{font-family:var(--display);font-size:clamp(19px,2.1vw,27px);color:var(--text-primary);max-width:18em;margin-top:1.5em}
+
+/* ── el problema ───────────────────────────────────────────── */
+.problem{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(30px,5vw,72px);align-items:start}
+@media (max-width:880px){.problem{grid-template-columns:1fr}}
+.problem__text p{color:var(--text-secondary);max-width:32em}
+.ledger{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--panel-edge);border:1px solid var(--panel-edge);border-radius:14px;overflow:hidden}
+.ledger__side{background:var(--panel);padding:26px 22px}
+.ledger__side--new{background:linear-gradient(180deg,rgba(233,165,66,.07),var(--panel))}
+.ledger__tag{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:16px}
+.ledger__side--new .ledger__tag{color:var(--accent)}
+.ledger li{padding:8px 0;border-bottom:1px solid rgba(42,35,29,.7);font-size:14.5px}
+.ledger li:last-child{border-bottom:0}
+.ledger__void{color:#6A5F55;text-decoration:line-through;text-decoration-color:var(--earth)}
+
+/* ── tarjetas ──────────────────────────────────────────────── */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:clamp(14px,1.6vw,22px)}
+.card{
+  position:relative;padding:30px 26px 32px;border-radius:16px;
+  background:linear-gradient(180deg,var(--panel),rgba(20,17,14,.72));
+  border:1px solid var(--panel-edge);overflow:hidden;
+  transition:transform .5s var(--ease-out),border-color .5s var(--ease),box-shadow .5s var(--ease);
+}
+.card::after{
+  content:"";position:absolute;inset:0;border-radius:16px;pointer-events:none;
+  background:radial-gradient(70% 50% at 50% 0%, var(--accent-muted), transparent 70%);
+  opacity:0;transition:opacity .5s var(--ease);
+}
+.card:hover{transform:translateY(-5px);border-color:#463829;box-shadow:0 20px 50px rgba(0,0,0,.42)}
+.card:hover::after{opacity:1}
+.card__art{height:80px;margin-bottom:22px}
+.card__art svg{width:auto;height:100%;overflow:visible}
+.card h3{font-size:20.5px;margin-bottom:.55em;font-weight:600}
+.card p{color:var(--text-secondary);font-size:14.8px;margin:0}
+
+/* trazos SVG que se dibujan solos */
+.draw *{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.draw .axis{stroke:var(--earth);stroke-width:1.4}
+.draw .tick{stroke:var(--earth);stroke-width:1.6;opacity:.85}
+.draw circle{fill:var(--accent);stroke:none}
+.draw rect{stroke:var(--earth)}
+.drawable{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);transition:stroke-dashoffset 1.5s var(--ease-out)}
+.reveal.is-in .drawable{stroke-dashoffset:0}
+
+/* ── pasos ─────────────────────────────────────────────────── */
+.steps{display:grid;gap:clamp(14px,1.6vw,20px)}
+.step{
+  display:grid;grid-template-columns:auto 1fr auto;gap:clamp(20px,3vw,44px);align-items:center;
+  padding:clamp(24px,3vw,38px);border-radius:16px;
+  background:linear-gradient(100deg,var(--panel),rgba(18,15,12,.5));
+  border:1px solid var(--panel-edge);
+  transition:border-color .5s var(--ease),transform .5s var(--ease-out);
+}
+.step:hover{border-color:#463829;transform:translateX(4px)}
+.step__n{
+  font-family:var(--mono);font-size:clamp(30px,4.2vw,54px);font-weight:700;line-height:1;
+  color:transparent;-webkit-text-stroke:1.4px var(--accent);letter-spacing:-.03em;
+  transition:color .8s var(--ease);
+}
+.step.is-in .step__n{color:var(--accent-muted)}
+.step h3{font-size:clamp(20px,2.3vw,28px);margin-bottom:.42em}
+.step p{color:var(--text-secondary);margin:0;max-width:44em}
+.step__art{width:74px;flex:none}
+.step__art svg{width:100%;height:auto;overflow:visible}
+@media (max-width:760px){
+  .step{grid-template-columns:auto 1fr;gap:18px}
+  .step__art{display:none}
+}
+
+/* ── la cuenta de las dos capas (momento interactivo) ─────── */
+.calc{
+  margin-top:10px;padding:clamp(26px,3.6vw,48px);
+  border:1px solid var(--panel-edge);border-radius:18px;
+  background:linear-gradient(160deg,rgba(233,165,66,.06),var(--panel) 55%);
+}
+.calc__q{display:block;font-size:15.5px;color:var(--text-secondary);margin-bottom:20px;max-width:34em}
+.calc__slider{display:flex;align-items:center;gap:clamp(16px,2.4vw,32px)}
+.calc__track{flex:1;min-width:0}
+.calc__slider input[type=range]{
+  display:block;width:100%;-webkit-appearance:none;appearance:none;
+  height:34px;background:transparent;cursor:ew-resize;margin:0;padding:0;border:0;outline-offset:6px;
+}
+.calc__slider input[type=range]::-webkit-slider-runnable-track{
+  height:6px;border-radius:999px;
+  background:linear-gradient(90deg,var(--earth),var(--accent));
+}
+.calc__slider input[type=range]::-moz-range-track{
+  height:6px;border-radius:999px;background:linear-gradient(90deg,var(--earth),var(--accent));
+}
+.calc__slider input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:26px;height:26px;margin-top:-10px;border-radius:999px;
+  background:var(--accent);border:3px solid #241A11;box-shadow:0 4px 16px rgba(0,0,0,.55);
+  transition:transform .25s var(--ease-out);
+}
+.calc__slider input[type=range]::-moz-range-thumb{
+  width:26px;height:26px;border-radius:999px;background:var(--accent);
+  border:3px solid #241A11;box-shadow:0 4px 16px rgba(0,0,0,.55);
+}
+.calc__slider input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.12)}
+.calc__val{
+  font-family:var(--display);font-size:clamp(28px,3.4vw,42px);font-weight:600;
+  color:var(--accent);min-width:3.4em;text-align:right;letter-spacing:-.03em;
+}
+.calc__scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:#6F6459;margin:-4px 0 0;letter-spacing:.06em}
+
+/* la barra pía: el negocio del visitante, partido en sus dos capas */
+.calc__coat{
+  display:flex;height:62px;margin:34px 0 26px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--panel-edge);
+}
+.calc__coat>div{
+  display:grid;place-items:center;overflow:hidden;white-space:nowrap;
+  transition:flex-basis .5s var(--ease-out);
+  font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+}
+.calc__coat-dark{flex:1 1 20%;background:repeating-linear-gradient(135deg,#241A12,#241A12 7px,#2B2018 7px,#2B2018 14px);color:#9C8E80}
+.calc__coat-amber{flex:1 1 80%;background:linear-gradient(100deg,var(--accent),#C9862C);color:#241505;font-weight:700}
+.calc__coat span{padding:0 12px;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+.calc__out{font-family:var(--display);font-size:clamp(21px,2.6vw,32px);font-weight:600;margin:0;line-height:1.25}
+.calc__out strong{color:var(--accent);font-weight:900;font-size:1.28em;letter-spacing:-.03em}
+.calc__sub{display:block;font-family:var(--body);font-size:15px;font-weight:400;color:var(--text-secondary);margin-top:10px;max-width:34em}
+.calc__foot{margin-top:18px;font-size:14px;color:var(--text-secondary);max-width:46em}
+@media (max-width:560px){
+  .calc__slider{flex-direction:column;align-items:stretch;gap:6px}
+  .calc__val{text-align:left}
+  .calc__coat{height:auto;flex-direction:column}
+  .calc__coat>div{padding:14px 0}
+}
+
+/* ── cifras ────────────────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:clamp(20px,3vw,44px);margin-top:44px}
+.stat{border-top:1px solid var(--panel-edge);padding-top:22px}
+.stat__n{font-family:var(--display);font-size:clamp(52px,7vw,88px);font-weight:900;line-height:.92;letter-spacing:-.04em;color:var(--accent)}
+.stat__u{font-family:var(--display);font-size:clamp(24px,3vw,38px);font-weight:400;color:var(--earth);margin-left:2px}
+.stat p{color:var(--text-secondary);font-size:14.8px;margin:16px 0 0;max-width:24em}
+
+/* ── precio ────────────────────────────────────────────────── */
+.prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:clamp(14px,1.6vw,20px)}
+.price{
+  position:relative;padding:34px 28px;border-radius:16px;
+  background:var(--panel);border:1px solid var(--panel-edge);
+  transition:transform .5s var(--ease-out),border-color .5s var(--ease)}
+.price:hover{transform:translateY(-4px);border-color:#463829}
+.price--mid{background:linear-gradient(170deg,rgba(233,165,66,.11),var(--panel) 58%);border-color:#4E3D2A}
+.price__flag{
+  position:absolute;top:-1px;right:20px;transform:translateY(-50%);
+  background:var(--accent);color:#1D1206;font-family:var(--mono);font-size:10px;
+  font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:5px 11px;border-radius:999px;
+}
+.price h3{font-size:19px;color:var(--text-secondary);font-weight:400;margin-bottom:.5em}
+.price__n{font-family:var(--display);font-size:clamp(34px,4vw,46px);font-weight:600;letter-spacing:-.03em;margin:0 0 1em}
+.price__n span{font-family:var(--body);font-size:15px;font-weight:400;color:var(--text-secondary);letter-spacing:0}
+.price li{padding:9px 0;border-top:1px solid rgba(42,35,29,.75);font-size:14.6px;color:var(--text-secondary);display:flex;gap:10px}
+.price li::before{content:"";flex:none;width:9px;height:9px;margin-top:7px;border-radius:2px 6px 3px 7px;background:var(--accent);opacity:.75}
+.prices__foot{margin-top:26px;color:var(--text-secondary);font-size:15px;max-width:42em}
+
+/* ── preguntas ─────────────────────────────────────────────── */
+.faq{display:grid;gap:1px;background:var(--panel-edge);border:1px solid var(--panel-edge);border-radius:14px;overflow:hidden;margin-top:34px}
+.faq details{background:var(--panel);transition:background .4s var(--ease)}
+.faq details[open]{background:linear-gradient(180deg,rgba(233,165,66,.07),var(--panel) 60%)}
+.faq summary{
+  display:flex;justify-content:space-between;align-items:center;gap:20px;
+  padding:20px 24px;cursor:pointer;list-style:none;
+  font-family:var(--display);font-size:clamp(16.5px,1.7vw,20px);font-weight:600;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{
+  content:"";flex:none;width:11px;height:11px;
+  border-right:1.8px solid var(--accent);border-bottom:1.8px solid var(--accent);
+  transform:rotate(45deg) translateY(-3px);transition:transform .45s var(--ease-out);
+}
+.faq details[open] summary::after{transform:rotate(-135deg) translateY(-3px)}
+.faq p{margin:0;padding:0 24px 24px;color:var(--text-secondary);max-width:52em}
+
+/* ── pie ───────────────────────────────────────────────────── */
+.foot{position:relative;z-index:2;border-top:1px solid var(--panel-edge);padding:52px 0 60px;background:rgba(8,7,6,.7)}
+.foot__grid{display:grid;grid-template-columns:1fr auto;gap:30px 50px;align-items:start}
+.foot__brand{font-family:var(--display);font-weight:900;letter-spacing:.11em;text-transform:uppercase;font-size:15px;margin:0 0 6px}
+.foot__brand em{font-style:normal;font-weight:400;color:var(--text-secondary)}
+.foot__claim{font-family:var(--display);color:var(--text-secondary);margin:0}
+.foot__links{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:14px;color:var(--text-secondary)}
+.foot__links a:hover{color:var(--accent)}
+.foot__note{grid-column:1/-1;margin:14px 0 0;padding-top:22px;border-top:1px solid var(--panel-edge);font-size:13px;color:#7A6E63;max-width:46em}
+@media (max-width:640px){.foot__grid{grid-template-columns:1fr}}
+
+/* ── entradas al hacer scroll ──────────────────────────────── */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .85s var(--ease-out),transform .85s var(--ease-out)}
+.reveal.is-in{opacity:1;transform:none}
+
+/* ── movimiento reducido: estados finales, motores parados ─── */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  .reveal{opacity:1;transform:none}
+  .drawable{stroke-dashoffset:0}
+  .env__dust{display:none}
+  .scrollcue{display:none}
+}
+
+.calc__coat b{font-weight:700;opacity:.72;margin-left:6px}
+.calc__coat-amber b{opacity:.9}
+@media (max-width:560px){
+  /* apilada, la proporción se lee en el porcentaje, no en el tamaño */
+  .calc__coat>div{flex:1 1 auto!important;padding:16px 0}
+}
+
+/* En el héroe fijo el texto va centrado sobre la imagen, así que el velo
+   deja de ser una cortina lateral y pasa a ser un halo bajo las palabras. */
+body[data-mode="static"] .hero__scrim{
+  opacity:1;
+  background:radial-gradient(68% 56% at 50% 44%,
+    rgba(6,5,4,.86) 0%, rgba(6,5,4,.66) 48%, rgba(6,5,4,.34) 78%, rgba(6,5,4,.12) 100%);
+}
+body[data-mode="static"] .curtain__braid{opacity:.4;filter:blur(56px)}
+
+</style>
+<!-- ══ capa de fondo fija: el ambiente de toda la página ══ -->
+<div class="env" aria-hidden="true">
+  <div class="env__wash"></div>
+  <canvas class="env__dust" id="dust"></canvas>
+  <div class="env__grain"></div>
+</div>
+
+<!-- ══ la costura: línea vertical que se dibuja con el scroll ══ -->
+<svg class="seam" viewBox="0 0 4 1000" preserveAspectRatio="none" aria-hidden="true">
+  <path id="seamPath" d="M2 0 C 2 120, 3.4 180, 2 260 C 0.6 340, 3.4 400, 2 500 C 0.6 600, 3.4 660, 2 760 C 0.6 860, 3 920, 2 1000" fill="none" stroke="url(#seamGrad)" stroke-width="1.4"/>
+  <defs>
+    <linearGradient id="seamGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8A5A38"/>
+      <stop offset=".5" stop-color="#E9A542"/>
+      <stop offset="1" stop-color="#8A5A38"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- ══════════════ CABECERA ══════════════ -->
+<header class="nav" id="nav">
+  <a class="nav__brand" href="#top" aria-label="ALMA PIEBALD, ir al principio">
+    <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+      <defs><clipPath id="markClip"><circle cx="24" cy="24" r="22"/></clipPath></defs>
+      <g clip-path="url(#markClip)">
+        <rect width="48" height="48" fill="var(--earth-deep)"/>
+        <path class="mark__coat" d="M26 -6 C 14 8, 36 16, 21 27 C 10 35, 32 42, 27 54 L 56 54 L 56 -6 Z" fill="var(--accent)"/>
+      </g>
+      <circle cx="24" cy="24" r="22" fill="none" stroke="var(--panel-edge)" stroke-width="1.5"/>
+    </svg>
+    <span class="nav__word">ALMA <em>PIEBALD</em></span>
+  </a>
+  <nav class="nav__links" aria-label="Secciones">
+    <a href="#servicios">Qué hacemos</a>
+    <a href="#proceso">Cómo</a>
+    <a href="#precio">Precio</a>
+    <a href="#faq">Preguntas</a>
+  </nav>
+  <a class="btn btn--wa nav__cta" href="https://wa.me/34681044795?text=Hola%2C%20quiero%20el%20diagn%C3%B3stico%20de%20veinte%20minutos." target="_blank" rel="noopener">
+    <svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2A9.9 9.9 0 0 0 2.1 11.9c0 1.75.46 3.46 1.33 4.97L2 22l5.28-1.38a9.9 9.9 0 0 0 4.76 1.21h.01A9.9 9.9 0 0 0 22 11.93 9.9 9.9 0 0 0 12.04 2Zm5.79 14.05c-.24.68-1.42 1.3-1.96 1.35-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.94-4.69-4.13-.14-.19-1.12-1.49-1.12-2.84s.71-2.02.96-2.29c.25-.27.55-.34.73-.34s.37 0 .53.01c.17.01.4-.06.62.48.24.57.8 1.96.87 2.1.07.14.12.3.02.49-.1.19-.15.3-.29.47-.14.16-.3.36-.43.49-.14.14-.29.29-.12.57.17.28.75 1.24 1.61 2.01 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.11.07.66-.17 1.34Z"/></svg>
+    WhatsApp
+  </a>
+</header>
+
+<main id="top">
+
+<!-- ══════════════ HÉROE ══════════════ -->
+<section class="hero" id="hero">
+  <div class="hero__stage">
+
+    <!-- lienzo del recorrido: vídeo cuando existe, telón dibujado siempre -->
+    <div class="hero__canvas">
+      <div class="curtain" aria-hidden="true">
+        <div class="curtain__earth"></div>
+        <div class="curtain__amber"></div>
+        <div class="curtain__braid"></div>
+      </div>
+      <img class="hero__poster" id="heroPoster" alt="" aria-hidden="true">
+      <video class="hero__video" id="heroVideo" playsinline muted preload="none" tabindex="-1" aria-hidden="true"></video>
+      <div class="hero__vignette" aria-hidden="true"></div>
+      <div class="hero__scrim" id="heroScrim" aria-hidden="true"></div>
+    </div>
+
+    <!-- anillo de carga honesto -->
+    <div class="ring" id="ring" hidden aria-hidden="true">
+      <svg viewBox="0 0 44 44"><circle class="ring__track" cx="22" cy="22" r="19"/><circle class="ring__fill" id="ringFill" cx="22" cy="22" r="19"/></svg>
+      <span class="ring__pct" id="ringPct">0%</span>
+    </div>
+
+    <!-- ─── las bandas del recorrido (solo modo scrub) ─── -->
+    <div class="bands" id="bands" aria-hidden="true">
+      <p class="band" data-band="0"><span class="band__line">Dos naturalezas.</span></p>
+      <p class="band" data-band="1"><span class="band__line">El oficio de siempre.</span></p>
+      <p class="band" data-band="2"><span class="band__line">La máquina que no duerme.</span></p>
+      <p class="band" data-band="3"><span class="band__line">En el mismo cuerpo.</span></p>
+    </div>
+
+    <!-- ─── el reposo: donde la página se asienta ─── -->
+    <div class="settle" id="settle">
+      <p class="eyebrow">ALMA PIEBALD</p>
+      <h1 class="settle__h">Ponemos la IA a trabajar en negocios de verdad.</h1>
+      <p class="settle__p">Publicidad, contenido y agentes que atienden solos. Sin humo, sin permanencia y con las ventas a la vista.</p>
+      <div class="settle__cta">
+        <a class="btn btn--wa btn--big" href="https://wa.me/34681044795?text=Hola%2C%20quiero%20el%20diagn%C3%B3stico%20de%20veinte%20minutos." target="_blank" rel="noopener">
+          <svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2A9.9 9.9 0 0 0 2.1 11.9c0 1.75.46 3.46 1.33 4.97L2 22l5.28-1.38a9.9 9.9 0 0 0 4.76 1.21h.01A9.9 9.9 0 0 0 22 11.93 9.9 9.9 0 0 0 12.04 2Zm5.79 14.05c-.24.68-1.42 1.3-1.96 1.35-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.94-4.69-4.13-.14-.19-1.12-1.49-1.12-2.84s.71-2.02.96-2.29c.25-.27.55-.34.73-.34s.37 0 .53.01c.17.01.4-.06.62.48.24.57.8 1.96.87 2.1.07.14.12.3.02.49-.1.19-.15.3-.29.47-.14.16-.3.36-.43.49-.14.14-.29.29-.12.57.17.28.75 1.24 1.61 2.01 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.11.07.66-.17 1.34Z"/></svg>
+          Hablar por WhatsApp
+        </a>
+        <span class="settle__micro">Veinte minutos. Gratis. Sin compromiso.</span>
+      </div>
+    </div>
+
+    <div class="scrollcue" id="scrollcue" aria-hidden="true"><span></span></div>
+  </div>
+</section>
+
+<!-- ══════════════ EL PROBLEMA ══════════════ -->
+<section class="sec sec--problem" id="problema">
+  <div class="wrap">
+    <p class="eyebrow reveal">El problema de siempre</p>
+    <h2 class="h2 reveal">Te mandan informes.<br>Tú necesitas ventas.</h2>
+    <div class="problem">
+      <div class="problem__text">
+        <p class="lede reveal">Impresiones, alcance, seguidores ganados. Un PDF precioso cada mes y ni una línea sobre cuánto has vendido.</p>
+        <p class="reveal">La agencia factura por horas de gestión, así que cuantas más horas, mejor le va. A ti eso no te paga las nóminas.</p>
+        <p class="punch reveal">Aquí se cobra por lo que se mueve, no por lo que se tarda.</p>
+      </div>
+      <div class="ledger reveal" aria-hidden="true">
+        <div class="ledger__side ledger__side--old">
+          <span class="ledger__tag">Su informe</span>
+          <ul><li>Impresiones</li><li>Alcance</li><li>Seguidores</li><li>Interacciones</li><li class="ledger__void">Ventas</li></ul>
+        </div>
+        <div class="ledger__side ledger__side--new">
+          <span class="ledger__tag">El nuestro</span>
+          <ul><li>Ventas</li><li>Coste por cliente</li><li>Margen que queda</li><li class="ledger__void">Lo demás</li></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ QUÉ HACEMOS ══════════════ -->
+<section class="sec" id="servicios">
+  <div class="wrap">
+    <p class="eyebrow reveal">Qué hacemos</p>
+    <h2 class="h2 reveal">Cuatro cosas, bien hechas.</h2>
+    <div class="cards">
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><path d="M10 66 L34 46 L58 56 L82 24 L110 14"/><circle cx="110" cy="14" r="4"/><path d="M10 72 L110 72" class="axis"/><path d="M34 46 L34 72" class="tick"/><path d="M82 24 L82 72" class="tick"/></g></svg>
+        </div>
+        <h3>Publicidad que aprende sola</h3>
+        <p>Campañas en Meta, Google, TikTok y LinkedIn. La IA prueba cien variantes mientras tú duermes y apaga sola lo que no vende.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><rect x="10" y="18" width="44" height="44" rx="4"/><path d="M26 30 L40 40 L26 50 Z"/><rect x="62" y="18" width="20" height="44" rx="3"/><rect x="88" y="18" width="20" height="44" rx="3"/><path d="M66 52 L72 44 L78 52" class="tick"/><path d="M92 52 L98 40 L104 52" class="tick"/></g></svg>
+        </div>
+        <h3>Contenido a ritmo de máquina</h3>
+        <p>Vídeo, foto de producto y publicaciones para todo el mes, generados y revisados por una persona antes de salir.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><path d="M18 20 h50 a6 6 0 0 1 6 6 v20 a6 6 0 0 1 -6 6 h-32 l-12 10 v-10 h-6 a6 6 0 0 1 -6 -6 v-20 a6 6 0 0 1 6 -6z"/><circle cx="34" cy="36" r="2.5"/><circle cx="45" cy="36" r="2.5"/><circle cx="56" cy="36" r="2.5"/><circle cx="96" cy="46" r="13" fill="none" stroke="var(--earth)" stroke-width="1.8"/><path d="M96 39 v8 l6 3" class="tick"/></g></svg>
+        </div>
+        <h3>Agentes que atienden solos</h3>
+        <p>Responden WhatsApp y web a cualquier hora, cualifican al que pregunta y te pasan solo al que va en serio.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card__art" aria-hidden="true">
+          <svg viewBox="0 0 120 80"><g class="draw"><rect x="14" y="14" width="70" height="52" rx="4"/><path d="M14 28 h70" class="axis"/><circle cx="22" cy="21" r="2"/><circle cx="30" cy="21" r="2"/><path d="M26 40 h34 M26 48 h46 M26 56 h24"/><path d="M92 20 h18 l8 8 v30 h-26 z" fill="none" stroke="var(--earth)" stroke-width="1.8"/><path d="M110 20 v8 h8" class="tick"/><path d="M98 40 h12 M98 48 h8" class="tick"/></g></svg>
+        </div>
+        <h3>Web, Kit Digital y facturación</h3>
+        <p>La web, la factura electrónica y la ayuda pública tramitada. Sin cutreweb y sin desaparecer al mes siguiente.</p>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CÓMO TRABAJAMOS ══════════════ -->
+<section class="sec sec--alt" id="proceso">
+  <div class="wrap">
+    <p class="eyebrow reveal">Cómo trabajamos</p>
+    <h2 class="h2 reveal">Tres pasos y ninguna sorpresa.</h2>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step__n" data-n="01">01</span>
+        <div class="step__body">
+          <h3>Miramos</h3>
+          <p>Veinte minutos mirando tu negocio para encontrar dónde se te va el tiempo y dónde se te escapa el dinero. Gratis y sin compromiso.</p>
+        </div>
+        <div class="step__art" aria-hidden="true"><svg viewBox="0 0 90 90"><g class="draw"><circle cx="38" cy="38" r="22"/><path d="M54 54 L76 76"/><path d="M30 38 h16 M38 30 v16" class="tick"/></g></svg></div>
+      </li>
+      <li class="step reveal">
+        <span class="step__n" data-n="02">02</span>
+        <div class="step__body">
+          <h3>Montamos</h3>
+          <p>En dos semanas está funcionando lo primero. Empezamos por un solo problema concreto, no por una plataforma entera.</p>
+        </div>
+        <div class="step__art" aria-hidden="true"><svg viewBox="0 0 90 90"><g class="draw"><rect x="14" y="46" width="26" height="26" rx="3"/><rect x="48" y="46" width="26" height="26" rx="3"/><rect x="31" y="18" width="26" height="26" rx="3"/><path d="M27 46 L44 44 M61 46 L44 44" class="tick"/></g></svg></div>
+      </li>
+      <li class="step reveal">
+        <span class="step__n" data-n="03">03</span>
+        <div class="step__body">
+          <h3>Medimos</h3>
+          <p>Un panel con lo único que importa: cuánto entra, cuánto cuesta traerlo y cuánto queda. Lo abres tú cuando quieras.</p>
+        </div>
+        <div class="step__art" aria-hidden="true"><svg viewBox="0 0 90 90"><g class="draw"><path d="M14 74 h62" class="axis"/><rect x="20" y="52" width="12" height="22"/><rect x="38" y="38" width="12" height="36"/><rect x="56" y="24" width="12" height="50"/><path d="M20 60 L74 20" class="tick"/></g></svg></div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════ LA CUENTA DE LAS DOS CAPAS (momento interactivo) ══════════════ -->
+<section class="sec" id="calculadora">
+  <div class="wrap">
+    <p class="eyebrow reveal">Échale la cuenta</p>
+    <h2 class="h2 reveal">¿Cuánto de tu semana puede llevar la otra capa?</h2>
+
+    <div class="calc reveal" id="calc">
+      <div class="calc__ask">
+        <label class="calc__q" for="calcRange">Horas a la semana que se te van en tareas que se repiten</label>
+        <div class="calc__slider">
+          <div class="calc__track">
+            <input id="calcRange" type="range" min="2" max="30" step="1" value="11"
+                   aria-describedby="calcOut">
+            <p class="calc__scale" aria-hidden="true"><span>2 h</span><span>30 h</span></p>
+          </div>
+          <output class="calc__val" id="calcHrs" for="calcRange">11 h</output>
+        </div>
+      </div>
+
+      <div class="calc__coat" aria-hidden="true">
+        <div class="calc__coat-dark"><span>Sigue siendo tuyo <b id="calcPctDark">38%</b></span></div>
+        <div class="calc__coat-amber" id="calcCoat"><span>Lo lleva la máquina <b id="calcPctAmber">62%</b></span></div>
+      </div>
+
+      <p class="calc__out" id="calcOut" role="status">
+        Recuperas <strong id="calcBig">38</strong> horas al mes.
+        <span class="calc__sub" id="calcSub">Casi una semana entera de trabajo que vuelve a ser tuya.</span>
+      </p>
+    </div>
+
+    <p class="calc__foot reveal">Es una estimación con lo que vemos en negocios parecidos, no una promesa. Tu cifra de verdad sale del diagnóstico de veinte minutos.</p>
+  </div>
+</section>
+
+<!-- ══════════════ LA PRUEBA ══════════════ -->
+<section class="sec sec--alt" id="prueba">
+  <div class="wrap">
+    <p class="eyebrow reveal">Sin maquillaje</p>
+    <h2 class="h2 reveal">Somos nuevos.<br>Esto es lo que sí podemos enseñarte.</h2>
+    <p class="lede reveal">No vamos a inventarnos testimonios. Te dejamos los tres datos por los que existe esta empresa.</p>
+    <div class="stats">
+      <div class="stat reveal"><span class="stat__n" data-count="41">41</span><span class="stat__u">%</span><p>de las pymes españolas usa IA a diario. Las otras seis de cada diez son tu ventaja mientras dure.</p></div>
+      <div class="stat reveal"><span class="stat__n" data-count="1">1</span><span class="stat__u">ª</span><p>queja con las agencias: el informe lleno de alcance y sin una línea sobre ventas.</p></div>
+      <div class="stat reveal"><span class="stat__n" data-count="0">0</span><span class="stat__u">€</span><p>cuesta el diagnóstico, porque el miedo número uno con la IA no es técnico. Es no saber por dónde empezar.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ PRECIO ══════════════ -->
+<section class="sec" id="precio">
+  <div class="wrap">
+    <p class="eyebrow reveal">Lo que cuesta</p>
+    <h2 class="h2 reveal">Los números, antes de que preguntes.</h2>
+    <div class="prices">
+      <article class="price reveal">
+        <h3>Arranque</h3>
+        <p class="price__n">450 <span>€ / mes</span></p>
+        <ul><li>Un canal de publicidad</li><li>Contenido para el mes</li><li>Panel de ventas</li><li>Una persona al teléfono</li></ul>
+      </article>
+      <article class="price price--mid reveal">
+        <span class="price__flag">El que más se contrata</span>
+        <h3>Las dos capas</h3>
+        <p class="price__n">890 <span>€ / mes</span></p>
+        <ul><li>Todos los canales de publicidad</li><li>Contenido y vídeo generado</li><li>Un agente que atiende solo</li><li>Panel de ventas y revisión cada quince días</li></ul>
+      </article>
+      <article class="price reveal">
+        <h3>A medida</h3>
+        <p class="price__n">Hablamos</p>
+        <ul><li>Varias sedes o varios idiomas</li><li>Agentes conectados a tu sistema</li><li>Kit Digital y factura electrónica</li><li>Formación para tu equipo</li></ul>
+      </article>
+    </div>
+    <p class="prices__foot reveal">El diagnóstico de veinte minutos no cuesta nada y no lleva compromiso. Si después no te encaja, te quedas con lo que hemos visto.</p>
+  </div>
+</section>
+
+<!-- ══════════════ PREGUNTAS ══════════════ -->
+<section class="sec sec--alt" id="faq">
+  <div class="wrap wrap--narrow">
+    <p class="eyebrow reveal">Preguntas de verdad</p>
+    <h2 class="h2 reveal">Lo que nos preguntan siempre.</h2>
+    <div class="faq">
+      <details class="reveal"><summary>¿Y si la IA se equivoca?</summary><p>Se equivoca, claro. Por eso nada sale sin que lo mire una persona, y por eso empezamos por un trozo pequeño del negocio en vez de por todo a la vez. Si algo falla, se apaga en un minuto y sigues como estabas.</p></details>
+      <details class="reveal"><summary>¿Va a sonar todo a robot?</summary><p>Los agentes hablan con tus palabras, no con las de un manual. Y cuando la conversación se pone seria, te la pasan a ti. Un cliente enfadado no habla con una máquina.</p></details>
+      <details class="reveal"><summary>¿Qué pasa con los datos de mis clientes?</summary><p>Se quedan donde deben, con contrato de encargado de tratamiento firmado y borrado cuando lo pidas. Te decimos qué herramienta toca qué dato, por escrito.</p></details>
+      <details class="reveal"><summary>¿Cuánto tarda en verse algo?</summary><p>Lo primero funcionando en dos semanas. Resultados de venta, entre uno y tres meses. Quien te prometa ventas en treinta días te está vendiendo humo.</p></details>
+      <details class="reveal"><summary>¿Hay permanencia?</summary><p>No. Mes a mes. Si un mes no te aportamos, lo dejas y te llevas todo lo montado, cuentas y accesos incluidos.</p></details>
+      <details class="reveal"><summary>No sé por dónde empezar, y me da algo de corte.</summary><p>Es lo que más nos dicen. Nadie te ha explicado nunca cómo aplicar esto a un negocio como el tuyo. Para eso son los veinte minutos.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CIERRE ══════════════ -->
+<section class="sec sec--close" id="contacto">
+  <div class="wrap wrap--narrow center">
+    <svg class="mark mark--big reveal" viewBox="0 0 48 48" aria-hidden="true">
+      <defs><clipPath id="markClip2"><circle cx="24" cy="24" r="22"/></clipPath></defs>
+      <g clip-path="url(#markClip2)">
+        <rect width="48" height="48" fill="var(--earth-deep)"/>
+        <path d="M26 -6 C 14 8, 36 16, 21 27 C 10 35, 32 42, 27 54 L 56 54 L 56 -6 Z" fill="var(--accent)"/>
+      </g>
+      <circle cx="24" cy="24" r="22" fill="none" stroke="var(--panel-edge)" stroke-width="1.5"/>
+    </svg>
+    <h2 class="h2 reveal">Cuéntanos qué te quita el tiempo.</h2>
+    <p class="lede reveal">Escríbenos por WhatsApp con una frase. Te decimos en el momento si esto es para ti o si todavía no te hace falta.</p>
+    <a class="btn btn--wa btn--big reveal" href="https://wa.me/34681044795?text=Hola%2C%20quiero%20el%20diagn%C3%B3stico%20de%20veinte%20minutos." target="_blank" rel="noopener">
+      <svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2A9.9 9.9 0 0 0 2.1 11.9c0 1.75.46 3.46 1.33 4.97L2 22l5.28-1.38a9.9 9.9 0 0 0 4.76 1.21h.01A9.9 9.9 0 0 0 22 11.93 9.9 9.9 0 0 0 12.04 2Zm5.79 14.05c-.24.68-1.42 1.3-1.96 1.35-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.94-4.69-4.13-.14-.19-1.12-1.49-1.12-2.84s.71-2.02.96-2.29c.25-.27.55-.34.73-.34s.37 0 .53.01c.17.01.4-.06.62.48.24.57.8 1.96.87 2.1.07.14.12.3.02.49-.1.19-.15.3-.29.47-.14.16-.3.36-.43.49-.14.14-.29.29-.12.57.17.28.75 1.24 1.61 2.01 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.11.07.66-.17 1.34Z"/></svg>
+      Hablar por WhatsApp
+    </a>
+    <p class="micro reveal">Contesta una persona. Suele tardar menos de una hora en horario de oficina.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__grid">
+    <div>
+      <p class="foot__brand">ALMA <em>PIEBALD</em></p>
+      <p class="foot__claim">Dos naturalezas, un solo cuerpo.</p>
+    </div>
+    <nav class="foot__links" aria-label="Pie">
+      <a href="#servicios">Qué hacemos</a>
+      <a href="#proceso">Cómo trabajamos</a>
+      <a href="#precio">Precio</a>
+      <a href="#faq">Preguntas</a>
+    </nav>
+    <p class="foot__note">Las imágenes y el vídeo de esta página están generados con IA por nosotros mismos. Es la mejor carta de presentación que tenemos.</p>
+  </div>
+</footer>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   ALMA PIEBALD · motor del recorrido y vida de la página
+   Sin dependencias. Sin paso de compilación.
+   ══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var VIDEO_SRC  = '';
+  var POSTER_SRC = '';
+
+  var body    = document.body;
+  var hero    = document.getElementById('hero');
+  var video   = document.getElementById('heroVideo');
+  var poster  = document.getElementById('heroPoster');
+  var scrim   = document.getElementById('heroScrim');
+  var settle  = document.getElementById('settle');
+  var cue     = document.getElementById('scrollcue');
+  var ring    = document.getElementById('ring');
+  var ringFil = document.getElementById('ringFill');
+  var ringPct = document.getElementById('ringPct');
+  var bandEls = [].slice.call(document.querySelectorAll('.band'));
+
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var easeIO = function (t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; };
+
+  /* ── el mapa de bandas: meseta larga, rampas cortas ───────── */
+  /* Las bandas SE SOLAPAN un tramo igual a la rampa. Con huecos entre ellas,
+     un visitante que baja a golpes de dedo cae en pantallas sin una palabra;
+     solapadas, el relevo es un fundido cruzado y nunca hay vacío. */
+  var BANDS = [
+    { a: -0.06, b: 0.27 },
+    { a:  0.22, b: 0.50 },
+    { a:  0.45, b: 0.73 },
+    { a:  0.68, b: 0.97 }
+  ];
+  var RAMP = 0.05;
+  var SETTLE_AT = 0.90, SETTLE_SPAN = 0.07;
+
+  function bandAlpha(p, band) {
+    if (p <= band.a || p >= band.b) return 0;
+    if (p < band.a + RAMP) return easeIO((p - band.a) / RAMP);
+    if (p > band.b - RAMP) return easeIO((band.b - p) / RAMP);
+    return 1;                                   // la meseta: sobrevive a varios flicks
+  }
+
+  /* ══ 1. LAS PUERTAS DEL HÉROE ESTÁTICO ═══════════════════════
+     Cinco motivos para servir la portada fija en vez del recorrido.
+     Se quedan vivas: cada una con su listener. */
+  var mqNarrow  = window.matchMedia('(max-width: 900px)');
+  var mqReduce  = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var mqNoHover = window.matchMedia('(any-hover: none)');
+  var videoFailed = !VIDEO_SRC;
+
+  function saveData() {
+    var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return !!(c && (c.saveData || /^([23]g|slow-2g)$/.test(c.effectiveType || '')));
+  }
+  function canPlayMp4() {
+    return !!(video.canPlayType && video.canPlayType('video/mp4').replace('no', ''));
+  }
+  function wantsScrub() {
+    return !mqNarrow.matches && !mqReduce.matches && !mqNoHover.matches &&
+           !saveData() && !videoFailed && canPlayMp4();
+  }
+
+  var mode = null;
+  function applyMode() {
+    var next = wantsScrub() ? 'scrub' : 'static';
+    if (next === mode) return;
+    mode = next;
+    body.setAttribute('data-mode', mode);
+    if (mode === 'scrub') { loadVideo(); wake(); }
+    else { stopLoop(); showStatic(); }
+  }
+  [mqNarrow, mqReduce, mqNoHover].forEach(function (mq) {
+    var on = function () { applyMode(); };
+    if (mq.addEventListener) mq.addEventListener('change', on);
+    else if (mq.addListener) mq.addListener(on);
+  });
+
+  function showStatic() {
+    if (ring) ring.hidden = true;
+    video.setAttribute('data-on', '0');
+    settle.setAttribute('data-on', '1');
+    settle.style.opacity = '';
+    settle.style.transform = '';
+    bandEls.forEach(function (el) { el.style.opacity = '0'; });
+    /* se limpia el valor en línea para que mande la regla CSS del modo estático */
+    if (scrim) scrim.style.opacity = '';
+  }
+
+  /* la portada fija se intenta siempre: si no hay archivo, manda el telón dibujado */
+  (function preloadPoster() {
+    if (!POSTER_SRC) return;
+    var img = new Image();
+    img.onload = function () { poster.src = POSTER_SRC; poster.setAttribute('data-on', '1'); };
+    img.onerror = function () { /* el telón CSS ya está detrás, la página no se rompe */ };
+    img.src = POSTER_SRC;
+  })();
+
+  /* ══ 2. TRAER EL VÍDEO COMO BLOB, CON ANILLO HONESTO ═════════
+     Blob y no src directo: así el navegador tiene el archivo entero
+     en memoria y buscar fotogramas funciona aunque el host no sirva
+     peticiones por rango. */
+  var videoReady = false, loading = false;
+
+  function setRing(frac) {
+    var C = 119.4;
+    ringFil.style.strokeDashoffset = String(C - C * clamp(frac, 0, 1));
+    ringPct.textContent = Math.round(frac * 100) + '%';
+  }
+
+  function loadVideo() {
+    if (videoReady || loading) return;
+    loading = true;
+    ring.hidden = false;
+    setRing(0);
+
+    fetch(VIDEO_SRC).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var total = parseInt(res.headers.get('content-length') || '0', 10);
+      if (!res.body || !total) return res.blob();
+      var reader = res.body.getReader(), chunks = [], got = 0;
+      return (function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return new Blob(chunks, { type: 'video/mp4' });
+          chunks.push(r.value); got += r.value.length;
+          setRing(got / total);
+          return pump();
+        });
+      })();
+    }).then(function (blob) {
+      setRing(1);
+      var url = URL.createObjectURL(blob);
+      video.src = url;
+      video.load();
+
+      /* plazo máximo: si los metadatos no llegan (códec que el navegador no
+         sabe leer, archivo tocado), no dejamos el anillo girando para siempre.
+         Se cae a la portada fija, que siempre está lista. */
+      var settled = false, guard = 0;
+      var fail = function () {
+        if (settled) return;
+        settled = true; clearTimeout(guard);
+        loading = false; videoFailed = true;
+        ring.hidden = true;
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        applyMode();
+      };
+      var ok = function () {
+        if (settled) return;
+        if (!(isFinite(video.duration) && video.duration > 0)) return fail();
+        settled = true; clearTimeout(guard);
+        videoReady = true; loading = false;
+        duration = video.duration;
+        ring.hidden = true;
+        video.setAttribute('data-on', '1');
+        try { video.currentTime = 0.001; } catch (e) {}
+        wake();
+      };
+      guard = setTimeout(fail, 9000);
+      video.addEventListener('error', fail, { once: true });
+      if (video.readyState >= 1) ok();
+      else video.addEventListener('loadedmetadata', ok, { once: true });
+    }).catch(function () {
+      loading = false; videoFailed = true;
+      ring.hidden = true;
+      applyMode();                              // cae al héroe estático, sin drama
+    });
+  }
+
+  /* ══ 3. EL BUCLE: lerp normalizado por dt, con verja y descanso ══ */
+  var targetT = 0, shownT = 0, rafId = 0, lastNow = 0, seekPending = false;
+  var lastWrites = { scrim: -1, settle: -1, bands: [] };
+  var duration = 0;
+
+  video.addEventListener('seeked', function () { seekPending = false; });
+  video.addEventListener('error', function () {
+    if (mode === 'scrub') { videoFailed = true; applyMode(); }
+  });
+
+  function progress() {
+    var r = hero.getBoundingClientRect();
+    var span = hero.offsetHeight - window.innerHeight;
+    if (span <= 0) return 0;
+    return clamp(-r.top / span, 0, 1);
+  }
+
+  function paint(p) {
+    /* bandas: escritura al DOM solo cuando el valor cambia de verdad */
+    var top = 0;
+    for (var i = 0; i < BANDS.length; i++) {
+      var a = bandAlpha(p, BANDS[i]);
+      /* pegar los extremos: sin esto la verja de escritura se cierra cerca del
+         final y deja la banda clavada en un resto de opacidad que nunca limpia */
+      if (a < 0.012) a = 0; else if (a > 0.988) a = 1;
+      if (a > top) top = a;
+      if (lastWrites.bands[i] === undefined || Math.abs(lastWrites.bands[i] - a) > 0.008) {
+        lastWrites.bands[i] = a;
+        var el = bandEls[i];
+        el.style.opacity = a.toFixed(3);
+        /* una entrada distinta por momento, en eco al vídeo */
+        if (i === 0)      el.style.transform = 'translateY(' + ((1 - a) * 26).toFixed(1) + 'px)';
+        else if (i === 1) el.style.transform = 'translateX(' + ((1 - a) * -22).toFixed(1) + 'px)';
+        else if (i === 2) el.style.transform = 'scale(' + (0.965 + a * 0.035).toFixed(4) + ')';
+        else              el.style.transform = 'translateY(' + ((1 - a) * 18).toFixed(1) + 'px)';
+        if (i === 2 || i === 3) {
+          el.style.textShadow = '0 2px 30px rgba(0,0,0,.92),0 1px 4px rgba(0,0,0,.85),0 0 ' +
+                                (a * 34).toFixed(0) + 'px rgba(233,165,66,' + (a * .3).toFixed(2) + ')';
+        }
+      }
+    }
+
+    /* capa 1 de legibilidad: el scrim se ahonda solo mientras hay texto */
+    var sc = Math.max(top, p >= SETTLE_AT ? 1 : 0) * 0.95;
+    if (Math.abs(lastWrites.scrim - sc) > 0.008) {
+      lastWrites.scrim = sc;
+      scrim.style.opacity = sc.toFixed(3);
+    }
+
+    /* el reposo */
+    var st = p < SETTLE_AT ? 0 : easeIO(clamp((p - SETTLE_AT) / SETTLE_SPAN, 0, 1));
+    if (Math.abs(lastWrites.settle - st) > 0.008) {
+      lastWrites.settle = st;
+      settle.style.opacity = st.toFixed(3);
+      settle.style.transform = 'translateY(' + ((1 - st) * 22).toFixed(1) + 'px)';
+      settle.setAttribute('data-on', st > 0.6 ? '1' : '0');
+      if (cue) cue.style.opacity = String(clamp(1 - p * 7, 0, 1));
+    }
+  }
+
+  function tick(now) {
+    rafId = 0;
+    var dt = lastNow ? Math.min((now - lastNow) / 1000, 0.08) : 0.016;
+    lastNow = now;
+
+    var p = progress();
+    if (videoReady) {
+      if (!duration && isFinite(video.duration) && video.duration > 0) duration = video.duration;
+      targetT = p * (duration ? duration - 0.04 : 0);
+
+      /* lerp normalizado por delta: la misma suavidad a 60 y a 144 Hz */
+      var k = 1 - Math.pow(0.0022, dt);
+      shownT += (targetT - shownT) * k;
+      if (Math.abs(targetT - shownT) < 0.004) shownT = targetT;
+
+      /* verja: nunca dos búsquedas de fotograma solapadas */
+      if (!seekPending && Math.abs(video.currentTime - shownT) > 0.012) {
+        seekPending = true;
+        try {
+          if (video.fastSeek) video.fastSeek(shownT);
+          else video.currentTime = shownT;
+        } catch (e) { seekPending = false; }
+      }
+    }
+
+    paint(p);
+
+    /* el bucle descansa cuando ya no queda nada que mover */
+    var busy = Math.abs(targetT - shownT) > 0.004 || seekPending;
+    if (busy) rafId = requestAnimationFrame(tick);
+    else lastNow = 0;
+  }
+
+  function wake() {
+    if (mode !== 'scrub') return;
+    if (!rafId) { lastNow = 0; rafId = requestAnimationFrame(tick); }
+  }
+  function stopLoop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0; lastNow = 0;
+  }
+
+  var scrollQueued = false;
+  function onScroll() {
+    if (mode !== 'scrub') { seam(); return; }
+    if (!scrollQueued) {
+      scrollQueued = true;
+      requestAnimationFrame(function () {
+        scrollQueued = false;
+        paint(progress());
+        wake();
+      });
+    }
+    seam();
+  }
+
+  /* ══ 4. LA COSTURA que se dibuja con el scroll ═══════════════ */
+  var seamPath = document.getElementById('seamPath');
+  var seamLen = 0, seamLast = -1;
+  if (seamPath) {
+    try { seamLen = seamPath.getTotalLength(); } catch (e) { seamLen = 0; }
+    if (seamLen) { seamPath.style.strokeDasharray = seamLen; seamPath.style.strokeDashoffset = seamLen; }
+  }
+  function seam() {
+    if (!seamLen) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var f = h > 0 ? clamp(window.scrollY / h, 0, 1) : 0;
+    if (Math.abs(seamLast - f) < 0.004) return;
+    seamLast = f;
+    seamPath.style.strokeDashoffset = String(seamLen - seamLen * f);
+  }
+
+  /* ══ 5. LA NAVEGACIÓN que se pega ════════════════════════════ */
+  var nav = document.getElementById('nav');
+  var stuck = -1;
+  function onNav() {
+    var s = window.scrollY > 40 ? 1 : 0;
+    if (s !== stuck) { stuck = s; nav.setAttribute('data-stuck', String(s)); }
+  }
+
+  window.addEventListener('scroll', function () { onScroll(); onNav(); }, { passive: true });
+  window.addEventListener('resize', function () {
+    lastWrites.scrim = -1; lastWrites.settle = -1; lastWrites.bands = [];
+    seamLast = -1; applyMode(); onScroll();
+  }, { passive: true });
+
+  /* ══ 6. ENTRADAS AL ENTRAR EN PANTALLA ══════════════════════ */
+  var reduce = mqReduce.matches;
+  var reveals = [].slice.call(document.querySelectorAll('.reveal'));
+
+  /* preparar los trazos SVG para que se dibujen solos */
+  [].slice.call(document.querySelectorAll('.draw path, .draw rect')).forEach(function (el) {
+    try {
+      var L = el.getTotalLength();
+      if (L && isFinite(L)) { el.style.setProperty('--len', L); el.classList.add('drawable'); }
+    } catch (e) {}
+  });
+
+  if ('IntersectionObserver' in window && !reduce) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);
+        var n = e.target.querySelector('.stat__n');
+        if (n) countUp(n);
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.12 });
+    reveals.forEach(function (el) { io.observe(el); });
+  } else {
+    reveals.forEach(function (el) { el.classList.add('is-in'); });
+    [].slice.call(document.querySelectorAll('.stat__n')).forEach(function (n) {
+      n.textContent = n.getAttribute('data-count');
+    });
+  }
+
+  function countUp(el) {
+    var to = parseInt(el.getAttribute('data-count'), 10);
+    if (!isFinite(to) || to === 0) { el.textContent = String(to || 0); return; }
+    var t0 = 0, DUR = 1100;
+    (function step(now) {
+      if (!t0) t0 = now;
+      var f = clamp((now - t0) / DUR, 0, 1);
+      el.textContent = String(Math.round(to * easeIO(f)));
+      if (f < 1) requestAnimationFrame(step);
+    })(performance.now());
+  }
+
+  /* ══ 7. LA CUENTA DE LAS DOS CAPAS (el momento interactivo) ══
+     Un rango nativo: funciona con ratón, con el dedo y con el teclado
+     sin una línea de código que pelee con el navegador. */
+  var calc = document.getElementById('calc');
+  if (calc) {
+    var cRange = document.getElementById('calcRange');
+    var cHrs   = document.getElementById('calcHrs');
+    var cBig   = document.getElementById('calcBig');
+    var cSub   = document.getElementById('calcSub');
+    var cCoat  = document.getElementById('calcCoat');
+    var cDark  = document.querySelector('.calc__coat-dark');
+    var cPctD  = document.getElementById('calcPctDark');
+    var cPctA  = document.getElementById('calcPctAmber');
+
+    /* De las tareas que se repiten, la parte que se puede automatizar sube
+       con el volumen: cuanto más repetitiva es la semana, más se lleva la
+       máquina. Se queda corto a propósito, para no prometer de más. */
+    function share(h) { return 0.55 + Math.min(h, 30) / 30 * 0.20; }
+
+    /* Las frases están calculadas sobre jornadas de 8 h y semanas de 40 h,
+       para que el texto y el número digan lo mismo. */
+    function line(m) {
+      if (m < 10) return 'Casi un día de trabajo al mes que dejas de perder.';
+      if (m < 24) return 'Entre uno y tres días de trabajo al mes, de vuelta en tu calendario.';
+      if (m < 45) return 'Más de media semana de trabajo al mes que vuelve a ser tuya.';
+      if (m < 80) return 'Entre una y dos semanas al mes. Eso ya es media persona contratada.';
+      return 'Más de dos semanas al mes. Eso ya es una persona a jornada completa.';
+    }
+
+    var cLast = -1;
+    function drawCalc() {
+      var h = parseInt(cRange.value, 10);
+      if (h === cLast) return;
+      cLast = h;
+      var s = share(h);
+      var month = Math.round(h * 4.33 * s);
+      cHrs.textContent = h + ' h';
+      cBig.textContent = String(month);
+      cSub.textContent = line(month);
+      var pct = Math.round(s * 100);
+      cCoat.style.flexBasis = pct + '%';
+      cDark.style.flexBasis = (100 - pct) + '%';
+      /* el porcentaje también en palabras: en el móvil la barra se apila
+         y la proporción dejaría de leerse solo con el tamaño */
+      cPctA.textContent = pct + '%';
+      cPctD.textContent = (100 - pct) + '%';
+    }
+    cRange.addEventListener('input', drawCalc);
+    drawCalc();
+  }
+
+  /* ══ 8. EL POLVO: partículas a nivel de susurro ═════════════ */
+  (function dust() {
+    var cv = document.getElementById('dust');
+    if (!cv || reduce) { if (cv) cv.style.display = 'none'; return; }
+    var ctx = cv.getContext('2d');
+    var motes = [], W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    function size() {
+      W = cv.clientWidth; H = cv.clientHeight;
+      cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var n = Math.round(clamp(W * H / 26000, 18, 60));
+      motes = [];
+      for (var i = 0; i < n; i++) {
+        motes.push({
+          x: Math.random() * W, y: Math.random() * H,
+          r: 0.5 + Math.random() * 1.5,
+          vy: 0.04 + Math.random() * 0.16,
+          vx: (Math.random() - 0.5) * 0.06,
+          a: 0.06 + Math.random() * 0.2,
+          ph: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    size();
+    window.addEventListener('resize', size, { passive: true });
+
+    var t = 0;
+    (function frame() {
+      t += 0.01;
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < motes.length; i++) {
+        var m = motes[i];
+        m.y += m.vy; m.x += m.vx + Math.sin(t + m.ph) * 0.09;
+        if (m.y > H + 4) { m.y = -4; m.x = Math.random() * W; }
+        if (m.x < -4) m.x = W + 4; else if (m.x > W + 4) m.x = -4;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, 6.2832);
+        ctx.fillStyle = 'rgba(233,165,66,' + (m.a * (0.6 + 0.4 * Math.sin(t * 2 + m.ph))).toFixed(3) + ')';
+        ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    })();
+  })();
+
+  /* ── arranque ─────────────────────────────────────────────── */
+  applyMode();
+  onNav();
+  onScroll();
+})();
+
+</script>

@@ -49,8 +49,10 @@ el scroll, y sitio real debajo.
 
 ## Pendiente
 
-1. **Generar el vídeo.** Dos tomas con Kling 2.5, 1080p, 5 s, 16:9, usando
-   `huHaBjdvqL` como fotograma inicial. 650 créditos.
+1. ~~Generar el vídeo.~~ **Hecho.** Dos tomas con Kling 2.5, 1080p, 5 s, 16:9,
+   desde el fotograma aprobado. 650 créditos gastados. Identificadores:
+   `ovC5Ukp829` (toma A, trenza suave) y `bxsOAGB5Y2` (toma B, hélice).
+   Falta que el cliente elija una.
 2. **Bajar el MP4 elegido a la máquina.** El proxy de red bloquea
    `magnific.com` y `pikaso.cdnpk.net`, así que hay que arrastrarlo al chat o
    pedir que desbloqueen esos dos dominios.
@@ -67,4 +69,15 @@ el scroll, y sitio real debajo.
   reconectarlo desde claude.ai, Ajustes, Conectores.
 - La consola muestra un 404 de `assets/hero-poster.jpg` hasta que exista ese
   archivo. Desaparece solo al añadir el vídeo.
-- Créditos de Magnific: 19.160 disponibles tras las dos imágenes.
+- Créditos de Magnific: unos 18.500 tras las dos imágenes y las dos tomas.
+
+## Vista previa navegable
+
+`construir-vista-previa.py` empaqueta la web en un solo archivo HTML y lo deja
+en la raíz, fuera de la carpeta que se publica. Ese archivo está publicado como
+artefacto privado en:
+
+    https://claude.ai/code/artifact/8d2bb112-1d01-4fa1-8085-ca81a435606c
+
+Para actualizarlo hay que volver a publicar pasando esa misma dirección, o se
+crea un artefacto nuevo con otro enlace.
