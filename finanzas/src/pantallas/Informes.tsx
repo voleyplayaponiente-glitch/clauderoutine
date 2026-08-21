@@ -10,6 +10,7 @@ import { sumasYSaldos, cuentaPyG, balanceSituacion } from '../dominio/libros'
 import { libroRepercutido, libroSoportado, resumen303, modelo347 } from '../dominio/registros-fiscales'
 import { exportarCSV, exportarExcel, exportarPDF, type SeccionPDF } from '../lib/exportar'
 import { calcularDashboard } from '../lib/dashboard'
+import { listadoDeudas, type FilaDeuda } from '../dominio/listado-deudas'
 import { hoyISO } from '../lib/fechas'
 
 const TABS = [
@@ -18,6 +19,7 @@ const TABS = [
   { id: 'sumas', texto: 'Sumas y saldos' },
   { id: 'balance', texto: 'Balance' },
   { id: 'pyg', texto: 'Pérdidas y Ganancias' },
+  { id: 'deudas', texto: 'Deudas' },
   { id: 'ejecutivo', texto: 'Informe ejecutivo' },
 ] as const
 
@@ -45,6 +47,23 @@ export function Informes() {
   const soportado = libroSoportado(comprasEj, nombreTercero)
   const r303 = resumen303(repercutido, soportado)
   const reg347 = modelo347(comprasEj, {}, datos.terceros, ejercicio)
+
+  // El listado es «a día de hoy», no del ejercicio elegido: el capital vivo y
+  // la cuota que toca son cifras del momento, no de un año cerrado.
+  const deudas = useMemo(() => listadoDeudas(datos, hoyISO()), [datos])
+  const filasDeudaExport = deudas.grupos.flatMap((g) =>
+    g.filas.map((f) => [
+      g.titulo,
+      f.tipo,
+      f.acreedor,
+      f.detalle ?? '',
+      f.importeInicial === undefined ? '' : fmt(f.importeInicial),
+      fmt(f.capitalPendiente),
+      f.cuota === undefined ? '' : fmt(f.cuota),
+      f.periodicidad ?? '',
+      f.tipoInteres === undefined ? '' : formatearPorcentaje(f.tipoInteres, 2),
+    ]),
+  )
 
   const metaPDF = { empresa: config.empresa.razonSocial || 'Empresa', cif: config.empresa.cif, logoDataUrl: config.empresa.logoDataUrl }
 
@@ -145,6 +164,45 @@ export function Informes() {
         </div>
       )}
 
+      {tab === 'deudas' && (
+        <div className="space-y-5">
+          <div className="flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <div className="text-lg font-semibold">
+                Total pendiente: <ImporteEuro valor={deudas.totalPendiente} />
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                A día de hoy, no del ejercicio elegido: el capital vivo y la cuota que toca son cifras del momento.
+                Cuota mensual equivalente: {fmt(deudas.totalCuotaMensual)}.
+              </p>
+            </div>
+            <ExportBotones
+              nombre={`deudas-${config.empresa.razonSocial || 'empresa'}`}
+              tituloPDF="Detalle de deudas"
+              meta={metaPDF}
+              cabeceras={['Bloque', 'Tipo', 'Acreedor', 'Detalle', 'Importe inicial', 'Capital pendiente', 'Cuota', 'Periodicidad', 'Tipo interés']}
+              filas={filasDeudaExport}
+            />
+          </div>
+
+          {deudas.grupos.map((g) => (
+            <div key={g.grupo}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                <h3 className="font-semibold">{g.titulo}</h3>
+                <div className="text-sm">
+                  <ImporteEuro valor={g.totalPendiente} />
+                  {g.totalCuotaMensual > 0 && (
+                    <span style={{ color: 'var(--text-muted)' }}> · {fmt(g.totalCuotaMensual)}/mes</span>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{g.descripcion}</p>
+              <TablaDeudas filas={g.filas} />
+            </div>
+          ))}
+        </div>
+      )}
+
       {tab === 'ejecutivo' && (
         <Tarjeta>
           <h3 className="font-semibold mb-1">Informe ejecutivo mensual</h3>
@@ -204,5 +262,77 @@ function Masas({ filas }: { filas: { cuenta: string; importe: number }[] }) {
         <div key={i} className="flex justify-between"><span className="tabular">{m.cuenta}</span><ImporteEuro valor={m.importe} /></div>
       ))}
     </div>
+  )
+}
+
+/**
+ * Tabla del listado de deudas.
+ *
+ * **Una casilla vacía se pinta como «—», nunca como 0.** Una póliza no tiene
+ * cuota y un renting no tiene tipo de interés: un cero ahí se leería como «al
+ * 0 %», que es un dato distinto y falso. La explicación va debajo de la fila.
+ */
+function TablaDeudas({ filas }: { filas: FilaDeuda[] }) {
+  if (filas.length === 0) {
+    return (
+      <Tarjeta>
+        <p className="text-sm text-center py-5" style={{ color: 'var(--text-muted)' }}>Sin deudas en este bloque.</p>
+      </Tarjeta>
+    )
+  }
+  const vacio = <span style={{ color: 'var(--text-muted)' }}>—</span>
+  return (
+    <Tarjeta className="!p-0 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ color: 'var(--text-muted)' }} className="text-left">
+              <th className="px-4 py-2.5 font-medium">Tipo</th>
+              <th className="px-4 py-2.5 font-medium">Acreedor</th>
+              <th className="px-4 py-2.5 font-medium text-right">Importe inicial</th>
+              <th className="px-4 py-2.5 font-medium text-right">Capital pendiente</th>
+              <th className="px-4 py-2.5 font-medium text-right">Cuota</th>
+              <th className="px-4 py-2.5 font-medium text-right">Interés</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f, i) => (
+              <tr key={i} className="border-t align-top" style={{ borderColor: 'var(--border)' }}>
+                <td className="px-4 py-2.5">
+                  {f.tipo}
+                  {f.esCompromiso && (
+                    <span className="ml-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>(compromiso)</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5">
+                  {f.acreedor}
+                  {f.detalle && (
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{f.detalle}</div>
+                  )}
+                  {f.nota && (
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{f.nota}</div>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {f.importeInicial === undefined ? vacio : <ImporteEuro valor={f.importeInicial} />}
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  <ImporteEuro valor={f.capitalPendiente} />
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {f.cuota === undefined ? vacio : <ImporteEuro valor={f.cuota} />}
+                  {f.periodicidad && f.periodicidad !== 'MENSUAL' && (
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{f.periodicidad.toLowerCase()}</div>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {f.tipoInteres === undefined ? vacio : formatearPorcentaje(f.tipoInteres, 2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Tarjeta>
   )
 }
