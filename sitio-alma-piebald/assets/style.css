@@ -174,7 +174,7 @@ body[data-mode="static"] .hero__stage{position:relative;height:100svh}
 .bands{
   position:absolute;inset:0;z-index:4;pointer-events:none;
   display:grid;align-content:center;
-  padding-left:clamp(24px,7vw,110px);padding-right:52%;
+  padding-left:clamp(24px,7vw,110px);padding-right:57%;
 }
 body[data-mode="static"] .bands{display:none}
 .band{
@@ -189,7 +189,7 @@ body[data-mode="static"] .bands{display:none}
 
 /* ── el reposo ─────────────────────────────────────────────── */
 .settle{
-  position:absolute;z-index:5;left:clamp(24px,7vw,110px);right:52%;
+  position:absolute;z-index:5;left:clamp(24px,7vw,110px);right:57%;
   opacity:0;pointer-events:none;
   text-shadow:0 2px 30px rgba(0,0,0,.9);
 }

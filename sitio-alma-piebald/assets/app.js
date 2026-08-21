@@ -190,6 +190,9 @@
     var top = 0;
     for (var i = 0; i < BANDS.length; i++) {
       var a = bandAlpha(p, BANDS[i]);
+      /* pegar los extremos: sin esto la verja de escritura se cierra cerca del
+         final y deja la banda clavada en un resto de opacidad que nunca limpia */
+      if (a < 0.012) a = 0; else if (a > 0.988) a = 1;
       if (a > top) top = a;
       if (lastWrites.bands[i] === undefined || Math.abs(lastWrites.bands[i] - a) > 0.008) {
         lastWrites.bands[i] = a;
