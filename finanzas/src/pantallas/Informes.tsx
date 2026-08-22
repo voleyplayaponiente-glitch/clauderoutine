@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store/store'
 import { CabeceraPantalla } from './Pantalla'
 import { Tarjeta, Boton, Semaforo, ImporteEuro } from '../componentes/ui'
@@ -10,7 +10,8 @@ import { sumasYSaldos, cuentaPyG, balanceSituacion } from '../dominio/libros'
 import { libroRepercutido, libroSoportado, resumen303, modelo347 } from '../dominio/registros-fiscales'
 import { exportarCSV, exportarExcel, exportarPDF, type SeccionPDF } from '../lib/exportar'
 import { calcularDashboard } from '../lib/dashboard'
-import { listadoDeudas, type FilaDeuda } from '../dominio/listado-deudas'
+import { listadoDeudas, type FilaDeuda, type ListadoGrupo } from '../dominio/listado-deudas'
+import { deudasDelGrupo } from '../lib/grupo'
 import { hoyISO } from '../lib/fechas'
 
 const TABS = [
@@ -51,6 +52,19 @@ export function Informes() {
   // El listado es «a día de hoy», no del ejercicio elegido: el capital vivo y
   // la cuota que toca son cifras del momento, no de un año cerrado.
   const deudas = useMemo(() => listadoDeudas(datos, hoyISO()), [datos])
+
+  // Vista de grupo: los datos de las otras sociedades viven en otros espacios
+  // de IndexedDB, así que hay que ir a buscarlos (asíncrono). Solo se cargan si
+  // se pide, para no leer tres bases de datos cada vez que se abre Informes.
+  const grupo = useStore((s) => s.grupo)
+  const [ambito, setAmbito] = useState<'EMPRESA' | 'GRUPO'>('EMPRESA')
+  const [deudasGrupo, setDeudasGrupo] = useState<ListadoGrupo | null>(null)
+  useEffect(() => {
+    if (ambito !== 'GRUPO' || !grupo) return
+    let vigente = true
+    void deudasDelGrupo(grupo, hoyISO()).then((r) => { if (vigente) setDeudasGrupo(r) })
+    return () => { vigente = false }
+  }, [ambito, grupo, datos])
   const filasDeudaExport = deudas.grupos.flatMap((g) =>
     g.filas.map((f) => [
       g.titulo,
@@ -63,6 +77,23 @@ export function Informes() {
       f.periodicidad ?? '',
       f.tipoInteres === undefined ? '' : formatearPorcentaje(f.tipoInteres, 2),
     ]),
+  )
+
+  const filasGrupoExport = (deudasGrupo?.empresas ?? []).flatMap((e) =>
+    e.listado.grupos.flatMap((g) =>
+      g.filas.map((f) => [
+        e.razonSocial,
+        g.titulo,
+        f.tipo,
+        f.acreedor,
+        f.detalle ?? '',
+        f.importeInicial === undefined ? '' : fmt(f.importeInicial),
+        fmt(f.capitalPendiente),
+        f.cuota === undefined ? '' : fmt(f.cuota),
+        f.periodicidad ?? '',
+        f.tipoInteres === undefined ? '' : formatearPorcentaje(f.tipoInteres, 2),
+      ]),
+    ),
   )
 
   const metaPDF = { empresa: config.empresa.razonSocial || 'Empresa', cif: config.empresa.cif, logoDataUrl: config.empresa.logoDataUrl }
@@ -166,6 +197,31 @@ export function Informes() {
 
       {tab === 'deudas' && (
         <div className="space-y-5">
+          {(grupo?.empresas.length ?? 0) > 1 && (
+            <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--surface-2)' }} role="tablist">
+              {([['EMPRESA', config.empresa.razonSocial || 'Esta empresa'], ['GRUPO', 'Todas las empresas']] as const).map(([id, texto]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={ambito === id}
+                  onClick={() => setAmbito(id)}
+                  className="px-3 py-1.5 text-sm rounded-lg"
+                  style={{
+                    background: ambito === id ? 'var(--surface)' : 'transparent',
+                    fontWeight: ambito === id ? 600 : 400,
+                    border: ambito === id ? '1px solid var(--border)' : '1px solid transparent',
+                  }}
+                >
+                  {texto}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {ambito === 'GRUPO' ? (
+            <DeudasDeGrupo datos={deudasGrupo} filasExport={filasGrupoExport} meta={metaPDF} />
+          ) : (
+        <div className="space-y-5">
           <div className="flex flex-wrap justify-between items-center gap-3">
             <div>
               <div className="text-lg font-semibold">
@@ -200,6 +256,8 @@ export function Informes() {
               <TablaDeudas filas={g.filas} />
             </div>
           ))}
+        </div>
+          )}
         </div>
       )}
 
@@ -289,10 +347,10 @@ function TablaDeudas({ filas }: { filas: FilaDeuda[] }) {
             <tr style={{ color: 'var(--text-muted)' }} className="text-left">
               <th className="px-4 py-2.5 font-medium">Tipo</th>
               <th className="px-4 py-2.5 font-medium">Acreedor</th>
-              <th className="px-4 py-2.5 font-medium text-right">Importe inicial</th>
-              <th className="px-4 py-2.5 font-medium text-right">Capital pendiente</th>
-              <th className="px-4 py-2.5 font-medium text-right">Cuota</th>
-              <th className="px-4 py-2.5 font-medium text-right">Interés</th>
+              <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Importe inicial</th>
+              <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Capital pendiente</th>
+              <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Cuota</th>
+              <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Interés</th>
             </tr>
           </thead>
           <tbody>
@@ -313,19 +371,19 @@ function TablaDeudas({ filas }: { filas: FilaDeuda[] }) {
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{f.nota}</div>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                   {f.importeInicial === undefined ? vacio : <ImporteEuro valor={f.importeInicial} />}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                   <ImporteEuro valor={f.capitalPendiente} />
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                   {f.cuota === undefined ? vacio : <ImporteEuro valor={f.cuota} />}
                   {f.periodicidad && f.periodicidad !== 'MENSUAL' && (
                     <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{f.periodicidad.toLowerCase()}</div>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                   {f.tipoInteres === undefined ? vacio : formatearPorcentaje(f.tipoInteres, 2)}
                 </td>
               </tr>
@@ -334,5 +392,102 @@ function TablaDeudas({ filas }: { filas: FilaDeuda[] }) {
         </table>
       </div>
     </Tarjeta>
+  )
+}
+
+/**
+ * Deudas de TODAS las sociedades, una sección por empresa.
+ *
+ * **Sumar no es consolidar**: lo que unas empresas se deben a otras aparece dos
+ * veces (pasivo aquí, activo allí). No se resta por nuestra cuenta —eso es una
+ * consolidación contable de verdad— pero se dice cuánto hay, que es lo honesto.
+ */
+function DeudasDeGrupo({
+  datos,
+  filasExport,
+  meta,
+}: {
+  datos: ListadoGrupo | null
+  filasExport: (string | number)[][]
+  meta: { empresa?: string; cif?: string; logoDataUrl?: string }
+}) {
+  if (!datos) {
+    return (
+      <Tarjeta>
+        <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>Leyendo las sociedades del grupo…</p>
+      </Tarjeta>
+    )
+  }
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <div className="text-lg font-semibold">
+            Total del grupo: <ImporteEuro valor={datos.totalPendiente} />
+          </div>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {datos.empresas.length} sociedades · cuota mensual equivalente {fmt(datos.totalCuotaMensual)}. Es una{' '}
+            <strong>suma, no una consolidación</strong>: no elimina lo que las empresas se deben entre sí.
+          </p>
+          {datos.totalIntragrupo > 0 && (
+            <p className="text-xs mt-0.5" style={{ color: 'var(--warn)' }}>
+              De ese total, {fmt(datos.totalIntragrupo)} son deudas entre empresas del grupo: contadas dos veces desde
+              fuera, porque son pasivo en una sociedad y activo en otra.
+            </p>
+          )}
+        </div>
+        <ExportBotones
+          nombre="deudas-grupo"
+          tituloPDF="Detalle de deudas del grupo"
+          meta={meta}
+          cabeceras={['Empresa', 'Bloque', 'Tipo', 'Acreedor', 'Detalle', 'Importe inicial', 'Capital pendiente', 'Cuota', 'Periodicidad', 'Tipo interés']}
+          filas={filasExport}
+        />
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        {datos.porBloque.map((b) => (
+          <Tarjeta key={b.grupo} className="!p-4">
+            <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{b.titulo}</div>
+            <div className="text-lg font-semibold"><ImporteEuro valor={b.totalPendiente} /></div>
+            {b.totalCuotaMensual > 0 && (
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{fmt(b.totalCuotaMensual)}/mes</div>
+            )}
+          </Tarjeta>
+        ))}
+      </div>
+
+      {datos.empresas.map((e) => {
+        const conDeuda = e.listado.grupos.filter((g) => g.filas.length > 0)
+        return (
+          <div key={e.empresaId}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2 pb-1 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h3 className="font-semibold">{e.razonSocial}</h3>
+              <div className="text-sm">
+                <ImporteEuro valor={e.listado.totalPendiente} />
+                {e.listado.totalCuotaMensual > 0 && (
+                  <span style={{ color: 'var(--text-muted)' }}> · {fmt(e.listado.totalCuotaMensual)}/mes</span>
+                )}
+              </div>
+            </div>
+            {conDeuda.length === 0 ? (
+              <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>Sin deudas registradas.</p>
+            ) : (
+              <div className="space-y-3">
+                {conDeuda.map((g) => (
+                  <div key={g.grupo}>
+                    <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                      <h4 className="text-sm font-medium">{g.titulo}</h4>
+                      <span className="text-sm"><ImporteEuro valor={g.totalPendiente} /></span>
+                    </div>
+                    <TablaDeudas filas={g.filas} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
