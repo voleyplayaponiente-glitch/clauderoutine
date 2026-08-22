@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { listadoDeudas } from './listado-deudas'
+import { listadoDeudas, consolidarDeudas } from './listado-deudas'
 import type { Deuda, Poliza, Renting, TarjetaCredito } from './tipos'
 
 /**
@@ -168,5 +168,35 @@ describe('listado detallado de deudas', () => {
     // El de Bankinter es un préstamo al 0 % real: ahí el cero es un dato.
     const l = listadoDeudas({ deudas: [prestamo({ acreedor: 'BANKINTER', tipoInteres: 0 })] }, HOY)
     expect(l.grupos[0].filas[0].tipoInteres).toBe(0)
+  })
+
+  it('la vista de grupo SUMA por bloques y no se inventa una consolidación', () => {
+    const a = { empresaId: 'a', razonSocial: 'BESPAIN 7777 SLU', listado: listadoDeudas({ deudas: [prestamo({})], polizas: [POLIZA] }, HOY) }
+    const b = { empresaId: 'b', razonSocial: 'BTC EMBASSY', listado: listadoDeudas({ deudas: [APLAZAMIENTO] }, HOY) }
+    const g = consolidarDeudas([a, b])
+
+    expect(g.empresas.map((e) => e.razonSocial)).toEqual(['BESPAIN 7777 SLU', 'BTC EMBASSY'])
+    expect(g.porBloque.map((x) => x.grupo)).toEqual(['BANCARIA', 'HACIENDA', 'OTRAS'])
+    expect(g.porBloque[0].totalPendiente).toBeCloseTo(a.listado.grupos[0].totalPendiente, 2)
+    expect(g.porBloque[1].totalPendiente).toBeCloseTo(b.listado.grupos[1].totalPendiente, 2)
+    expect(g.totalPendiente).toBeCloseTo(a.listado.totalPendiente + b.listado.totalPendiente, 2)
+  })
+
+  it('cuenta aparte lo que las empresas se deben ENTRE SÍ', () => {
+    // Un préstamo de una sociedad del grupo a otra está contado dos veces al
+    // sumar: pasivo aquí, activo allí. No se resta, pero se dice cuánto es.
+    const intragrupo = prestamo({ tipo: 'GRUPO', acreedor: 'BTC EMBASSY SPAIN HOLDING', importeOriginal: 25000, periodicidad: 'ANUAL', nPeriodos: 5, sistema: 'LINEAL' })
+    const g = consolidarDeudas([
+      { empresaId: 'a', razonSocial: 'BESPAIN 7777 SLU', listado: listadoDeudas({ deudas: [prestamo({}), intragrupo] }, HOY) },
+      { empresaId: 'b', razonSocial: 'BTC EMBASSY', listado: listadoDeudas({ deudas: [] }, HOY) },
+    ])
+    expect(g.totalIntragrupo).toBeGreaterThan(0)
+    // Va en «otras deudas», y sigue sumando en el total: no se resta a escondidas.
+    expect(g.porBloque[2].totalPendiente).toBeCloseTo(g.totalIntragrupo, 2)
+  })
+
+  it('sin deuda entre empresas, el intragrupo es cero', () => {
+    const g = consolidarDeudas([{ empresaId: 'a', razonSocial: 'X', listado: listadoDeudas({ deudas: [prestamo({})] }, HOY) }])
+    expect(g.totalIntragrupo).toBe(0)
   })
 })

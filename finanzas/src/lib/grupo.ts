@@ -10,6 +10,7 @@ import { cargarConfig, cargarDatos } from './db'
 import { calcularDashboard } from './dashboard'
 import { configuracionInicial } from '../dominio/defaults'
 import { agregarGrupo, type AgregadoGrupo, type CifrasEmpresa, type Grupo } from '../dominio/grupo'
+import { listadoDeudas, consolidarDeudas, type ListadoGrupo } from '../dominio/listado-deudas'
 import type { DatosOperativos } from '../dominio/tipos'
 
 function datosVacios(): DatosOperativos {
@@ -41,4 +42,28 @@ export async function cifrasDeEmpresa(empresaId: string, razonSocial: string, ho
 export async function agregadoDelGrupo(grupo: Grupo, hoy: string): Promise<AgregadoGrupo> {
   const cifras = await Promise.all(grupo.empresas.map((e) => cifrasDeEmpresa(e.id, e.razonSocial, hoy)))
   return agregarGrupo(cifras)
+}
+
+
+/**
+ * Listado de deudas de TODAS las sociedades, una sección por empresa.
+ *
+ * Cada espacio se lee por separado —los libros de dos sociedades no se mezclan
+ * nunca— y solo al final se suman los totales. Igual que el agregado del
+ * dashboard, **no es una consolidación**: lo que se deben entre ellas queda
+ * contado dos veces, y por eso `consolidarDeudas` lo separa para poder decirlo.
+ */
+export async function deudasDelGrupo(grupo: Grupo, hoy: string): Promise<ListadoGrupo> {
+  const empresas = await Promise.all(
+    grupo.empresas.map(async (e) => {
+      const [config, datos] = await Promise.all([cargarConfig(e.id), cargarDatos(e.id)])
+      const d = { ...datosVacios(), ...(datos ?? {}) }
+      return {
+        empresaId: e.id,
+        razonSocial: e.razonSocial || config?.empresa.razonSocial || 'Sin nombre',
+        listado: listadoDeudas(d, hoy),
+      }
+    }),
+  )
+  return consolidarDeudas(empresas)
 }

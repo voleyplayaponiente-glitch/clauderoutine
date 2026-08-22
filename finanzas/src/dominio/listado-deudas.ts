@@ -52,6 +52,12 @@ export interface FilaDeuda {
   nota?: string
   /** El renting se paga, pero contablemente no es deuda del balance. */
   esCompromiso?: boolean
+  /**
+   * Se debe a otra empresa del MISMO grupo. Sumada con las demás, esta deuda
+   * está contada dos veces desde el punto de vista del grupo: es un pasivo aquí
+   * y un activo allí. Se marca para poder decirlo.
+   */
+  esIntragrupo?: boolean
 }
 
 export interface GrupoListado {
@@ -143,6 +149,7 @@ function filaDeDeuda(d: Deuda, hoy: string): FilaDeuda {
     // cual; lo que no vale es fingir un 0 donde el dato no existe.
     tipoInteres: conInteresesSinTipo ? undefined : d.tipoInteres,
     nota: notas.length > 0 ? notas.join(' ') : undefined,
+    esIntragrupo: d.tipo === 'GRUPO' || undefined,
   }
 }
 
@@ -249,5 +256,66 @@ export function listadoDeudas(
     grupos,
     totalPendiente: suma(grupos.map((g) => g.totalPendiente)),
     totalCuotaMensual: suma(grupos.map((g) => g.totalCuotaMensual)),
+  }
+}
+
+
+export interface ListadoEmpresa {
+  empresaId: string
+  razonSocial: string
+  listado: ListadoDeudas
+}
+
+export interface TotalBloque {
+  grupo: GrupoDeuda
+  titulo: string
+  totalPendiente: number
+  totalCuotaMensual: number
+}
+
+export interface ListadoGrupo {
+  empresas: ListadoEmpresa[]
+  /** Totales por bloque, sumando todas las sociedades. */
+  porBloque: TotalBloque[]
+  totalPendiente: number
+  totalCuotaMensual: number
+  /**
+   * Cuánto de ese total se debe a otras empresas del grupo. **No se resta**:
+   * se dice, porque desde fuera del grupo esa deuda no existe (es un pasivo en
+   * una sociedad y un activo en otra) y sumarla infla la cifra.
+   */
+  totalIntragrupo: number
+}
+
+/**
+ * Junta los listados de varias sociedades.
+ *
+ * **Esto es una SUMA, no una consolidación contable**: no elimina el tráfico
+ * intragrupo. La cifra sirve para saber cuánto debe el conjunto a terceros y a
+ * los bancos, no para depositar cuentas consolidadas. Lo intragrupo se calcula
+ * aparte para poder avisar de cuánto hay contado dos veces.
+ */
+export function consolidarDeudas(empresas: ListadoEmpresa[]): ListadoGrupo {
+  const bloques: GrupoDeuda[] = ['BANCARIA', 'HACIENDA', 'OTRAS']
+  const porBloque: TotalBloque[] = bloques.map((g) => {
+    const suyos = empresas.map((e) => e.listado.grupos.find((x) => x.grupo === g))
+    return {
+      grupo: g,
+      titulo: suyos.find(Boolean)?.titulo ?? g,
+      totalPendiente: suma(suyos.map((x) => x?.totalPendiente ?? 0)),
+      totalCuotaMensual: suma(suyos.map((x) => x?.totalCuotaMensual ?? 0)),
+    }
+  })
+
+  const intragrupo = empresas.flatMap((e) =>
+    e.listado.grupos.flatMap((g) => g.filas.filter((f) => f.esIntragrupo).map((f) => f.capitalPendiente)),
+  )
+
+  return {
+    empresas,
+    porBloque,
+    totalPendiente: suma(porBloque.map((b) => b.totalPendiente)),
+    totalCuotaMensual: suma(porBloque.map((b) => b.totalCuotaMensual)),
+    totalIntragrupo: suma(intragrupo),
   }
 }
