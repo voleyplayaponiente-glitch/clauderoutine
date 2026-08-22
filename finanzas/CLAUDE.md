@@ -645,6 +645,30 @@ imported module: …/assets/pdf.worker.min-CHFwMXne.mjs»* al subir el acuerdo d
   y la raíz cambiados). Comprobado además **con el arreglo quitado**: sin él, `.mjs` sale como
   `application/octet-stream`.
 
+## Listado detallado de deudas (`dominio/listado-deudas.ts` + pestaña en Informes)
+Pedido por el usuario: *listar las deudas de cada empresa, detallado por tipo, importe inicial,
+capital pendiente, cuota y tipo de interés; por un lado bancarias + renting, otro Hacienda y
+otras deudas.* `resumenFinanciacion` da totales por bloque; esto da **una fila por contrato**.
+- Tres bloques fijos: `BANCARIA` (préstamos, leasing, pólizas, tarjetas y renting) · `HACIENDA`
+  (AEAT y TGSS) · `OTRAS` (proveedores, acreedores, socios, grupo, dividendos).
+- **UN HUECO VACÍO NUNCA ES UN CERO.** Es la regla que gobierna el módulo: la póliza no tiene
+  cuota (se liquidan intereses), el renting no tiene tipo de interés, la tarjeta a fin de mes no
+  devenga nada. Se deja sin valor y se explica en `nota`; un 0 se leería como «al 0 %».
+  · **Lo destapó la verificación en navegador**: el aplazamiento de Hacienda salía al 0,00 %
+    cuando sus plazos SÍ llevan intereses — el acuerdo no imprime el tipo de demora. Regla:
+    `tipoInteres === 0` + algún plazo con `intereses > 0` → sin dato. Un préstamo al 0 % real
+    (el de Bankinter) sí enseña su cero, porque ahí el cero es el dato.
+- De un aplazamiento se muestra **la cuota QUE TOCA** (primera pendiente), no la primera del
+  cuadro: sus cuotas crecen con los intereses y la primera ya no se paga.
+- `cuotaMensual` normaliza trimestral/anual a meses para poder sumar sin mezclar.
+- **Vista de grupo** (`deudasDelGrupo` en `lib/grupo.ts` + `consolidarDeudas`): conmutador
+  «Esta empresa / Todas las empresas», solo si hay más de una. Cada espacio se lee por separado
+  y se carga **solo al pedirla**.
+  · **SUMAR NO ES CONSOLIDAR**: lo intragrupo (`Deuda.tipo === 'GRUPO'`, marcado
+    `esIntragrupo`) está contado dos veces. **No se resta** —eso es una consolidación contable
+    con sus eliminaciones— pero se calcula en `totalIntragrupo` y se avisa en ámbar. En la
+    prueba eran 20.000 € de 134.160 €.
+
 ## Estado al cerrar el 17/08/2026 (tarde) — QUÉ ESTÁ PENDIENTE DE CONFIRMAR
 - Publicada la **1.1.4** en la tienda, imagen verificada en verde (`f2d151a`).
 - **Sin confirmar por el usuario**: que el acuerdo de aplazamiento entre y que el bloque
