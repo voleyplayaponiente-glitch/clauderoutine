@@ -195,6 +195,16 @@ también se pierde → re-clonar). (2) El proxy de git REESCRIBE los commits al 
 sha local) → para esperar la imagen GHCR del workflow, comprobar el estado del run por la API de
 GitHub o usar el tag `latest`, no el sha local.
 
+**Fase 12 (28/09/2026) — rendimiento verificado + Diagnóstico de velocidad:** el usuario reportó
+"le cuesta entrar". Verificación con BD de 14 meses (12 trab, 4 centros, 5.112 turnos, 0,5 MB):
+arranque 320 ms, login 11 ms, RPC 2-7 ms, exports 4-59 ms, e2e navegador login→app 145 ms, vista por
+centro pintada 174 ms, 0 errores, índices OK → **la app NO es el cuello de botella**; sospechosos:
+mDNS umbrel.local en Windows, Tailscale despertando, o Umbrel saturado (corre nodo Bitcoin/Lightning).
+Añadida tarjeta **"Diagnóstico de velocidad"** en Ajustes (solo web, gated por window.api.fichaAlta):
+desglosa la carga con PerformanceNavigationTiming (DNS/conexión/espera TTFB/descarga/total), avisa en
+claro quién es el lento (umbrales 500/1000/500 ms) y botón de 5 pings a /api/session. Pendiente: que
+el usuario mande captura del Diagnóstico tras una carga lenta.
+
 **Pendiente / ideas:** confirmar si el plus de transporte va exento; permitir nº de pagas extra distinto
 de 3; posible selector de color/tamaño de pastillas y **mostrar código junto al nombre en la agenda**;
 **arrastrar-y-soltar** turnos; **festivos por provincia** autocargados; firma digitalizada en el PDF.
