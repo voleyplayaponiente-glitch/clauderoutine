@@ -675,6 +675,11 @@ Arreglo (`dominio/copias-pendientes.ts`, puro + tests; clave `finanzas:copias-es
 - Verificado de punta a punta con **nginx + `nginx.conf` real + el servicio de copias real**
   en `http://umbrel.local` (contexto inseguro, como el Umbrel): cierre a los 2 s → nada;
   reabrir → sube; cambio en BESPAIN + paso a BTC → cada carpeta con lo suyo; aviso de versión.
+- **Publicada como 1.4.0** en la tienda (`742a794`, imagen en verde). Ojo: esta vez el push a la
+  rama de publicación tardó ~2 min en disparar el workflow; se lanzó también a mano
+  (`workflow_dispatch`, que reconstruye las DOS imágenes) y ambas ejecuciones salieron bien.
+- **Avisado al usuario**: las copias ANTIGUAS de la carpeta de una empresa pueden llevar datos
+  de otra (por el fallo 1). Al restaurar, mirar la razón social que enseña el selector.
 
 ## Listado detallado de deudas (`dominio/listado-deudas.ts` + pestaña en Informes)
 Pedido por el usuario: *listar las deudas de cada empresa, detallado por tipo, importe inicial,
