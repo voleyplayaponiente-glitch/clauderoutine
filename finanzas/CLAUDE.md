@@ -30,7 +30,7 @@ a servidor sin reescribir. Las librerías pesadas (recharts/xlsx/jspdf) van en *
 cd finanzas
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 586 tests (Vitest) del motor
+npm test         # 631 tests (Vitest) del motor
 npm run build    # tsc -b && vite build  (GITHUB_PAGES=true para base /clauderoutine/finanzas/)
 npm run preview  # previsualizar (¡recompila sin GITHUB_PAGES para preview local!)
 ```
@@ -644,6 +644,37 @@ imported module: …/assets/pdf.worker.min-CHFwMXne.mjs»* al subir el acuerdo d
   `nginx.conf` mínimo que haga `include /etc/nginx/mime.types` y luego el nuestro con el puerto
   y la raíz cambiados). Comprobado además **con el arreglo quitado**: sin él, `.mjs` sale como
   `application/octet-stream`.
+
+## Auditoría de la copia automática (04/11/2026) — DOS FALLOS GRAVES, arreglados
+El usuario iba a volver a meter todos los datos y pidió verificar que no podía perder nada.
+Revisando `store.ts` aparecieron dos fallos en la subida automática al servidor:
+1. **Subía los datos de la empresa ACTIVA en la carpeta de OTRA.** El temporizador guardaba
+   el id de la empresa del cambio pero, al vencer, leía `estado.config/datos` (la activa). Con
+   cambiar de sociedad en esos 2 minutos, los datos de BTC acababan en la carpeta de BESPAIN.
+   Probablemente explica parte del lío de agosto (copias de «BESPAIN» que no lo eran). Hay test
+   que **falla con el código viejo** (`store/copias-servidor.test.ts`, comprobado).
+2. **Cerrar la pestaña antes de los 2 minutos perdía la copia para siempre**: nada lo
+   recordaba al reabrir. Así pudo pasarse una semana sin copia con la subida encendida.
+Arreglo (`dominio/copias-pendientes.ts`, puro + tests; clave `finanzas:copias-estado`):
+- Cada cambio deja una **marca persistente por empresa**; solo una subida que EMPEZÓ después
+  del cambio la borra. Al arrancar se sube lo marcado (5 s); tras un cambio, a los 30 s; al
+  ocultar/cerrar la pestaña se escribe IndexedDB y se intenta ya; reintento cada 5 min.
+- Cada empresa se sube **con sus datos leídos por su id** (de IndexedDB si no es la activa).
+- Marcan cambio: datos, config, grupo/socios/participaciones, restaurar y crear empresa.
+  Al arrancar, toda empresa con datos o nombre que **nunca** se subió queda marcada.
+- Visible sin entrar en Copias: línea «Copia en tu servidor: al día · hora» en el Dashboard,
+  alerta crítica `copia-atrasada` (>1 h pendiente o fallo) y estado por empresa en Copias.
+- **La app vacía casi siempre es OTRA DIRECCIÓN**: IndexedDB va por origen exacto, así que
+  `umbrel.local:3011` y `192.168.1.20:3011` son dos apps. El Dashboard vacío lo explica, y si
+  la app está en el Umbrel la URL del servidor se rellena sola (`/api/estado` responde 401 →
+  hay servidor en el mismo origen; solo falta la contraseña).
+- **Aviso de versión nueva** (`lib/version.ts` + `componentes/AvisoVersion.tsx`): compara el
+  `index-XXXX.js` cargado con el que enlaza el `index.html` del servidor. **No usa service
+  worker a propósito: en `http://` de red local el navegador NO lo activa** (comprobado:
+  `isSecureContext: false`, sin `serviceWorker`). Guarda todo antes de recargar.
+- Verificado de punta a punta con **nginx + `nginx.conf` real + el servicio de copias real**
+  en `http://umbrel.local` (contexto inseguro, como el Umbrel): cierre a los 2 s → nada;
+  reabrir → sube; cambio en BESPAIN + paso a BTC → cada carpeta con lo suyo; aviso de versión.
 
 ## Listado detallado de deudas (`dominio/listado-deudas.ts` + pestaña en Informes)
 Pedido por el usuario: *listar las deudas de cada empresa, detallado por tipo, importe inicial,

@@ -18,6 +18,8 @@ import {
   guardarGrupo,
   cargarServidorCopias,
   guardarServidorCopias,
+  cargarEstadoCopias,
+  guardarEstadoCopias,
   borrarEspacioEmpresa,
   migrarDesdeEmpresaUnica,
 } from '../lib/db'
@@ -30,6 +32,15 @@ import {
   type Participacion,
 } from '../dominio/grupo'
 import { validarSocio, type Socio } from '../dominio/socios'
+import {
+  marcarCambio,
+  marcarSubida,
+  marcarError,
+  descartarCambio,
+  empresasPorSubir,
+  marcarNuncaSubidas,
+  type EstadoCopias,
+} from '../dominio/copias-pendientes'
 import type { Inversion, OperacionInversion, ValoracionInversion } from '../dominio/inversiones'
 
 type Tema = 'claro' | 'oscuro'
@@ -110,6 +121,8 @@ interface Estado {
    * perdía al restaurar un backup. Ver `CLAVE_SERVIDOR` en `lib/db.ts`.
    */
   servidorCopias?: ServidorCopias
+  /** Por empresa: cambios sin subir, última subida y último fallo. */
+  estadoCopias: EstadoCopias
   actualizarServidorCopias: (parcial: Partial<ServidorCopias>) => void
   /** Sube ahora la copia de la empresa activa. */
   subirCopiaAhora: () => Promise<{ ok: boolean; mensaje: string }>
@@ -165,6 +178,7 @@ function persistirConDebounce(config: Configuracion) {
     pendienteConfig = undefined
     void f?.()
   }, 400)
+  cambioEnEmpresa(empresaId)
 }
 
 let debounceDatos: ReturnType<typeof setTimeout> | undefined
@@ -178,46 +192,150 @@ function persistirDatos(datos: DatosOperativos) {
     pendienteDatos = undefined
     void f?.()
   }, 400)
-  programarCopiaRemota()
+  cambioEnEmpresa(empresaId)
 }
 
 /**
- * Sube la copia al servidor propio, si está configurado y en automático.
+ * COPIA EN EL SERVIDOR — cómo funciona y por qué así.
  *
- * Con un margen largo (dos minutos desde el último cambio): la copia protege del
- * día que el navegador limpia los datos, no hace falta ir al segundo, y así no
- * se convierte en una petición por tecla.
+ * Cada cambio deja una marca PERSISTENTE en la empresa que lo tiene
+ * (`finanzas:copias-estado`). Un temporizador corto sube lo marcado y, como la
+ * marca sobrevive a cerrar la pestaña, **lo que no se sube ahora se sube al
+ * volver a abrir la app**. Antes era un temporizador de dos minutos sin memoria:
+ * cerrar antes de que venciera dejaba el cambio sin copia para siempre.
+ *
+ * Y cada empresa se sube con SUS datos, leídos por su id: el temporizador antiguo
+ * leía los de la empresa activa, así que cambiar de sociedad a tiempo metía los
+ * datos de una en la carpeta de la otra.
  */
+const ESPERA_COPIA_MS = 30_000
+const REINTENTO_COPIA_MS = 5 * 60_000
+
 let debounceCopia: ReturnType<typeof setTimeout> | undefined
-function programarCopiaRemota() {
-  const cfg = almacen?.get().servidorCopias
-  if (!cfg?.activo || !cfg.automatico || !cfg.url) return
-  const empresaId = empresaActual
-  clearTimeout(debounceCopia)
-  debounceCopia = setTimeout(() => {
-    void subirCopiaSiProcede(empresaId)
-  }, 120_000)
+/** Hora del último cambio de cada empresa en esta sesión (la marca guarda el más antiguo). */
+const ultimoCambioPor: Record<string, string> = {}
+/** Las subidas van de una en una: dos a la vez podrían pisarse la marca. */
+let colaCopias: Promise<unknown> = Promise.resolve()
+
+function guardarEstadoCopiasEn(estado: EstadoCopias) {
+  almacen?.set({ estadoCopias: estado })
+  void guardarEstadoCopias(estado)
 }
 
-/** Sube la copia de una empresa. Un fallo no interrumpe: se anota y se enseña. */
-async function subirCopiaSiProcede(empresaId: string): Promise<{ ok: boolean; mensaje: string }> {
+/** Anota un cambio en una empresa y programa su subida. */
+function cambioEnEmpresa(empresaId: string = empresaActual) {
+  if (!empresaId || !almacen) return
+  const ahora = new Date().toISOString()
+  ultimoCambioPor[empresaId] = ahora
+  const antes = almacen.get().estadoCopias
+  const despues = marcarCambio(antes, empresaId, ahora)
+  if (despues !== antes) guardarEstadoCopiasEn(despues)
+  programarCopiaRemota()
+}
+
+function programarCopiaRemota(ms = ESPERA_COPIA_MS) {
+  const cfg = almacen?.get().servidorCopias
+  if (!cfg?.activo || !cfg.automatico || !cfg.url) return
+  clearTimeout(debounceCopia)
+  debounceCopia = setTimeout(() => {
+    void subirPendientes()
+  }, ms)
+}
+
+/** Sube todas las empresas con cambios pendientes. Silencioso: los fallos quedan anotados. */
+function subirPendientes(): Promise<unknown> {
+  const estado = almacen?.get()
+  const cfg = estado?.servidorCopias
+  if (!estado || !cfg?.activo || !cfg.automatico || !cfg.url) return Promise.resolve()
+  const ids = empresasPorSubir(estado.estadoCopias, estado.grupo.empresas.map((e) => e.id))
+  for (const id of ids) colaCopias = colaCopias.then(() => subirEmpresa(id))
+  return colaCopias
+}
+
+/** Sube la copia de UNA empresa con SUS datos. Un fallo no interrumpe: se anota y se enseña. */
+function subirCopiaSiProcede(empresaId: string): Promise<{ ok: boolean; mensaje: string }> {
+  const r = colaCopias.then(() => subirEmpresa(empresaId))
+  colaCopias = r
+  return r
+}
+
+async function subirEmpresa(empresaId: string): Promise<{ ok: boolean; mensaje: string }> {
   const estado = almacen?.get()
   const cfg = estado?.servidorCopias
   if (!estado || !cfg?.activo || !cfg.url) return { ok: false, mensaje: 'El servidor de copias no está configurado.' }
+  const inicio = new Date().toISOString()
   try {
+    // Los datos de ESA empresa: los del estado si es la activa; si no, los
+    // guardados en su espacio (tras escribir lo que quedara a medias).
+    let config: Configuracion | undefined
+    let datos: DatosOperativos | undefined
+    if (empresaId === empresaActual) {
+      config = estado.config
+      datos = estado.datos
+    } else {
+      await vaciarPendientes()
+      ;[config, datos] = await Promise.all([cargarConfig(empresaId), cargarDatos(empresaId)])
+      if (config) config = migrarConfig(config)
+      datos = { ...datosIniciales(), ...(datos ?? {}) }
+    }
     const m = await import('../lib/copias-remotas')
     // Nunca se sube una copia vacía: machacaría la buena del día en el servidor.
-    if (!m.mereceSubirse(estado.config, estado.datos)) {
+    if (!config || !m.mereceSubirse(config, datos)) {
+      guardarEstadoCopiasEn(descartarCambio(almacen!.get().estadoCopias, empresaId))
       return { ok: false, mensaje: 'No hay nada que copiar todavía.' }
     }
-    const r = await m.subirCopia(cfg, empresaId, estado.config, estado.datos, new Date().toISOString(), estado.grupo)
-    almacen?.set({ ultimaCopiaRemota: new Date().toISOString(), errorCopiaRemota: undefined })
+    const r = await m.subirCopia(cfg, empresaId, config, datos, new Date().toISOString(), estado.grupo)
+    const ahora = new Date().toISOString()
+    guardarEstadoCopiasEn(marcarSubida(almacen!.get().estadoCopias, empresaId, inicio, ahora, ultimoCambioPor[empresaId]))
+    if (empresaId === empresaActual) almacen?.set({ ultimaCopiaRemota: ahora, errorCopiaRemota: undefined })
     return { ok: true, mensaje: `Copia del ${r.fecha} guardada en el servidor (${Math.round(r.bytes / 1024)} KB).` }
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : 'No se ha podido subir la copia'
-    almacen?.set({ errorCopiaRemota: mensaje })
+    guardarEstadoCopiasEn(marcarError(almacen!.get().estadoCopias, empresaId, mensaje))
+    if (empresaId === empresaActual) almacen?.set({ errorCopiaRemota: mensaje })
     return { ok: false, mensaje }
   }
+}
+
+async function detectarServidorMismoOrigen() {
+  if (typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return
+  try {
+    const res = await fetch(`${location.origin}/api/estado`, { headers: { Authorization: 'Bearer -' } })
+    // 401 = hay servidor y pide la contraseña; cualquier otra cosa (404 de
+    // GitHub Pages, el index.html del modo desarrollo…) = aquí no hay servidor.
+    if (res.status !== 401) return
+    if (almacen?.get().servidorCopias?.url) return
+    const cfg: ServidorCopias = { activo: false, automatico: true, url: location.origin }
+    almacen?.set({ servidorCopias: cfg })
+    await guardarServidorCopias(cfg)
+  } catch {
+    /* sin red o sin servidor: nada que proponer */
+  }
+}
+
+/**
+ * Al ocultar o cerrar la pestaña: se escribe lo que quede a medias en IndexedDB
+ * y se intenta subir ya lo pendiente. Si el navegador corta la subida, la marca
+ * sigue ahí y se sube la próxima vez que se abra la app.
+ */
+let vigilanciaInstalada = false
+function instalarVigilanciaCopias() {
+  if (vigilanciaInstalada || typeof window === 'undefined') return
+  vigilanciaInstalada = true
+  const alSalir = () => {
+    void vaciarPendientes()
+    clearTimeout(debounceCopia)
+    void subirPendientes()
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') alSalir()
+  })
+  window.addEventListener('pagehide', alSalir)
+  // Reintento periódico: un fallo (Umbrel reiniciando, wifi caída) no se queda
+  // esperando a que haya otro cambio.
+  setInterval(() => {
+    void subirPendientes()
+  }, REINTENTO_COPIA_MS)
 }
 
 /** Fuerza la escritura de lo pendiente. Obligatorio antes de cambiar de empresa. */
@@ -229,6 +347,16 @@ async function vaciarPendientes(): Promise<void> {
   pendienteConfig = undefined
   pendienteDatos = undefined
   await Promise.all([c?.(), d?.()])
+}
+
+/**
+ * Escribe ya lo que quede a medias y espera a las subidas en curso. Para antes
+ * de recargar la página (p. ej. al aplicar una versión nueva).
+ */
+export async function guardarTodoYa(): Promise<void> {
+  await vaciarPendientes()
+  clearTimeout(debounceCopia)
+  await Promise.race([subirPendientes(), new Promise((r) => setTimeout(r, 8_000))])
 }
 
 /** Inserta o reemplaza por id en una lista inmutable. */
@@ -245,12 +373,15 @@ export const useStore = create<Estado>((set, get) => {
   return {
   loaded: false,
   empresasRecuperadas: 0,
+  estadoCopias: {},
   subirCopiaAhora: () => subirCopiaSiProcede(empresaActual),
 
   actualizarServidorCopias: (parcial) => {
     const cfg = { ...(get().servidorCopias ?? { activo: false, automatico: true }), ...parcial }
     set({ servidorCopias: cfg })
     void guardarServidorCopias(cfg)
+    // Recién activado: lo que estuviera esperando se sube ya.
+    if (cfg.activo && cfg.automatico && cfg.url) programarCopiaRemota(2_000)
   },
   tema: 'claro',
   grupo: { version: 1, nombre: 'Mi grupo', empresas: [], participaciones: [], socios: [], empresaActivaId: '' },
@@ -339,7 +470,16 @@ export const useStore = create<Estado>((set, get) => {
       }
     }
 
+    // Datos que nunca han llegado al servidor (los de antes de esta versión, o
+    // los de un cambio cuya subida se cortó) quedan marcados para subir.
+    // (Con solo el nombre ya merece copia: es lo mismo que exige `mereceSubirse`.)
+    const conDatos = espacios.filter((e) => e.tieneDatos || e.razonSocial.trim() !== '' || e.cif.trim() !== '').map((e) => e.empresaId)
+    const estadoPrevio = await cargarEstadoCopias()
+    const estadoCopias = marcarNuncaSubidas(estadoPrevio, conDatos, new Date().toISOString())
+    if (estadoCopias !== estadoPrevio) await guardarEstadoCopias(estadoCopias)
+
     set({
+      estadoCopias,
       servidorCopias,
       grupo,
       config: config ? migrarConfig(config) : configuracionInicial(),
@@ -351,6 +491,13 @@ export const useStore = create<Estado>((set, get) => {
     if (!config) void guardarConfig(empresaId, get().config)
     // Copia de seguridad automática diaria (retención gestionada en la capa lib).
     void import('../lib/copias').then((m) => m.crearSnapshotDiario(get().config, get().datos, new Date().toISOString(), get().grupo))
+    // Lo que quedó sin subir la última vez se sube ahora, sin esperar a otro cambio.
+    instalarVigilanciaCopias()
+    programarCopiaRemota(5_000)
+    // Instalada en el Umbrel, el servidor de copias está en la MISMA dirección
+    // que la app. Si aún no hay nada configurado (navegador nuevo, otra
+    // dirección…), se deja la URL puesta: solo falta la contraseña.
+    if (!servidorCopias?.url) void detectarServidorMismoOrigen()
   },
 
   cambiarEmpresa: async (empresaId) => {
@@ -386,6 +533,7 @@ export const useStore = create<Estado>((set, get) => {
     empresaActual = empresaId
     set({ grupo, config, datos })
     await guardarGrupo(grupo)
+    cambioEnEmpresa(empresaId)
     return empresaId
   },
 
@@ -417,6 +565,7 @@ export const useStore = create<Estado>((set, get) => {
     const grupo = { ...get().grupo, nombre }
     set({ grupo })
     void guardarGrupo(grupo)
+    cambioEnEmpresa()
   },
 
   guardarParticipacion: (p) => {
@@ -428,6 +577,7 @@ export const useStore = create<Estado>((set, get) => {
     const nuevoGrupo = { ...grupo, participaciones }
     set({ grupo: nuevoGrupo })
     void guardarGrupo(nuevoGrupo)
+    cambioEnEmpresa()
     return { ok: true }
   },
 
@@ -435,6 +585,7 @@ export const useStore = create<Estado>((set, get) => {
     const grupo = { ...get().grupo, participaciones: get().grupo.participaciones.filter((p) => p.id !== id) }
     set({ grupo })
     void guardarGrupo(grupo)
+    cambioEnEmpresa()
   },
 
   actualizarFichaEmpresa: (empresaId, parcial) => {
@@ -444,6 +595,7 @@ export const useStore = create<Estado>((set, get) => {
     }
     set({ grupo })
     void guardarGrupo(grupo)
+    cambioEnEmpresa()
   },
 
   guardarSocio: (socio) => {
@@ -452,6 +604,7 @@ export const useStore = create<Estado>((set, get) => {
     const grupo = { ...get().grupo, socios: upsert(get().grupo.socios, socio) }
     set({ grupo })
     void guardarGrupo(grupo)
+    cambioEnEmpresa()
     return { ok: true }
   },
 
@@ -459,6 +612,7 @@ export const useStore = create<Estado>((set, get) => {
     const grupo = { ...get().grupo, socios: get().grupo.socios.filter((s) => s.id !== id) }
     set({ grupo })
     void guardarGrupo(grupo)
+    cambioEnEmpresa()
   },
 
   alternarTema: () => {
@@ -803,6 +957,7 @@ export const useStore = create<Estado>((set, get) => {
     set({ config: c, datos: d })
     void guardarConfig(empresaActual, c)
     void guardarDatos(empresaActual, d)
+    cambioEnEmpresa()
     sincronizarFichaGrupo(set, get, c)
   },
   }

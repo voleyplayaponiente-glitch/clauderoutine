@@ -202,6 +202,7 @@ function ServidorDeCopias({ onRestaurar }: { onRestaurar: (backup: Backup, orige
   const servidor = useStore((s) => s.servidorCopias)
   const actualizarServidorCopias = useStore((s) => s.actualizarServidorCopias)
   const errorCopia = useStore((s) => s.errorCopiaRemota)
+  const estadoCopias = useStore((s) => s.estadoCopias)
 
   // La configuración del servidor es del GRUPO, no de la empresa activa: si
   // fuera por empresa, cada sociedad nueva arrancaría sin copias.
@@ -265,7 +266,7 @@ function ServidorDeCopias({ onRestaurar }: { onRestaurar: (backup: Backup, orige
           etiqueta="URL del servidor"
           valor={cfg.url ?? ''}
           onChange={(v) => guardar({ url: v || undefined })}
-          placeholder="https://umbrel.local:3001"
+          placeholder={typeof location !== 'undefined' ? location.origin : 'http://192.168.1.20:3011'}
         />
         <Campo
           etiqueta="Secreto compartido"
@@ -306,6 +307,32 @@ function ServidorDeCopias({ onRestaurar }: { onRestaurar: (backup: Backup, orige
       )}
       {errorCopia && (
         <p className="text-xs mt-1" style={{ color: 'var(--warn)' }}>La última subida automática falló: {errorCopia}</p>
+      )}
+
+      {cfg.activo && cfg.url && grupo.empresas.length > 0 && (
+        <div className="mt-3">
+          <div className="text-xs font-semibold mb-1">Estado de cada empresa en el servidor</div>
+          <ul className="text-xs space-y-1">
+            {grupo.empresas.map((e) => {
+              const x = estadoCopias[e.id]
+              const hora = x?.subida
+                ? new Date(x.subida).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : undefined
+              const [color, texto] = x?.cambio && x.error
+                ? ['var(--neg)', `con cambios sin copiar — falló: ${x.error} (se reintenta sola)`]
+                : x?.cambio
+                  ? ['var(--warn)', 'cambios en camino al servidor…']
+                  : hora
+                    ? ['var(--pos)', `al día · última subida ${hora}`]
+                    : ['var(--text-muted)', 'sin datos que copiar']
+              return (
+                <li key={e.id}>
+                  <strong>{e.razonSocial || '(sin nombre)'}</strong>: <span style={{ color }}>{texto}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
 
       {copias && (
