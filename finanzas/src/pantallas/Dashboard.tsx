@@ -8,6 +8,7 @@ import { hoyISO, formatearFecha } from '../lib/fechas'
 import { formatearEuro, formatearPorcentaje } from '../dominio/dinero'
 import { calcularDashboard } from '../lib/dashboard'
 import { generarAlertas } from '../dominio/alertas'
+import { retrasoCopias } from '../dominio/copias-pendientes'
 
 const COLORES_CANAL = ['#0a84ff', '#30d158', '#ff9f0a', '#bf5af2', '#5ac8fa', '#ff6482']
 const NIVEL = { critico: 'negativo', aviso: 'atencion', info: 'neutro' } as const
@@ -24,10 +25,21 @@ export function Dashboard() {
     [datos],
   )
   const copiasSinServidor = hayAlgoQuePerder && !(servidor?.activo && servidor.url)
+  const estadoCopias = useStore((s) => s.estadoCopias)
+  const grupo = useStore((s) => s.grupo)
+  const empresaActiva = grupo.empresaActivaId
+  // Solo con el servidor configurado: si no lo está, ya avisa `copiasSinServidor`.
+  const retraso = servidor?.activo && servidor.url
+    ? retrasoCopias(estadoCopias, grupo.empresas.map((e) => e.id), new Date().toISOString())
+    : undefined
+  const copiaAtrasada = retraso ? { empresas: retraso.empresas.length, desde: retraso.desde, error: retraso.error } : undefined
+  const claveRetraso = JSON.stringify(copiaAtrasada ?? null)
   const d = useMemo(
-    () => calcularDashboard(datos, config, hoy, { copiasSinServidor }),
-    [datos, config, hoy, copiasSinServidor],
+    () => calcularDashboard(datos, config, hoy, { copiasSinServidor, copiaAtrasada }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [datos, config, hoy, copiasSinServidor, claveRetraso],
   )
+  const subidaActiva = estadoCopias[empresaActiva]
   const alertas = generarAlertas(d.metricas, (n) => formatearEuro(n))
 
   const hayDatos = datos.ventas.length > 0 || datos.cuentasTesoreria.length > 0 || datos.compras.length > 0 || datos.deudas.length > 0
@@ -40,6 +52,7 @@ export function Dashboard() {
         <Tarjeta>
           <EstadoVacio icono={configurada ? 'panel' : 'ajustes'} titulo={configurada ? 'Aún no hay movimientos que mostrar' : 'Empieza configurando tu empresa'} descripcion={configurada ? 'Registra ventas, compras y saldos y aquí verás la evolución de tesorería, las ventas por canal y el centro de alertas.' : 'Introduce los datos de tu sociedad, tus puntos de venta y tus impuestos.'} accion={<Boton onClick={() => navegar(configurada ? '/ventas' : '/configuracion')}>{configurada ? 'Registrar una venta' : 'Ir a Configuración'}</Boton>} />
         </Tarjeta>
+        <AvisoAppVacia />
       </>
     )
   }
@@ -49,6 +62,7 @@ export function Dashboard() {
   return (
     <>
       <CabeceraPantalla titulo="Dashboard" descripcion={`¿Cómo va la empresa hoy? · ${formatearFecha(hoy)}`} />
+      <EstadoCopiaServidor activo={!!(servidor?.activo && servidor.url)} pendiente={!!subidaActiva?.cambio} error={subidaActiva?.error} ultima={subidaActiva?.subida} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
@@ -207,5 +221,58 @@ function Waterfall({ ventas, coste, gastos, resultado }: { ventas: number; coste
         {barra('= Resultado', resultado, resultado >= 0 ? 'var(--color-brand-500)' : 'var(--neg)', resultado)}
       </div>
     </div>
+  )
+}
+
+/**
+ * Una línea que dice, sin entrar en Copias, si lo de esta empresa está ya en el
+ * servidor. Es lo que permite trabajar tranquilo: se ve, no hay que fiarse.
+ */
+function EstadoCopiaServidor({ activo, pendiente, error, ultima }: { activo: boolean; pendiente: boolean; error?: string; ultima?: string }) {
+  const hora = ultima ? new Date(ultima).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : undefined
+  let estado: 'positivo' | 'atencion' | 'negativo'
+  let texto: string
+  if (!activo) {
+    estado = 'negativo'
+    texto = 'Copia en tu servidor: desactivada'
+  } else if (pendiente && error) {
+    estado = 'negativo'
+    texto = `Copia en tu servidor: falló (${error}). Se reintenta sola cada 5 minutos.`
+  } else if (pendiente) {
+    estado = 'atencion'
+    texto = `Copia en tu servidor: subiendo los últimos cambios…${hora ? ` (anterior: ${hora})` : ''}`
+  } else {
+    estado = 'positivo'
+    texto = hora ? `Copia en tu servidor: al día · ${hora}` : 'Copia en tu servidor: al día'
+  }
+  return (
+    <button onClick={() => navegar('/copias')} className="mb-3 text-left">
+      <Semaforo estado={estado} texto={texto} />
+    </button>
+  )
+}
+
+/**
+ * La app vacía casi nunca significa datos perdidos: suele ser OTRA DIRECCIÓN.
+ * El navegador guarda los datos por dirección exacta, así que
+ * `http://umbrel.local:3011` y `http://192.168.1.20:3011` son dos apps distintas
+ * a sus ojos, cada una con lo suyo. Esto lo dice antes de que cunda el pánico.
+ */
+function AvisoAppVacia() {
+  const direccion = typeof location !== 'undefined' ? location.host : ''
+  return (
+    <Tarjeta className="mt-4">
+      <h3 className="font-semibold mb-2">¿Ya tenías datos y no aparecen?</h3>
+      <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
+        Los datos se guardan en <strong>este navegador</strong> y para <strong>esta dirección exacta</strong>: ahora estás en{' '}
+        <strong>{direccion}</strong>. Si otras veces entras por otra (por ejemplo, con <em>umbrel.local</em> en vez de la IP, o
+        desde otro navegador), aquí la app sale vacía pero tus datos siguen en la otra. Entra siempre por la misma dirección
+        y guárdala en marcadores.
+      </p>
+      <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+        Si de verdad se han borrado, recupéralos del servidor de copias.
+      </p>
+      <Boton variante="secundario" onClick={() => navegar('/copias')}>Recuperar desde el servidor</Boton>
+    </Tarjeta>
   )
 }

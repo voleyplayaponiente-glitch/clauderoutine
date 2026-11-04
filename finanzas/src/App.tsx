@@ -19,6 +19,7 @@ import { Copias } from './pantallas/Copias'
 import { Grupo } from './pantallas/Grupo'
 import { Inversiones } from './pantallas/Inversiones'
 import { PantallaModulo } from './pantallas/Pantalla'
+import { AvisoVersion } from './componentes/AvisoVersion'
 
 // Carga diferida: dashboard y previsión usan Recharts, que no debe pesar en el arranque.
 const Dashboard = lazy(() => import('./pantallas/Dashboard').then((m) => ({ default: m.Dashboard })))
@@ -63,6 +64,7 @@ export default function App() {
           <Esqueleto className="h-40 w-full" />
         </div>
       )}
+      <AvisoVersion />
     </Layout>
   )
 }

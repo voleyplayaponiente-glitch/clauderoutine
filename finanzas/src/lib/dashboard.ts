@@ -70,7 +70,7 @@ export function calcularDashboard(
   config: Configuracion,
   hoy: string,
   /** Estado de cosas que no viven en la configuración de la empresa. */
-  extra?: { copiasSinServidor?: boolean },
+  extra?: { copiasSinServidor?: boolean; copiaAtrasada?: MetricasAlerta['copiaAtrasada'] },
 ): DashboardData {
   const mesActual = mesDe(hoy)
   const cuentas = datos.cuentasTesoreria.filter((c) => !c.anuladoEn)
@@ -166,6 +166,7 @@ export function calcularDashboard(
     puntosBajoObjetivo,
     ...alertasPoliza(datos, hoy),
     copiasSinServidor: extra?.copiasSinServidor,
+    copiaAtrasada: extra?.copiaAtrasada,
   }
 
   return { tesoreria, ventaMes, objetivoMes, margenBrutoPct, resultadoMes, deudaTotal, stockValorado, serieTesoreria, ventasPorCanal: { rows, canales }, ranking, waterfall: { ventas: ventaBaseMes, coste: costeMes, gastos: gastosMes, resultado: resultadoMes }, vencimientos, metricas }

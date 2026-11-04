@@ -12,6 +12,7 @@ import { get, set, del, keys } from 'idb-keyval'
 import type { Configuracion, DatosOperativos, ID, ServidorCopias } from '../dominio/tipos'
 import type { Backup } from '../dominio/backup'
 import type { Grupo } from '../dominio/grupo'
+import type { EstadoCopias } from '../dominio/copias-pendientes'
 
 const CLAVE_TEMA = 'finanzas:tema'
 const CLAVE_SNAPSHOTS = 'finanzas:snapshots'
@@ -28,6 +29,8 @@ const CLAVE_GRUPO = 'finanzas:grupo'
  * Aquí fuera no le pasa ninguna de las dos cosas.
  */
 const CLAVE_SERVIDOR = 'finanzas:servidor-copias'
+/** Qué empresas tienen cambios sin subir al servidor (ver `dominio/copias-pendientes.ts`). */
+const CLAVE_ESTADO_COPIAS = 'finanzas:copias-estado'
 
 /** Claves de la versión de una sola empresa, anteriores al grupo. */
 const CLAVE_CONFIG_LEGADO = 'finanzas:configuracion'
@@ -58,6 +61,14 @@ export async function cargarServidorCopias(): Promise<ServidorCopias | undefined
 
 export async function guardarServidorCopias(cfg: ServidorCopias): Promise<void> {
   await set(CLAVE_SERVIDOR, cfg)
+}
+
+export async function cargarEstadoCopias(): Promise<EstadoCopias> {
+  return (await get<EstadoCopias>(CLAVE_ESTADO_COPIAS)) ?? {}
+}
+
+export async function guardarEstadoCopias(e: EstadoCopias): Promise<void> {
+  await set(CLAVE_ESTADO_COPIAS, e)
 }
 
 export async function cargarDatos(empresaId: ID): Promise<DatosOperativos | undefined> {

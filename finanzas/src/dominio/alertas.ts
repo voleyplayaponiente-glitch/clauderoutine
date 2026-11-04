@@ -34,6 +34,12 @@ export interface MetricasAlerta {
    * fuera del navegador.
    */
   copiasSinServidor?: boolean
+  /**
+   * Hay cambios que no han llegado al servidor de copias desde hace rato, o la
+   * última subida falló. Sin esto, un fallo de la copia solo se veía entrando en
+   * la pantalla de Copias: así pasó una semana sin copia sin que nadie lo supiera.
+   */
+  copiaAtrasada?: { empresas: number; desde: string; error?: string }
 }
 
 const ORDEN: Record<NivelAlerta, number> = { critico: 0, aviso: 1, info: 2 }
@@ -85,6 +91,17 @@ export function generarAlertas(m: MetricasAlerta, fmt: (n: number) => string): A
       nivel: 'critico',
       titulo: 'Sin copia fuera de este navegador',
       detalle: 'Hay datos y el servidor de copias está apagado o sin configurar',
+      ruta: '/copias',
+    })
+  }
+  if (m.copiaAtrasada) {
+    const c = m.copiaAtrasada
+    const hora = c.desde.slice(0, 16).replace('T', ' a las ')
+    alertas.push({
+      id: 'copia-atrasada',
+      nivel: 'critico',
+      titulo: c.empresas === 1 ? 'Cambios sin copiar en el servidor' : `${c.empresas} empresas con cambios sin copiar en el servidor`,
+      detalle: c.error ? `La última subida falló: ${c.error}` : `Pendiente desde el ${hora} (UTC)`,
       ruta: '/copias',
     })
   }
