@@ -1,0 +1,50 @@
+{
+  "_nota": "DATOS DEL DESPACHO. Este es el ÚNICO sitio donde se cambian teléfono, email, horario, dirección, redes y nº de colegiado. Al reconstruir la web se actualizan en todas las páginas.",
+
+  "marca": "La Forja Abogados",
+  "lema": "Forjamos soluciones",
+  "dominio": "https://laforjaabogados.es",
+
+  "titular": "Adonis Alejandro Lafarga Vázquez",
+  "nombreCorto": "Adonis Lafarga",
+  "nif": "[NIF]",
+  "colegio": "Ilustre Colegio de la Abogacía de Alicante (ICALI)",
+  "colegioCorto": "ICALI",
+  "numColegiado": "[Nº COLEGIADO]",
+  "titulacion": ["Graduado en Derecho", "Máster en Abogacía", "Máster en Extranjería"],
+
+  "telefono": {
+    "visible": "691 65 45 55",
+    "internacional": "+34691654555"
+  },
+  "whatsapp": {
+    "numero": "34691654555",
+    "mensaje": "Hola, quería hacer una consulta a La Forja Abogados"
+  },
+  "email": "laforjaabogados@gmail.com",
+
+  "direccion": {
+    "calle": "Avenida Costa Blanca, nº 4",
+    "cp": "03509",
+    "localidad": "Finestrat",
+    "provincia": "Alicante"
+  },
+
+  "horario": {
+    "texto": "Lunes a viernes, de 8:00 a 18:00",
+    "dias": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "abre": "08:00",
+    "cierra": "18:00"
+  },
+
+  "redes": {
+    "instagram": "https://www.instagram.com/laforjaabogados",
+    "facebook": "https://www.facebook.com/laforjaabogados"
+  },
+
+  "zona": ["Finestrat", "Benidorm", "La Nucía", "L'Alfàs del Pi", "Villajoyosa", "Marina Baixa"],
+
+  "formulario": {
+    "claveWeb3Forms": "ACCESS_KEY"
+  }
+}

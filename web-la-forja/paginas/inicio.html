@@ -1,0 +1,172 @@
+---
+titulo: Abogado en Finestrat y Benidorm | La Forja Abogados
+descripcion: Despacho de abogados en Finestrat para toda la Marina Baixa: extranjería, penal, civil y segunda oportunidad. Trato directo con tu abogado. Llama al 691 65 45 55.
+ruta: /
+---
+<section class="hero">
+  <div class="ancho hero__fila">
+    <div class="hero__texto">
+      <p class="etiqueta">{{lema}}</p>
+      <h1>La Forja Abogados</h1>
+      <p class="hero__frase">Tu abogado en Finestrat y la Marina Baixa. Soluciones trabajadas a medida, explicadas con palabras claras.</p>
+      <div class="hero__botones">
+        <a class="boton boton--oro" href="{{telefonoEnlace}}">Llamar al {{telefono.visible}}</a>
+        <a class="boton boton--linea" href="{{whatsappEnlace}}" target="_blank" rel="noopener">{{> icono-whatsapp}} Escribir por WhatsApp</a>
+      </div>
+      <ul class="hero__datos">
+        <li>Extranjería</li>
+        <li>Penal</li>
+        <li>Civil</li>
+        <li>Segunda oportunidad</li>
+      </ul>
+    </div>
+    <div class="hero__sello" aria-hidden="true">
+      {{> simbolo}}
+    </div>
+  </div>
+</section>
+
+<section class="seccion" id="areas" aria-labelledby="t-areas">
+  <div class="ancho">
+    <header class="seccion__cabecera aparece">
+      <p class="etiqueta">Áreas de práctica</p>
+      <h2 id="t-areas">En qué puedo ayudarte</h2>
+      <p>Cuatro áreas y un mismo modo de trabajar: escuchar primero, estudiar a fondo y explicarte cada paso.</p>
+    </header>
+
+    <div class="areas">
+      <a class="area area--principal aparece" href="/extranjeria/">
+        <span class="area__num">01 · Área principal</span>
+        <h3>Extranjería</h3>
+        <p>Vivir y trabajar en España con los papeles en regla. Te acompaño en todo el trámite, desde la primera solicitud hasta el recurso si la respuesta es negativa.</p>
+        <ul class="area__lista">
+          <li>Permisos de residencia y trabajo</li>
+          <li>Arraigo social, laboral, socioformativo y familiar</li>
+          <li>Reagrupación familiar</li>
+          <li>Nacionalidad española</li>
+          <li>Renovaciones y estancia por estudios</li>
+          <li>Recursos contra denegaciones</li>
+        </ul>
+        <span class="area__enlace">Ver extranjería</span>
+      </a>
+
+      <a class="area aparece" href="/penal/">
+        <span class="area__num">02</span>
+        <h3>Penal</h3>
+        <p>Defensa desde el primer momento: asistencia al detenido, juicios rápidos, delitos leves y acusación particular.</p>
+        <span class="area__enlace">Ver penal</span>
+      </a>
+
+      <a class="area aparece" href="/civil/">
+        <span class="area__num">03</span>
+        <h3>Civil</h3>
+        <p>Contratos, reclamaciones de cantidad, herencias, alquileres y desahucios, tanto para reclamar como para defenderte.</p>
+        <span class="area__enlace">Ver civil</span>
+      </a>
+
+      <a class="area aparece" href="/segunda-oportunidad/">
+        <span class="area__num">04</span>
+        <h3>Segunda oportunidad</h3>
+        <p>Para particulares y autónomos que no pueden con sus deudas: estudio de tu situación y del procedimiento previsto en la Ley Concursal.</p>
+        <span class="area__enlace">Ver segunda oportunidad</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="seccion seccion--noche" aria-labelledby="t-metodo">
+  <div class="ancho">
+    <header class="seccion__cabecera aparece">
+      <p class="etiqueta">Cómo trabajo</p>
+      <h2 id="t-metodo">Una solución se forja paso a paso</h2>
+    </header>
+
+    <ol class="pasos">
+      <li class="aparece">
+        <span class="pasos__num">1</span>
+        <h3>Primera consulta</h3>
+        <p>Me cuentas tu caso con calma. Te escucho, te pregunto lo necesario y te digo qué documentos hacen falta.</p>
+      </li>
+      <li class="aparece">
+        <span class="pasos__num">2</span>
+        <h3>Estudio del caso</h3>
+        <p>Reviso tu documentación y la normativa que se aplica. Te explico las opciones que hay, con sus pros y sus contras.</p>
+      </li>
+      <li class="aparece">
+        <span class="pasos__num">3</span>
+        <h3>Solución a medida</h3>
+        <p>Elegimos juntos el camino y me pongo a trabajar. Te informo de cada avance para que sepas siempre en qué punto está tu asunto.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="seccion" id="sobre-mi" aria-labelledby="t-sobre">
+  <div class="ancho sobre">
+    <div class="sobre__foto aparece">
+      <!-- FOTO PENDIENTE: sustituir por img/adonis-retrato.jpg cuando esté en la carpeta -->
+      <div class="foto-pendiente" role="img" aria-label="Retrato de {{titular}} (foto pendiente)">
+        <span>AL</span>
+      </div>
+    </div>
+    <div class="sobre__texto aparece">
+      <p class="etiqueta">Sobre mí</p>
+      <h2 id="t-sobre">{{titular}}</h2>
+      <p>Soy abogado y atiendo personalmente cada asunto que entra en el despacho. Quien te recibe en la primera consulta es quien lleva tu caso hasta el final.</p>
+      <ul class="formacion">
+        <li>Graduado en Derecho</li>
+        <li>Máster en Abogacía</li>
+        <li>Máster en Extranjería</li>
+      </ul>
+      <p class="sobre__colegio">Colegiado n.º {{numColegiado}} del {{colegio}}.</p>
+      <a class="enlace-flecha" href="/sobre-mi/">Conóceme mejor</a>
+    </div>
+  </div>
+</section>
+
+<section class="seccion seccion--hueso" aria-labelledby="t-faq">
+  <div class="ancho ancho--estrecho">
+    <header class="seccion__cabecera aparece">
+      <p class="etiqueta">Preguntas frecuentes</p>
+      <h2 id="t-faq">Antes de llamar</h2>
+    </header>
+
+    <div class="faq aparece">
+      <details>
+        <summary>¿Cómo pido una primera consulta?</summary>
+        <p>Llama al {{telefono.visible}}, escribe por WhatsApp o rellena el formulario de contacto. Te responderé para buscar el día y la hora que mejor te vengan.</p>
+      </details>
+      <details>
+        <summary>¿Qué tengo que llevar a la primera cita?</summary>
+        <p>Tu documento de identidad (DNI, NIE o pasaporte) y todos los papeles que tengas sobre el asunto: notificaciones, contratos, resoluciones, cartas o mensajes. Si te falta algo, no pasa nada: en la consulta vemos qué hay que conseguir.</p>
+      </details>
+      <details>
+        <summary>¿Atiendes solo a personas de Finestrat?</summary>
+        <p>No. El despacho está en Finestrat y atiendo a personas de Benidorm, La Nucía, L'Alfàs del Pi, Villajoyosa y el resto de la Marina Baixa.</p>
+      </details>
+      <details>
+        <summary>¿Lo que cuente en la consulta es confidencial?</summary>
+        <p>Sí. Todo lo que hables con tu abogado está protegido por el secreto profesional, también si al final decides no seguir adelante.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="seccion seccion--noche contacto-rapido" id="contacto" aria-labelledby="t-contacto">
+  <div class="ancho contacto-rapido__fila">
+    <div class="aparece">
+      <p class="etiqueta">Contacto</p>
+      <h2 id="t-contacto">Cuéntame tu caso</h2>
+      <p>El primer paso es hablar. Llama o escribe y vemos cómo puedo ayudarte.</p>
+      <div class="hero__botones">
+        <a class="boton boton--oro" href="{{telefonoEnlace}}">Llamar al {{telefono.visible}}</a>
+        <a class="boton boton--linea" href="{{whatsappEnlace}}" target="_blank" rel="noopener">{{> icono-whatsapp}} WhatsApp</a>
+      </div>
+    </div>
+    <dl class="ficha aparece">
+      <div><dt>Dirección</dt><dd>{{direccion.calle}}<br>{{direccion.cp}} {{direccion.localidad}} ({{direccion.provincia}})<br><a href="{{mapaEnlace}}" target="_blank" rel="noopener">Ver en Google Maps</a></dd></div>
+      <div><dt>Horario</dt><dd>{{horario.texto}}</dd></div>
+      <div><dt>Email</dt><dd><a href="mailto:{{email}}">{{email}}</a></dd></div>
+    </dl>
+  </div>
+</section>
