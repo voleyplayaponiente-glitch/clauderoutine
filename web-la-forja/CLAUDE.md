@@ -43,12 +43,22 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - No comparar con otros despachos ni hablar de precios sin que el abogado lo confirme.
 - Solo 4 áreas, en este orden: Extranjería (principal), Penal, Civil, Segunda oportunidad.
 
-## Logo y fotos (en `estaticos/img`)
-- `logo.jpg` — logo original completo (oro sobre azul). Usarlo tal cual solo sobre fondo azul.
-- `simbolo.png` — balanza + yunque recortado del logo con fondo transparente; de él salen
-  `simbolo.webp`, `simbolo-96.webp` (cabecera y pie), `favicon.png` e `icono-*.png`.
-- `adonis-retrato.jpg` y `adonis-circular.jpg` — originales; en la web se usan las versiones
-  `adonis-retrato-480/840.webp`. Siempre en blanco y negro.
+## Logo y fotos
+- `originales/` — archivos originales, **no se publican**: `logo.jpg` (logo completo, oro sobre azul),
+  `simbolo.png` (balanza + yunque recortado del logo con fondo transparente), `adonis-retrato.jpg`
+  y `adonis-circular.jpg`.
+- `estaticos/img/` — versiones ligeras que usa la web, hechas a partir de los originales:
+  `simbolo.webp`, `simbolo-96.webp` (cabecera y pie), `favicon.png`, `icono-*.png`, `logo-640.webp`,
+  `adonis-retrato-480/840.webp`, `adonis-circular-400.webp` y `compartir.jpg` (imagen al compartir el enlace).
+- Las fotos del abogado van siempre en blanco y negro.
+
+## SEO (ya montado, mantenerlo al añadir páginas)
+- Cada página lleva en su cabecera `titulo` (máx. ~65 caracteres, área + Finestrat/Benidorm), `descripcion`
+  (70–160 caracteres, distinta en cada página) y `miga` (nombre corto para la ruta de migas).
+- Un solo `<h1>` por página. `buscadores: no` en la cabecera excluye la página de Google y del sitemap.
+- `construir.mjs` genera solo: canonical, Open Graph, `sitemap.xml`, `robots.txt` y los datos estructurados
+  (despacho `LegalService`, abogado, migas y las preguntas frecuentes escritas con `<details>`).
+- `estaticos/_headers` — cabeceras de seguridad y de caché para Cloudflare Pages.
 
 ## Requisitos que hay que mantener
 - Perfecta en móvil: barra inferior «Llamar / WhatsApp» en móvil y botón flotante de WhatsApp en pantallas grandes.

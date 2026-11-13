@@ -31,25 +31,32 @@ function cargarDatos() {
     `${d.marca}, ${dir.calle}, ${dir.cp} ${dir.localidad}`
   )}`;
   d.titulacionTexto = d.titulacion.join(' · ');
+  d.zonaTexto = d.zona.slice(0, -1).join(', ') + ' y toda la ' + d.zona.at(-1);
   d.anio = new Date().getFullYear();
   return d;
 }
 
-// ── Datos estructurados para Google (schema.org LegalService) ──────────────
-function datosEstructurados(d) {
-  return JSON.stringify(
+// ── Datos estructurados para Google (schema.org) ───────────────────────────
+// En todas las páginas: el despacho (LegalService) y el sitio web.
+// Además, según la página: la ruta de migas y las preguntas frecuentes que contenga.
+const sinEtiquetas = (html) =>
+  html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+
+function datosEstructurados(d, meta, contenido) {
+  const url = d.dominio + meta.ruta;
+  const grafo = [
     {
-      '@context': 'https://schema.org',
       '@type': 'LegalService',
       '@id': `${d.dominio}/#despacho`,
       name: d.marca,
       slogan: d.lema,
+      description: `Despacho de abogados en ${d.direccion.localidad} (${d.direccion.provincia}): extranjería, penal, civil y segunda oportunidad.`,
       url: `${d.dominio}/`,
       image: `${d.dominio}/img/compartir.jpg`,
       logo: `${d.dominio}/img/icono-512.png`,
       telephone: d.telefono.internacional,
       email: d.email,
-      founder: { '@type': 'Person', name: d.titular, jobTitle: 'Abogado' },
+      founder: { '@id': `${d.dominio}/#abogado` },
       address: {
         '@type': 'PostalAddress',
         streetAddress: d.direccion.calle,
@@ -58,16 +65,58 @@ function datosEstructurados(d) {
         addressRegion: d.direccion.provincia,
         addressCountry: 'ES',
       },
+      hasMap: d.mapaEnlace,
       openingHoursSpecification: [
         { '@type': 'OpeningHoursSpecification', dayOfWeek: d.horario.dias, opens: d.horario.abre, closes: d.horario.cierra },
       ],
-      areaServed: d.zona,
+      areaServed: d.zona.map((nombre) => ({ '@type': 'Place', name: nombre })),
       knowsAbout: ['Extranjería', 'Derecho penal', 'Derecho civil', 'Ley de Segunda Oportunidad'],
+      contactPoint: { '@type': 'ContactPoint', contactType: 'customer service', telephone: d.telefono.internacional, availableLanguage: 'es' },
       sameAs: Object.values(d.redes),
     },
-    null,
-    2
-  );
+    {
+      '@type': 'Person',
+      '@id': `${d.dominio}/#abogado`,
+      name: d.titular,
+      jobTitle: 'Abogado',
+      url: `${d.dominio}/sobre-mi/`,
+      image: `${d.dominio}/img/adonis-retrato-840.webp`,
+      worksFor: { '@id': `${d.dominio}/#despacho` },
+      memberOf: { '@type': 'Organization', name: d.colegio },
+    },
+    { '@type': 'WebSite', '@id': `${d.dominio}/#sitio`, url: `${d.dominio}/`, name: d.marca, inLanguage: 'es', publisher: { '@id': `${d.dominio}/#despacho` } },
+    {
+      '@type': 'WebPage',
+      '@id': `${url}#pagina`,
+      url,
+      name: meta.titulo,
+      description: meta.descripcion,
+      inLanguage: 'es',
+      isPartOf: { '@id': `${d.dominio}/#sitio` },
+      about: { '@id': `${d.dominio}/#despacho` },
+    },
+  ];
+  if (meta.miga) {
+    grafo.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: `${d.dominio}/` },
+        { '@type': 'ListItem', position: 2, name: meta.miga, item: url },
+      ],
+    });
+  }
+  const preguntas = [...contenido.matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g)];
+  if (preguntas.length) {
+    grafo.push({
+      '@type': 'FAQPage',
+      mainEntity: preguntas.map(([, pregunta, respuesta]) => ({
+        '@type': 'Question',
+        name: sinEtiquetas(pregunta),
+        acceptedAnswer: { '@type': 'Answer', text: sinEtiquetas(respuesta) },
+      })),
+    });
+  }
+  return JSON.stringify({ '@context': 'https://schema.org', '@graph': grafo }, null, 2).replace(/</g, '\\u003c');
 }
 
 // ── Mini motor de plantillas ───────────────────────────────────────────────
@@ -120,10 +169,16 @@ function construir() {
     const { meta, cuerpo } = leerPagina(archivo);
     const contexto = {
       ...datos,
-      pagina: { menu: '', ...meta, url: datos.dominio + meta.ruta },
-      jsonld: datosEstructurados(datos),
+      pagina: {
+        menu: '',
+        ...meta,
+        url: datos.dominio + meta.ruta,
+        // "buscadores: no" en la cabecera de una página pide a Google que no la muestre
+        robots: meta.buscadores === 'no' ? '<meta name="robots" content="noindex">' : '',
+      },
     };
     contexto.contenido = pintar(cuerpo, contexto);
+    contexto.jsonld = datosEstructurados(datos, meta, contexto.contenido);
     let html = pintar(base, contexto);
     // Marca en el menú la página en la que estamos
     if (meta.menu) html = html.replaceAll(`data-menu="${meta.menu}"`, `data-menu="${meta.menu}" aria-current="page"`);
@@ -135,10 +190,11 @@ function construir() {
     console.log(`  ✓ ${meta.ruta}   (${relative(RAIZ, archivo).split(sep).join('/')})`);
   }
 
+  const hoy = new Date().toISOString().slice(0, 10);
   writeFileSync(
     join(SALIDA, 'sitemap.xml'),
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      rutas.sort().map((r) => `  <url><loc>${datos.dominio}${r}</loc></url>`).join('\n') +
+      rutas.sort().map((r) => `  <url><loc>${datos.dominio}${r}</loc><lastmod>${hoy}</lastmod></url>`).join('\n') +
       `\n</urlset>\n`
   );
   writeFileSync(join(SALIDA, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${datos.dominio}/sitemap.xml\n`);
@@ -157,7 +213,7 @@ function servir(puerto = 4173) {
     let archivo = join(SALIDA, ruta);
     if (!archivo.startsWith(SALIDA)) { respuesta.writeHead(403).end(); return; }
     if (existsSync(archivo) && statSync(archivo).isDirectory()) archivo = join(archivo, 'index.html');
-    if (!existsSync(archivo)) { respuesta.writeHead(404, { 'content-type': TIPOS['.html'] }).end('<h1>Página no encontrada</h1>'); return; }
+    if (!existsSync(archivo)) { respuesta.writeHead(404, { 'content-type': TIPOS['.html'] }).end(readFileSync(join(SALIDA, '404.html'))); return; }
     respuesta.writeHead(200, { 'content-type': TIPOS[extname(archivo)] ?? 'application/octet-stream' });
     respuesta.end(readFileSync(archivo));
   }).listen(puerto, () => console.log(`Abre en el navegador: http://localhost:${puerto}`));

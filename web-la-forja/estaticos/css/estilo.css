@@ -449,3 +449,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .legal__fecha { font-size: .9rem; }
 .seccion--noche .prosa p { color: var(--texto-noche); }
 .seccion--noche .prosa strong { color: var(--blanco-roto); }
+.pie__zona { font-size: .88rem; max-width: 40ch; }
+
+/* Página no encontrada */
+.no-encontrada { min-height: 56vh; display: grid; align-items: center; }
