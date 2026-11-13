@@ -1,7 +1,7 @@
 // Generadores de HTML de los documentos (cuadrante firmado y resumen por centro).
 // Sin dependencias de Electron: los usa tanto la exportación PDF de escritorio
 // (printToPDF) como el servidor web (página imprimible desde el navegador).
-import { datosCuadrante, datosResumenCentros, datosCuadranteCentros } from './export-data'
+import { datosCuadrante, datosResumenCentros, datosCuadranteCentros, datosListadoTrabajadores } from './export-data'
 import {
   DIAS_SEMANA,
   DIAS_SEMANA_CORTO,
@@ -265,5 +265,62 @@ export function htmlCuadranteCentros(
         <tr class="total"><td>TOTAL</td>${totales}</tr>
       </tbody>
     </table>
+  </body></html>`
+}
+
+/** Listado de trabajadores con datos personales y centros (para PRL/mutua). */
+export function htmlListadoTrabajadores(empresaId: number, conBoton = false): string {
+  const d = datosListadoTrabajadores(empresaId)
+  const filas = d.filas
+    .map(({ t, centros }) => {
+      const centrosTxt = centros
+        .map((c) => (c.principal ? `<b>${esc(c.nombre)}</b>` : esc(c.nombre)))
+        .join('<br/>')
+      return `<tr>
+        <td>${esc(t.codigo)}</td>
+        <td><b>${esc(t.apellidos)}</b>, ${esc(t.nombre)}</td>
+        <td>${esc(t.dni_nie)}</td>
+        <td>${esc(t.nss)}</td>
+        <td>${esc(t.direccion)}</td>
+        <td>${esc(t.telefono)}</td>
+        <td>${esc(t.email)}</td>
+        <td>${esc(t.categoria)}</td>
+        <td>${t.tipo === 'ajena' ? 'Ajena' : 'Autónomo'} · ${t.tipo_contrato === 'indefinido' ? 'Indef.' : 'Temp.'}</td>
+        <td>${t.fecha_alta ? isoALocal(t.fecha_alta) : ''}</td>
+        <td class="num">${numEs(t.horas_contrato_semanales, 1)}</td>
+        <td>${centrosTxt}</td>
+        <td>${t.activo ? 'Activo' : 'Baja' + (t.fecha_baja ? ' ' + isoALocal(t.fecha_baja) : '')}</td>
+      </tr>`
+    })
+    .join('')
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Listado de trabajadores — ${esc(d.empresa.razon_social)}</title><style>${ESTILOS}
+  body { font-size: 10px; }
+  table { table-layout: fixed; }
+  th, td { padding: 3px 5px; word-wrap: break-word; vertical-align: top; }
+  td { font-size: 9.5px; }
+  @media print { @page { size: A4 landscape; margin: 9mm; } }
+  </style></head>
+  <body>
+    ${conBoton ? BOTON_IMPRIMIR : ''}
+    <h1>${esc(d.empresa.razon_social)}</h1>
+    <h2>Listado de trabajadores — datos personales y centros de trabajo · emitido el ${isoALocal(hoyIso())}</h2>
+    <table>
+      <colgroup>
+        <col style="width:3.5%"/><col style="width:11%"/><col style="width:6.5%"/><col style="width:8%"/>
+        <col style="width:15%"/><col style="width:6.5%"/><col style="width:12%"/><col style="width:8%"/>
+        <col style="width:7%"/><col style="width:6%"/><col style="width:4%"/><col style="width:9%"/><col style="width:5.5%"/>
+      </colgroup>
+      <thead><tr>
+        <th>Cód.</th><th>Apellidos, Nombre</th><th>DNI/NIE</th><th>NSS</th><th>Dirección</th>
+        <th>Teléfono</th><th>Email</th><th>Categoría</th><th>Tipo</th><th>Alta</th>
+        <th class="num">h/sem</th><th>Centro(s) de trabajo</th><th>Estado</th>
+      </tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+    <div class="clausula">
+      Documento confidencial con datos personales (RGPD 2016/679). Uso exclusivo para la gestión
+      laboral y de prevención de riesgos laborales; no difundir fuera de ese fin. El centro en
+      <b>negrita</b> es el principal. Total: ${d.filas.length} trabajadores.
+    </div>
   </body></html>`
 }

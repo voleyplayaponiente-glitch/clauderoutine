@@ -155,6 +155,30 @@ export function PantallaExportar(): React.JSX.Element {
       </div>
 
       <div className="card">
+        <h3>Listado de trabajadores (datos personales y centros)</h3>
+        <p className="muted">
+          Todos los trabajadores de {empresa.razon_social} con sus datos personales completos
+          (DNI/NIE, NSS, dirección, teléfono y email), su contrato y sus centros de trabajo.
+          Pensado para mantener al día a la empresa de PRL o a la mutua. Documento confidencial:
+          contiene datos personales (RGPD).
+        </p>
+        <div className="row" style={{ marginTop: 8 }}>
+          <button
+            className="btn primary"
+            onClick={async () => feedback(await window.api.exportar.listadoTrabajadoresPdf(empresa.id))}
+          >
+            📄 Listado PDF
+          </button>
+          <button
+            className="btn"
+            onClick={async () => feedback(await window.api.exportar.listadoTrabajadoresExcel(empresa.id))}
+          >
+            📊 Listado Excel
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
         <h3>Retribuciones de los trabajadores</h3>
         <p className="muted">
           Excel con el desglose de retribución (salario base, plus, prorrateo de pagas, retribución

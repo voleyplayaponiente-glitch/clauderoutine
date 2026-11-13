@@ -1,7 +1,7 @@
 // Exportación Excel de escritorio: genera el buffer y lo guarda con un diálogo.
 import { dialog } from 'electron'
 import { writeFile } from 'fs/promises'
-import { bufferCuadranteExcel, bufferResumenCentrosExcel, bufferRetribucionExcel, bufferCuadranteCentrosExcel } from './generate-excel'
+import { bufferCuadranteExcel, bufferResumenCentrosExcel, bufferRetribucionExcel, bufferCuadranteCentrosExcel, bufferListadoTrabajadoresExcel } from './generate-excel'
 import { datosCuadrante } from './export-data'
 
 export async function exportarCuadranteExcel(trabajadorId: number, anio: number, mes: number) {
@@ -46,5 +46,16 @@ export async function exportarCuadranteCentrosExcel(empresaId: number, anio: num
   })
   if (res.canceled || !res.filePath) return { ok: false }
   await writeFile(res.filePath, await bufferCuadranteCentrosExcel(empresaId, anio, mes, centroId))
+  return { ok: true, ruta: res.filePath }
+}
+
+export async function exportarListadoTrabajadoresExcel(empresaId: number) {
+  const res = await dialog.showSaveDialog({
+    title: 'Guardar listado de trabajadores',
+    defaultPath: 'listado-trabajadores.xlsx',
+    filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+  })
+  if (res.canceled || !res.filePath) return { ok: false }
+  await writeFile(res.filePath, await bufferListadoTrabajadoresExcel(empresaId))
   return { ok: true, ruta: res.filePath }
 }

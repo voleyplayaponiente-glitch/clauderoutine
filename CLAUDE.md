@@ -205,6 +205,16 @@ desglosa la carga con PerformanceNavigationTiming (DNS/conexión/espera TTFB/des
 claro quién es el lento (umbrales 500/1000/500 ms) y botón de 5 pings a /api/session. Pendiente: que
 el usuario mande captura del Diagnóstico tras una carga lenta.
 
+**Fase 13 (13/11/2026) — Listado de trabajadores para PRL/mutua:** nueva exportación en Exportación
+("Listado de trabajadores (datos personales y centros)"): PDF (A4 apaisado, `htmlListadoTrabajadores`)
+y Excel (`bufferListadoTrabajadoresExcel`) con TODOS los datos personales (código, apellidos/nombre,
+DNI/NIE, NSS, dirección, teléfono, email), categoría, tipo+contrato, fecha alta, h/sem, centro(s) de
+trabajo (principal en negrita/●, consulta agrupada `trabajadores.centrosDeEmpresa`) y estado
+(Activo/Baja+fecha); pie RGPD y total. Endpoints `/api/export/trabajadores-{pdf,excel}`; también en
+escritorio. Nota entorno: en el contenedor nuevo Chromium está en
+`/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` (la ruta cambia entre contenedores: hacer
+`ls /opt/pw-browsers/`).
+
 **Pendiente / ideas:** confirmar si el plus de transporte va exento; permitir nº de pagas extra distinto
 de 3; posible selector de color/tamaño de pastillas y **mostrar código junto al nombre en la agenda**;
 **arrastrar-y-soltar** turnos; **festivos por provincia** autocargados; firma digitalizada en el PDF.

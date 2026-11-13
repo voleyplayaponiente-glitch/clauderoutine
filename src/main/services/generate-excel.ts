@@ -2,7 +2,7 @@
 // Lo usan tanto la exportación de escritorio (guarda a fichero) como el servidor
 // web (lo envía como descarga).
 import ExcelJS from 'exceljs'
-import { datosCuadrante, datosResumenCentros, datosCuadranteCentros } from './export-data'
+import { datosCuadrante, datosResumenCentros, datosCuadranteCentros, datosListadoTrabajadores } from './export-data'
 import { empresas, trabajadores } from '../db/repos'
 import { calcRetribucion } from '../../shared/calculos'
 import { DIAS_SEMANA, DIAS_SEMANA_CORTO, MESES, isoALocal, diaSemanaIso } from '../../shared/fechas'
@@ -267,5 +267,56 @@ export async function bufferCuadranteCentrosExcel(
     }
   }
 
+  return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)
+}
+
+/** Listado de trabajadores con datos personales y centros (para PRL/mutua). */
+export async function bufferListadoTrabajadoresExcel(empresaId: number): Promise<Buffer> {
+  const d = datosListadoTrabajadores(empresaId)
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Trabajadores', {
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  })
+  ws.columns = [
+    { width: 7 }, { width: 26 }, { width: 12 }, { width: 15 }, { width: 34 },
+    { width: 12 }, { width: 24 }, { width: 16 }, { width: 14 }, { width: 11 },
+    { width: 8 }, { width: 30 }, { width: 12 }
+  ]
+  ws.mergeCells('A1:M1')
+  ws.getCell('A1').value = `${d.empresa.razon_social} — Listado de trabajadores (datos personales y centros de trabajo)`
+  ws.getCell('A1').font = { bold: true, size: 13 }
+  ws.mergeCells('A2:M2')
+  ws.getCell('A2').value =
+    'Documento confidencial con datos personales (RGPD). Uso exclusivo para gestión laboral y PRL. El centro marcado con ● es el principal.'
+  ws.getCell('A2').font = { italic: true, size: 9, color: { argb: 'FF6E6E73' } }
+
+  const hr = ws.addRow([
+    'Código', 'Apellidos, Nombre', 'DNI/NIE', 'NSS', 'Dirección', 'Teléfono', 'Email',
+    'Categoría', 'Tipo', 'Fecha alta', 'h/sem', 'Centro(s) de trabajo', 'Estado'
+  ])
+  hr.font = { bold: true }
+  hr.eachCell((c) => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }
+    c.border = { bottom: { style: 'thin' } }
+  })
+
+  for (const { t, centros } of d.filas) {
+    const fila = ws.addRow([
+      t.codigo,
+      `${t.apellidos}, ${t.nombre}`,
+      t.dni_nie,
+      t.nss,
+      t.direccion,
+      t.telefono,
+      t.email,
+      t.categoria,
+      `${t.tipo === 'ajena' ? 'Ajena' : 'Autónomo'} · ${t.tipo_contrato === 'indefinido' ? 'Indefinido' : 'Temporal'}`,
+      t.fecha_alta ? isoALocal(t.fecha_alta) : '',
+      t.horas_contrato_semanales,
+      centros.map((c) => (c.principal ? `● ${c.nombre}` : c.nombre)).join('\n'),
+      t.activo ? 'Activo' : 'Baja' + (t.fecha_baja ? ' ' + isoALocal(t.fecha_baja) : '')
+    ])
+    fila.alignment = { vertical: 'top', wrapText: true }
+  }
   return Buffer.from((await wb.xlsx.writeBuffer()) as ArrayBuffer)
 }

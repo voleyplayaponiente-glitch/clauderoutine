@@ -100,3 +100,26 @@ export function datosCuadranteCentros(
   for (const lista of porDiaCentro.values()) lista.sort((a, b) => inicio(a) - inicio(b))
   return { empresa, centros: listaCentros, anio, mes, trabajadoresPorId, porDiaCentro, horasPorCentro }
 }
+
+// ---- Listado de trabajadores (datos personales + centros; para PRL/mutua) ----
+export interface FilaListadoTrabajador {
+  t: Trabajador
+  /** nombres de sus centros, el principal primero */
+  centros: Array<{ nombre: string; principal: boolean }>
+}
+
+export function datosListadoTrabajadores(empresaId: number): {
+  empresa: Empresa
+  filas: FilaListadoTrabajador[]
+} {
+  const empresa = empresas.obtener(empresaId)
+  if (!empresa) throw new Error('Empresa no encontrada')
+  const lista = trabajadores.listar({ empresaId })
+  const porTrab = new Map<number, Array<{ nombre: string; principal: boolean }>>()
+  for (const a of trabajadores.centrosDeEmpresa(empresaId)) {
+    if (!porTrab.has(a.trabajador_id)) porTrab.set(a.trabajador_id, [])
+    porTrab.get(a.trabajador_id)!.push({ nombre: a.centro_nombre, principal: a.es_principal === 1 })
+  }
+  const filas = lista.map((t) => ({ t, centros: porTrab.get(t.id) ?? [] }))
+  return { empresa, filas }
+}

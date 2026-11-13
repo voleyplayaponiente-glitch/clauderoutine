@@ -13,9 +13,15 @@ import {
   bufferCuadranteExcel,
   bufferResumenCentrosExcel,
   bufferRetribucionExcel,
-  bufferCuadranteCentrosExcel
+  bufferCuadranteCentrosExcel,
+  bufferListadoTrabajadoresExcel
 } from '../main/services/generate-excel'
-import { htmlCuadrante, htmlResumenCentros, htmlCuadranteCentros } from '../main/services/html-docs'
+import {
+  htmlCuadrante,
+  htmlResumenCentros,
+  htmlCuadranteCentros,
+  htmlListadoTrabajadores
+} from '../main/services/html-docs'
 import { bufferFichaAltaExcel, parseFichaAlta } from '../main/services/ficha-alta'
 
 const PORT = Number(process.env.PORT || 3000)
@@ -209,6 +215,27 @@ app.get('/api/export/cuadrante-centros-excel', async (req, res) => {
       'Content-Disposition',
       `attachment; filename="cuadrante-centros-${req.query.anio}-${req.query.mes}.xlsx"`
     )
+    res.end(buf)
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
+})
+
+// Listado de trabajadores (datos personales + centros; para PRL/mutua)
+app.get('/api/export/trabajadores-pdf', (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.end(htmlListadoTrabajadores(nInt(req.query.empresa), true))
+  } catch (e) {
+    res.status(500).send((e as Error).message)
+  }
+})
+
+app.get('/api/export/trabajadores-excel', async (req, res) => {
+  try {
+    const buf = await bufferListadoTrabajadoresExcel(nInt(req.query.empresa))
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', 'attachment; filename="listado-trabajadores.xlsx"')
     res.end(buf)
   } catch (e) {
     res.status(500).send((e as Error).message)

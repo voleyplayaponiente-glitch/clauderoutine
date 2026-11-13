@@ -195,6 +195,21 @@ export const trabajadores = {
       .prepare('SELECT * FROM trabajador_centro WHERE trabajador_id = ?')
       .all(trabajadorId) as TrabajadorCentro[]
   },
+  /** Asignaciones de centro (con nombre) de TODOS los trabajadores de una empresa, en una consulta. */
+  centrosDeEmpresa(
+    empresaId: number
+  ): Array<{ trabajador_id: number; centro_nombre: string; es_principal: number }> {
+    return getDb()
+      .prepare(
+        `SELECT tc.trabajador_id, c.nombre AS centro_nombre, tc.es_principal
+         FROM trabajador_centro tc
+         JOIN centro c ON c.id = tc.centro_id
+         JOIN trabajador t ON t.id = tc.trabajador_id
+         WHERE t.empresa_id = ?
+         ORDER BY tc.es_principal DESC, c.nombre`
+      )
+      .all(empresaId) as Array<{ trabajador_id: number; centro_nombre: string; es_principal: number }>
+  },
   fijarCentros(
     trabajadorId: number,
     asignaciones: Array<{ centro_id: number; es_principal: boolean }>
