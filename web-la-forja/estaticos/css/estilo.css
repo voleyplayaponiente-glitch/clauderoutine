@@ -453,3 +453,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* Página no encontrada */
 .no-encontrada { min-height: 56vh; display: grid; align-items: center; }
+
+/* ═══ Fotos de ambiente ═══ */
+.foto { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: var(--radio); border-top: 2px solid var(--oro-viejo); }
+.dos-col > header .foto { margin-top: 12px; }
+.cabecera-foto { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: clamp(28px, 6vw, 72px); align-items: center; margin-bottom: clamp(32px, 5vw, 56px); }
+.cabecera-foto .seccion__cabecera { margin-bottom: 0; }
+.seccion--noche .seccion__cabecera > p:not(.etiqueta) { color: var(--texto-noche); }
+@media (max-width: 860px) { .cabecera-foto { grid-template-columns: 1fr; } }

@@ -80,7 +80,8 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - **Nº de colegiado ICALI**: está como `[Nº COLEGIADO]` en `datos.json`. **No publicar la web sin él.**
 - NIF: está como `[NIF]` en `datos.json`; ponerlo antes de publicar (sale en el aviso legal).
 - Confirmar días del horario (ahora: lunes a viernes, 8:00–18:00).
-- Fotos genéricas de stock.
+- Fotos de stock: hay 3 colocadas (clase `.foto`, originales en `originales/stock`). Falta anotar su autor y
+  enlace en `CREDITOS-FOTOS.md`. Si se añaden más: sin caras reconocibles, en WebP a 640 y 1200 px.
 - Textos: todos son borrador hasta que el abogado los revise (ver `TEXTOS-POR-REVISAR.md`).
 - Formulario de contacto: falta pegar la clave de Web3Forms en `datos.json` (`formulario.claveWeb3Forms`,
   ahora `ACCESS_KEY`) y probar que llega el email. Mientras no esté, el formulario avisa de que no está activado.
