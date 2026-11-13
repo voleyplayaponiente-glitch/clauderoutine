@@ -13,6 +13,9 @@ La Forja Abogados, en Finestrat (Alicante). Lema: **«Forjamos soluciones»**.
 - `paginas/` — el contenido de cada página. Cada archivo empieza con una cabecera entre `---` (`titulo`, `descripcion`, `ruta`, `menu`).
 - `plantillas/` — cabecera, pie y trozos comunes a todas las páginas (`base.html`).
 - `estaticos/` — estilos (`css/estilo.css`), `js`, imágenes (`img`) y fuentes.
+- Páginas de área: todas siguen el mismo orden (cabecera, Qué es, En qué casos ayudo, Cómo es el proceso,
+  Documentación, Preguntas frecuentes, `{{> llamada}}` y `{{> otras-areas}}`). Para un área nueva, copiar una existente
+  y añadirla al menú y al pie en `plantillas/base.html` y en `plantillas/otras-areas.html`.
 - `construir.mjs` — junta todo y genera la web en `sitio/` (carpeta generada, no se edita a mano).
 
 ## Comandos
@@ -59,4 +62,5 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - NIF: está como `[NIF]` en `datos.json`; ponerlo antes de publicar (sale en el aviso legal).
 - Confirmar días del horario (ahora: lunes a viernes, 8:00–18:00).
 - Fotos genéricas de stock.
-- Páginas por hacer: las 4 áreas, Sobre mí, Contacto (formulario Web3Forms) y los 3 textos legales.
+- Textos: todos son borrador hasta que el abogado los revise (ver `TEXTOS-POR-REVISAR.md`).
+- Páginas por hacer: Sobre mí, Contacto (formulario Web3Forms) y los 3 textos legales.

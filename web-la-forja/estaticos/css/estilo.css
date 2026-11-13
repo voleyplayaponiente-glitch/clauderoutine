@@ -319,3 +319,59 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   *, *::before, *::after { transition: none !important; }
   .con-js .aparece { opacity: 1; transform: none; }
 }
+
+/* ═══ Páginas interiores (áreas, sobre mí, contacto, legales) ═══ */
+.hero--interior { padding-block: clamp(48px, 8vw, 96px); }
+.hero--interior .hero__texto { max-width: 52rem; gap: 20px; }
+.hero--interior h1 { font-size: clamp(2.5rem, 6.5vw, 4.4rem); line-height: 1.02; }
+.hero--interior .hero__frase { max-width: 34ch; }
+.hero__intro { color: var(--texto-noche); font-size: 1.1rem; max-width: 60ch; }
+.migas { display: flex; flex-wrap: wrap; gap: 8px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--texto-noche); }
+.migas a { color: var(--oro-claro); text-decoration: none; }
+.migas a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.migas li + li::before { content: "/"; margin-right: 8px; color: var(--oro-viejo); }
+
+.prosa { display: grid; gap: 18px; max-width: 68ch; }
+.prosa p { color: var(--tinta-suave); }
+.prosa strong { color: var(--tinta); font-weight: 600; }
+.prosa a { color: var(--azul-real); text-underline-offset: 3px; text-decoration-color: var(--oro-viejo); }
+.dos-col { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(28px, 6vw, 80px); align-items: start; }
+.dos-col > header { display: grid; gap: 16px; position: sticky; top: calc(var(--alto-cabecera) + 32px); }
+@media (max-width: 860px) { .dos-col { grid-template-columns: 1fr; } .dos-col > header { position: static; } }
+
+/* Casos en los que ayudo */
+.casos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.casos li { display: grid; gap: 8px; align-content: start; padding: 26px 24px; background: var(--blanco); border: 1px solid var(--linea); border-top: 2px solid var(--oro-viejo); border-radius: var(--radio); }
+.casos h3 { font-size: 1.45rem; }
+.casos p { color: var(--tinta-suave); font-size: .98rem; }
+@media (max-width: 960px) { .casos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .casos { grid-template-columns: 1fr; } }
+
+/* Proceso en 4 pasos */
+.pasos--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pasos--4 h3 { font-size: 1.4rem; }
+@media (max-width: 960px) { .pasos--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .pasos--4 { grid-template-columns: 1fr; } }
+
+/* Documentación */
+.docs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; border-top: 1px solid var(--linea); }
+.docs li { position: relative; padding: 14px 0 14px 34px; border-bottom: 1px solid var(--linea); }
+.docs li::before { content: ""; position: absolute; left: 4px; top: 1.25em; width: 12px; height: 6px; border-left: 2px solid var(--oro-viejo); border-bottom: 2px solid var(--oro-viejo); transform: rotate(-45deg); }
+@media (max-width: 700px) { .docs { grid-template-columns: 1fr; } }
+.nota { margin-top: 28px; padding-left: 16px; border-left: 2px solid var(--oro-viejo); color: var(--tinta-suave); font-size: .95rem; max-width: 68ch; }
+
+/* Llamada a la consulta y otras áreas */
+.llamada { text-align: center; }
+.llamada .ancho { display: grid; gap: 18px; justify-items: center; }
+.llamada .etiqueta::after { content: ""; width: 28px; height: 1px; background: currentColor; flex: none; }
+.llamada p:not(.etiqueta) { max-width: 52ch; }
+.llamada .hero__botones { justify-content: center; }
+.llamada__horario { font-size: .9rem; }
+@media (max-width: 860px) { .llamada .hero__botones { width: 100%; } .llamada .boton { flex: 1 1 220px; } }
+
+.otras { padding-block: 40px; border-top: 1px solid var(--linea); }
+.otras .ancho { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
+.otras ul { display: flex; flex-wrap: wrap; gap: 10px; }
+.otras a { display: inline-block; padding: 9px 18px; border: 1px solid var(--linea); border-radius: 99px; text-decoration: none; font-weight: 500; font-size: .95rem; transition: border-color .2s, color .2s; }
+.otras a:hover { border-color: var(--oro-viejo); color: var(--azul-real); }
+.otras li:has(a[aria-current]) { display: none; }

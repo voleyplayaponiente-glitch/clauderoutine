@@ -1,0 +1,13 @@
+<section class="seccion seccion--noche llamada" aria-labelledby="t-llamada">
+  <div class="ancho aparece">
+    <p class="etiqueta">{{lema}}</p>
+    <h2 id="t-llamada">Cuéntame tu caso</h2>
+    <p>El primer paso es hablar. Llama o escribe, vemos tu situación y te explico qué se puede hacer.</p>
+    <div class="hero__botones">
+      <a class="boton boton--oro" href="{{telefonoEnlace}}">Llamar al {{telefono.visible}}</a>
+      <a class="boton boton--linea" href="{{whatsappEnlace}}" target="_blank" rel="noopener">{{> icono-whatsapp}} WhatsApp</a>
+      <a class="boton boton--linea" href="/contacto/">Formulario de contacto</a>
+    </div>
+    <p class="llamada__horario">{{horario.texto}} · {{direccion.calle}}, {{direccion.localidad}}</p>
+  </div>
+</section>
