@@ -76,6 +76,17 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - Accesibilidad: textos alternativos, foco visible, contraste correcto.
 - Imágenes en WebP y con carga diferida. Créditos de fotos de stock en `CREDITOS-FOTOS.md`.
 
+## Estado (13 nov 2026) — para retomar
+Hechas y aprobadas por el usuario las fases 1 a 4 y los documentos de entrega: 10 páginas (inicio, 4 áreas,
+sobre mí, contacto, 3 legales) + página 404, SEO, logo y retrato reales, 3 fotos de stock.
+- El usuario trabaja por fases: enseñar el resultado (capturas o vista previa) y esperar su OK antes de seguir.
+- Vista previa privada publicada como artifact: https://claude.ai/artifact/SQPw6sqPoAzzrhTg3bdVgM
+  Es una copia con rutas relativas hecha a mano desde `sitio/`; no se actualiza sola. Si cambia la web, regenerarla.
+- Unsplash y Pexels bloquean el acceso automático: las fotos de stock las descarga y las sube el usuario.
+- En la sesión en la nube no se pudo ejecutar Lighthouse; PageSpeed queda para cuando esté publicada.
+- El zip de la carpeta que se le envió es anterior a las fotos de stock: generarle uno nuevo si lo pide.
+- Siguiente paso previsto: lo que traiga el usuario (créditos de fotos, más fotos, datos pendientes o correcciones de texto).
+
 ## Pendiente
 - **Nº de colegiado ICALI**: está como `[Nº COLEGIADO]` en `datos.json`. **No publicar la web sin él.**
 - NIF: está como `[NIF]` en `datos.json`; ponerlo antes de publicar (sale en el aviso legal).

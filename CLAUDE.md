@@ -73,5 +73,13 @@ Cada categoría es totalmente independiente (equipos, grupos, resultados, cuadro
 Terminado: todo el flujo funcional + **41 tests** + PWA + export PDF/CSV + backup JSON + vista pública/QR + jugadores por equipo configurables + subcategoría de equipo con filtro.
 Ampliable: drag-and-drop en calendario (hoy edición por selectores), siembra automática de mejores terceros en el cuadro, sincronización remota PostgreSQL, export `.xlsx` nativo.
 
+## Otro proyecto en este repo: web de La Forja Abogados (`web-la-forja/`)
+Web estática de un despacho de abogados (cliente aparte, sin relación con el vóley). **En curso: se retoma aquí.**
+- **Vive solo en la rama `claude/beautiful-mendel-14fuk1`** (no está en `main`). Al empezar una sesión nueva, traer esa rama.
+- No se despliega con el workflow de Pages ni debe hacerlo: no se publica hasta tener nº de colegiado y NIF.
+- Todo lo necesario para continuar está en `web-la-forja/CLAUDE.md` (guía de marca, estructura, estado y pendientes),
+  `web-la-forja/README.md` (publicación) y `web-la-forja/TEXTOS-POR-REVISAR.md`.
+- El usuario decidió dejar la carpeta en este repo público «de momento»; no borrarla sin que lo pida.
+
 ## Notas de uso (PWA instalada)
 - Es PWA con `registerType: 'autoUpdate'`. Tras un despliegue nuevo, en la app instalada basta **recargar** (Mac: Cmd+R, a veces dos veces); si persiste lo antiguo, **Cmd+Q y reabrir**. Recargar/actualizar **no borra datos** (IndexedDB local); solo se pierden con «Borrar todos los datos» o limpieza manual del navegador.
