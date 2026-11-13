@@ -45,7 +45,7 @@ body {
   padding-bottom: var(--alto-barra);
   -webkit-font-smoothing: antialiased;
 }
-img, svg { max-width: 100%; display: block; }
+img, svg { max-width: 100%; height: auto; display: block; }
 a { color: inherit; }
 h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.1; margin: 0; text-wrap: balance; }
 h2 { font-size: clamp(2rem, 4.5vw, 3rem); }
@@ -168,7 +168,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   background: radial-gradient(circle at 50% 62%, rgba(230, 196, 126, .12), transparent 62%);
   box-shadow: inset 0 0 0 14px rgba(14, 24, 44, .6), inset 0 0 0 15px var(--linea-noche);
 }
-.hero__sello .simbolo { width: 54%; height: auto; }
+.hero__sello .simbolo { width: 62%; height: auto; }
 @media (max-width: 860px) {
   .hero__fila { grid-template-columns: 1fr; }
   .hero__sello { display: none; }
@@ -233,10 +233,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .sobre { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(32px, 6vw, 80px); align-items: center; }
 .sobre__texto { display: grid; gap: 20px; justify-items: start; }
 .sobre__texto > p:not(.etiqueta) { color: var(--tinta-suave); }
-.sobre__foto img, .foto-pendiente { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--radio); filter: grayscale(1); }
+.sobre__foto img { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 20%; border-radius: var(--radio); filter: grayscale(1); border: 1px solid var(--linea); background: var(--blanco); }
 .sobre__foto { position: relative; max-width: 420px; }
 .sobre__foto::after { content: ""; position: absolute; inset: 16px -16px -16px 16px; border: 1px solid var(--oro-viejo); border-radius: var(--radio); z-index: -1; }
-.foto-pendiente { display: grid; place-items: center; background: linear-gradient(160deg, #1b2740, var(--azul-noche)); color: var(--oro-viejo); font-family: var(--serif); font-size: 5rem; filter: none; }
 .formacion { display: grid; gap: 0; width: 100%; border-top: 1px solid var(--linea); }
 .formacion li { padding: 12px 0; border-bottom: 1px solid var(--linea); font-weight: 500; }
 .sobre__colegio { font-size: .95rem; }

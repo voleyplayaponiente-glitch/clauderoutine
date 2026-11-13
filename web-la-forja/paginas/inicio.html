@@ -20,8 +20,8 @@ ruta: /
         <li>Segunda oportunidad</li>
       </ul>
     </div>
-    <div class="hero__sello" aria-hidden="true">
-      {{> simbolo}}
+    <div class="hero__sello">
+      <img class="simbolo" src="/img/simbolo.webp" alt="" width="424" height="426">
     </div>
   </div>
 </section>
@@ -104,10 +104,7 @@ ruta: /
 <section class="seccion" id="sobre-mi" aria-labelledby="t-sobre">
   <div class="ancho sobre">
     <div class="sobre__foto aparece">
-      <!-- FOTO PENDIENTE: sustituir por img/adonis-retrato.jpg cuando esté en la carpeta -->
-      <div class="foto-pendiente" role="img" aria-label="Retrato de {{titular}} (foto pendiente)">
-        <span>AL</span>
-      </div>
+      <img src="/img/adonis-retrato-840.webp" srcset="/img/adonis-retrato-480.webp 480w, /img/adonis-retrato-840.webp 840w" sizes="(max-width: 760px) 300px, 420px" alt="Retrato de {{titular}}, abogado" width="840" height="1160" loading="lazy" decoding="async">
     </div>
     <div class="sobre__texto aparece">
       <p class="etiqueta">Sobre mí</p>

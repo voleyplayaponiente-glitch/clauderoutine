@@ -40,6 +40,13 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - No comparar con otros despachos ni hablar de precios sin que el abogado lo confirme.
 - Solo 4 áreas, en este orden: Extranjería (principal), Penal, Civil, Segunda oportunidad.
 
+## Logo y fotos (en `estaticos/img`)
+- `logo.jpg` — logo original completo (oro sobre azul). Usarlo tal cual solo sobre fondo azul.
+- `simbolo.png` — balanza + yunque recortado del logo con fondo transparente; de él salen
+  `simbolo.webp`, `simbolo-96.webp` (cabecera y pie), `favicon.png` e `icono-*.png`.
+- `adonis-retrato.jpg` y `adonis-circular.jpg` — originales; en la web se usan las versiones
+  `adonis-retrato-480/840.webp`. Siempre en blanco y negro.
+
 ## Requisitos que hay que mantener
 - Perfecta en móvil: barra inferior «Llamar / WhatsApp» en móvil y botón flotante de WhatsApp en pantallas grandes.
 - Sin cookies de terceros (por eso no hay banner): nada de mapas incrustados, fuentes externas ni analítica sin consultarlo antes.
@@ -51,7 +58,5 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - **Nº de colegiado ICALI**: está como `[Nº COLEGIADO]` en `datos.json`. **No publicar la web sin él.**
 - NIF: está como `[NIF]` en `datos.json`; ponerlo antes de publicar (sale en el aviso legal).
 - Confirmar días del horario (ahora: lunes a viernes, 8:00–18:00).
-- Logo y fotos reales en `estaticos/img` (`logo.jpg`, `adonis-retrato.jpg`, `adonis-circular.jpg`).
-  El símbolo actual (`plantillas/simbolo.html`, `favicon.svg`) es un dibujo provisional.
 - Fotos genéricas de stock.
 - Páginas por hacer: las 4 áreas, Sobre mí, Contacto (formulario Web3Forms) y los 3 textos legales.
