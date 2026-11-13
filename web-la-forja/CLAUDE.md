@@ -63,4 +63,6 @@ Solo hace falta Node.js; no hay dependencias que instalar.
 - Confirmar días del horario (ahora: lunes a viernes, 8:00–18:00).
 - Fotos genéricas de stock.
 - Textos: todos son borrador hasta que el abogado los revise (ver `TEXTOS-POR-REVISAR.md`).
-- Páginas por hacer: Sobre mí, Contacto (formulario Web3Forms) y los 3 textos legales.
+- Formulario de contacto: falta pegar la clave de Web3Forms en `datos.json` (`formulario.claveWeb3Forms`,
+  ahora `ACCESS_KEY`) y probar que llega el email. Mientras no esté, el formulario avisa de que no está activado.
+- Los 3 textos legales deben ser aprobados por el abogado.

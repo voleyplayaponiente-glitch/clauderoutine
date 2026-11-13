@@ -11,6 +11,11 @@ se marca aquí y se quita el comentario `TEXTO BASE` del principio de su archivo
 | Penal | `paginas/penal.html` | ☐ |
 | Civil | `paginas/civil.html` | ☐ |
 | Segunda oportunidad | `paginas/segunda-oportunidad.html` | ☐ |
+| Sobre mí | `paginas/sobre-mi.html` | ☐ |
+| Contacto | `paginas/contacto.html` | ☐ |
+| Aviso legal | `paginas/aviso-legal.html` | ☐ |
+| Política de privacidad | `paginas/privacidad.html` | ☐ |
+| Política de cookies | `paginas/cookies.html` | ☐ |
 
 ## Puntos concretos a comprobar
 
@@ -41,6 +46,25 @@ se marca aquí y se quita el comentario `TEXTO BASE` del principio de su archivo
 - «Se tramita con abogado y procurador».
 - Vivienda habitual y plan de pagos.
 - Efectos sobre embargos en curso (se ha dejado general).
+
+**Sobre mí**
+- Es una presentación breve hecha solo con los datos del encargo. Añadir lo que se quiera contar:
+  trayectoria, idiomas en los que se atiende, año de colegiación, etc.
+- «Me especialicé con un máster específico» y «un despacho pequeño a propósito».
+- El texto sobre el porqué del nombre «La Forja».
+
+**Contacto**
+- El email es opcional y el teléfono obligatorio (mucha gente solo deja el teléfono). Se puede cambiar.
+
+**Textos legales (aviso legal, privacidad y cookies)** — los debe aprobar el abogado
+- NIF y nº de colegiado: salen de `datos.json` (ahora `[NIF]` y `[Nº COLEGIADO]`).
+- Web del Colegio enlazada en el aviso legal: `www.icali.es`. Confirmar que es la correcta.
+- Plazo de conservación de las consultas que no acaban en encargo: se ha puesto 12 meses.
+- Proveedores citados como encargados del tratamiento: Web3Forms, Google (Gmail), Cloudflare y WhatsApp.
+  Revisar si hay que firmar o aceptar con ellos un contrato de encargo y la mención a transferencias internacionales.
+- Edad mínima indicada: 14 años.
+- La política de cookies afirma que no hay cookies de análisis ni publicidad. Si se añade analítica, hay que
+  cambiarla y poner un banner con Aceptar y Rechazar al mismo nivel.
 
 ## Criterios que se han seguido
 - Ninguna promesa de resultado; se habla de «estudiar», «valorar» y «cuando es posible».

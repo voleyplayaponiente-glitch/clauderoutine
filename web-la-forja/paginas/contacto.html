@@ -1,0 +1,85 @@
+---
+titulo: Contacto | La Forja Abogados, abogado en Finestrat
+descripcion: Contacta con La Forja Abogados en Finestrat: teléfono y WhatsApp 691 65 45 55, formulario de consulta, dirección y horario. Atención a toda la Marina Baixa.
+ruta: /contacto/
+menu: contacto
+---
+<section class="hero hero--interior">
+  <div class="ancho">
+    <div class="hero__texto">
+      <ol class="migas"><li><a href="/">Inicio</a></li><li>Contacto</li></ol>
+      <h1>Cuéntame tu caso</h1>
+      <p class="hero__frase">Llama, escribe por WhatsApp o deja tu consulta en el formulario.</p>
+      <div class="hero__botones">
+        <a class="boton boton--oro" href="{{telefonoEnlace}}">Llamar al {{telefono.visible}}</a>
+        <a class="boton boton--linea" href="{{whatsappEnlace}}" target="_blank" rel="noopener">{{> icono-whatsapp}} Escribir por WhatsApp</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="seccion">
+  <div class="ancho contacto">
+    <div class="contacto__datos aparece">
+      <div class="contacto__persona">
+        <img src="/img/adonis-circular-400.webp" alt="" width="400" height="400" loading="lazy" decoding="async">
+        <p><strong>{{nombreCorto}}</strong>Abogado. Te atiendo personalmente.</p>
+      </div>
+
+      <dl class="ficha ficha--clara">
+        <div><dt>Teléfono</dt><dd><a class="ficha__grande" href="{{telefonoEnlace}}">{{telefono.visible}}</a></dd></div>
+        <div><dt>WhatsApp</dt><dd><a href="{{whatsappEnlace}}" target="_blank" rel="noopener">Abrir conversación de WhatsApp</a></dd></div>
+        <div><dt>Email</dt><dd><a href="mailto:{{email}}">{{email}}</a></dd></div>
+        <div><dt>Dirección</dt><dd>{{direccion.calle}}<br>{{direccion.cp}} {{direccion.localidad}} ({{direccion.provincia}})<br><a href="{{mapaEnlace}}" target="_blank" rel="noopener">Cómo llegar con Google Maps</a></dd></div>
+        <div><dt>Horario</dt><dd>{{horario.texto}}</dd></div>
+      </dl>
+    </div>
+
+    <form class="formulario aparece" id="formulario" action="https://api.web3forms.com/submit" method="POST" data-telefono="{{telefono.visible}}" aria-labelledby="t-form">
+      <h2 id="t-form">Escríbeme</h2>
+      <p>Cuéntame brevemente qué necesitas y te responderé lo antes posible. No incluyas aquí datos muy sensibles: los vemos en la consulta.</p>
+
+      <input type="hidden" name="access_key" value="{{formulario.claveWeb3Forms}}">
+      <input type="hidden" name="subject" value="Nueva consulta desde la web de {{marca}}">
+      <input type="hidden" name="from_name" value="Web {{marca}}">
+      <div class="trampa" aria-hidden="true"><label>No rellenar <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off"></label></div>
+
+      <div class="campo">
+        <label for="f-nombre">Nombre</label>
+        <input id="f-nombre" name="Nombre" type="text" autocomplete="name" required>
+      </div>
+      <div class="campo">
+        <label for="f-telefono">Teléfono</label>
+        <input id="f-telefono" name="Teléfono" type="tel" autocomplete="tel" inputmode="tel" required>
+      </div>
+      <div class="campo">
+        <label for="f-email">Email <span>(opcional)</span></label>
+        <input id="f-email" name="email" type="email" autocomplete="email">
+      </div>
+      <div class="campo">
+        <label for="f-area">Área de interés</label>
+        <select id="f-area" name="Área de interés" required>
+          <option value="" selected disabled>Elige un área</option>
+          <option>Extranjería</option>
+          <option>Penal</option>
+          <option>Civil</option>
+          <option>Segunda oportunidad</option>
+        </select>
+      </div>
+      <div class="campo campo--ancho">
+        <label for="f-mensaje">Mensaje</label>
+        <textarea id="f-mensaje" name="Mensaje" rows="5" required></textarea>
+      </div>
+
+      <label class="casilla">
+        <input type="checkbox" name="Acepta la política de privacidad" value="Sí" required>
+        <span>He leído y acepto la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a>.</span>
+      </label>
+
+      <button class="boton" type="submit">Enviar consulta</button>
+      <p class="formulario__estado" id="formulario-estado" role="status" aria-live="polite"></p>
+
+      <p class="formulario__info"><strong>Información básica sobre protección de datos.</strong> Responsable: {{titular}}. Finalidad: responder a tu consulta. Legitimación: tu consentimiento. Destinatarios: no se ceden datos a terceros, salvo a los proveedores que hacen posible el envío del formulario y el correo. Derechos: acceso, rectificación, supresión y los demás que explica la <a href="/privacidad/">política de privacidad</a>.</p>
+    </form>
+  </div>
+</section>
