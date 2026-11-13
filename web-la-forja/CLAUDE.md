@@ -22,7 +22,16 @@ La Forja Abogados, en Finestrat (Alicante). Lema: **«Forjamos soluciones»**.
 ```bash
 node construir.mjs         # genera la web en "sitio"
 node construir.mjs --ver   # la genera y la sirve en http://localhost:4173
+node construir.mjs --publicar  # lo que ejecuta Cloudflare Pages; falla si faltan nº de colegiado o NIF
 ```
+
+## Cómo se publica
+- La web se publica sola en Cloudflare Pages cada vez que se suben cambios a GitHub (rama principal).
+- «Publica los cambios» = generar la web, comprobar que no hay avisos de PENDIENTE, guardar un punto de
+  control en git con un mensaje claro en español y subirlo a GitHub.
+- «Deshaz el último cambio» = revertir el último punto de control con `git revert` (sin borrar historial) y volver a subir.
+- Antes de publicar, enseñar siempre el cambio en el navegador y esperar el OK del abogado.
+- Los pasos de la primera publicación y del dominio están en `README.md`; la guía para el abogado, en `COMO-HACER-CAMBIOS.md`.
 Solo hace falta Node.js; no hay dependencias que instalar.
 
 ## Marca

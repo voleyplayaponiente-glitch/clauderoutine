@@ -2,6 +2,8 @@
 //
 //   node construir.mjs         → genera la web en la carpeta "sitio"
 //   node construir.mjs --ver   → la genera y la abre en http://localhost:4173
+//   node construir.mjs --publicar → la genera para internet; se niega si faltan
+//                                   datos obligatorios (nº de colegiado o NIF)
 //
 // Qué hace: junta cada página de "paginas" con la cabecera y el pie comunes
 // de "plantillas", rellena los datos del despacho que hay en "datos.json"
@@ -199,6 +201,25 @@ function construir() {
   );
   writeFileSync(join(SALIDA, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${datos.dominio}/sitemap.xml\n`);
   console.log(`Web generada en la carpeta «sitio» (${rutas.length} páginas).`);
+  return datos;
+}
+
+// ── Datos que faltan antes de poder publicar ───────────────────────────────
+function revisarPendientes(datos) {
+  const obligatorios = [];
+  if (datos.numColegiado.includes('[')) obligatorios.push('el nº de colegiado («numColegiado» en datos.json)');
+  if (datos.nif.includes('[')) obligatorios.push('el NIF («nif» en datos.json)');
+  const avisos = [];
+  if (datos.formulario.claveWeb3Forms === 'ACCESS_KEY')
+    avisos.push('la clave del formulario («claveWeb3Forms» en datos.json): hasta entonces el formulario no envía mensajes');
+
+  for (const a of avisos) console.log(`AVISO: falta ${a}.`);
+  for (const o of obligatorios) console.log(`PENDIENTE: falta ${o}.`);
+  if (obligatorios.length && process.argv.includes('--publicar')) {
+    console.error('\nNO SE PUBLICA: el aviso legal estaría incompleto. Rellena los datos pendientes y vuelve a intentarlo.');
+    process.exit(1);
+  }
+  if (obligatorios.length) console.log('La web se puede ver en este ordenador, pero NO debe publicarse todavía.');
 }
 
 // ── Servidor para ver la web en el ordenador antes de publicar ─────────────
@@ -219,5 +240,5 @@ function servir(puerto = 4173) {
   }).listen(puerto, () => console.log(`Abre en el navegador: http://localhost:${puerto}`));
 }
 
-construir();
+revisarPendientes(construir());
 if (process.argv.includes('--ver')) servir();
