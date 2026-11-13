@@ -44,8 +44,12 @@ export function registrarIpc(): void {
   h('export:cuadranteCentrosExcel', (_e, empresaId: number, anio: number, mes: number, centroId?: number) =>
     exportarCuadranteCentrosExcel(empresaId, anio, mes, centroId)
   )
-  h('export:listadoTrabajadoresPdf', (_e, empresaId: number) => exportarListadoTrabajadoresPdf(empresaId))
-  h('export:listadoTrabajadoresExcel', (_e, empresaId: number) => exportarListadoTrabajadoresExcel(empresaId))
+  h('export:listadoTrabajadoresPdf', (_e, empresaId: number, filtro?: 'alta' | 'baja' | 'todos') =>
+    exportarListadoTrabajadoresPdf(empresaId, filtro)
+  )
+  h('export:listadoTrabajadoresExcel', (_e, empresaId: number, filtro?: 'alta' | 'baja' | 'todos') =>
+    exportarListadoTrabajadoresExcel(empresaId, filtro)
+  )
 
   // Copias de seguridad (diálogos nativos: solo escritorio).
   h('backup:exportar', () => exportarCopia())

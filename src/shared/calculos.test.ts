@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  trabajadorDeBaja,
   horasDia,
   mediaMensual,
   sueldoProrrateado,
@@ -214,5 +215,24 @@ describe('calcRetribucion', () => {
   it('el autónomo no cotiza como cuenta ajena', () => {
     const auto = { ...t, tipo: 'autonomo' } as unknown as Trabajador
     expect(calcRetribucion(auto).totalSeguridadSocial).toBe(0)
+  })
+})
+
+describe('trabajadorDeBaja', () => {
+  const hoy = '2026-11-13'
+  it('activo sin fecha de baja → de alta', () => {
+    expect(trabajadorDeBaja({ activo: 1, fecha_baja: null }, hoy)).toBe(false)
+  })
+  it('con fecha de baja pasada → de baja aunque la ficha siga activa', () => {
+    expect(trabajadorDeBaja({ activo: 1, fecha_baja: '2026-10-31' }, hoy)).toBe(true)
+  })
+  it('con fecha de baja hoy → de baja', () => {
+    expect(trabajadorDeBaja({ activo: 1, fecha_baja: '2026-11-13' }, hoy)).toBe(true)
+  })
+  it('con fecha de baja futura → sigue de alta hasta que llegue', () => {
+    expect(trabajadorDeBaja({ activo: 1, fecha_baja: '2026-12-01' }, hoy)).toBe(false)
+  })
+  it('ficha marcada inactiva → de baja aunque no tenga fecha', () => {
+    expect(trabajadorDeBaja({ activo: 0, fecha_baja: null }, hoy)).toBe(true)
   })
 })

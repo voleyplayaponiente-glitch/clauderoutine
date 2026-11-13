@@ -92,8 +92,8 @@ export interface ApiGestor {
     retribucionExcel(empresaId: number): Promise<ResultadoOperacion>
     cuadranteCentrosPdf(empresaId: number, anio: number, mes: number, centroId?: number): Promise<ResultadoOperacion>
     cuadranteCentrosExcel(empresaId: number, anio: number, mes: number, centroId?: number): Promise<ResultadoOperacion>
-    listadoTrabajadoresPdf(empresaId: number): Promise<ResultadoOperacion>
-    listadoTrabajadoresExcel(empresaId: number): Promise<ResultadoOperacion>
+    listadoTrabajadoresPdf(empresaId: number, filtro?: 'alta' | 'baja' | 'todos'): Promise<ResultadoOperacion>
+    listadoTrabajadoresExcel(empresaId: number, filtro?: 'alta' | 'baja' | 'todos'): Promise<ResultadoOperacion>
   }
   backup: {
     exportar(): Promise<ResultadoOperacion>

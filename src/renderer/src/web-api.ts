@@ -159,12 +159,12 @@ export const webApi: ApiGestor = {
       descargar(`/api/export/cuadrante-centros-excel?empresa=${empresaId}&anio=${anio}&mes=${mes}${extra}`)
       return { ok: true }
     },
-    listadoTrabajadoresPdf: async (empresaId) => {
-      window.open(`/api/export/trabajadores-pdf?empresa=${empresaId}`, '_blank')
+    listadoTrabajadoresPdf: async (empresaId, filtro = 'alta') => {
+      window.open(`/api/export/trabajadores-pdf?empresa=${empresaId}&filtro=${filtro}`, '_blank')
       return { ok: true }
     },
-    listadoTrabajadoresExcel: async (empresaId) => {
-      descargar(`/api/export/trabajadores-excel?empresa=${empresaId}`)
+    listadoTrabajadoresExcel: async (empresaId, filtro = 'alta') => {
+      descargar(`/api/export/trabajadores-excel?empresa=${empresaId}&filtro=${filtro}`)
       return { ok: true }
     }
   },

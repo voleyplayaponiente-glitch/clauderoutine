@@ -312,3 +312,15 @@ export function calcRetribucion(t: TrabRetrib): DetalleRetribucion {
     neto
   }
 }
+
+/**
+ * Un trabajador está de baja si su ficha está marcada inactiva o si su fecha de
+ * baja ya ha llegado (la ficha no tiene casilla de activo: la fecha manda).
+ */
+export function trabajadorDeBaja(
+  t: { activo: number; fecha_baja: string | null },
+  hoyIso: string
+): boolean {
+  if (!t.activo) return true
+  return !!t.fecha_baja && t.fecha_baja <= hoyIso
+}

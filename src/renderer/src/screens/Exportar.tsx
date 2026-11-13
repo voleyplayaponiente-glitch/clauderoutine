@@ -16,6 +16,7 @@ export function PantallaExportar(): React.JSX.Element {
   const [trabId, setTrabId] = useState<number | null>(null)
   const [centros, setCentros] = useState<Centro[]>([])
   const [centroSel, setCentroSel] = useState('') // '' = todos los centros
+  const [filtroListado, setFiltroListado] = useState<'alta' | 'baja' | 'todos'>('alta')
 
   useEffect(() => {
     if (!empresa) return
@@ -157,21 +158,34 @@ export function PantallaExportar(): React.JSX.Element {
       <div className="card">
         <h3>Listado de trabajadores (datos personales y centros)</h3>
         <p className="muted">
-          Todos los trabajadores de {empresa.razon_social} con sus datos personales completos
-          (DNI/NIE, NSS, dirección, teléfono y email), su contrato y sus centros de trabajo.
-          Pensado para mantener al día a la empresa de PRL o a la mutua. Documento confidencial:
-          contiene datos personales (RGPD).
+          Trabajadores de {empresa.razon_social} con sus datos personales completos (DNI/NIE, NSS,
+          dirección, teléfono y email), su contrato y sus centros de trabajo. Pensado para mantener
+          al día a la empresa de PRL o a la mutua. Un trabajador cuenta como <b>de baja</b> en
+          cuanto su ficha tiene fecha de baja. Documento confidencial: contiene datos personales
+          (RGPD).
         </p>
-        <div className="row" style={{ marginTop: 8 }}>
+        <div className="row" style={{ alignItems: 'flex-end', marginTop: 8 }}>
+          <label className="field" style={{ minWidth: 220 }}>
+            <span>Incluir</span>
+            <select value={filtroListado} onChange={(e) => setFiltroListado(e.target.value as 'alta' | 'baja' | 'todos')}>
+              <option value="alta">Solo trabajadores de alta</option>
+              <option value="baja">Solo trabajadores de baja</option>
+              <option value="todos">Todos (alta y baja)</option>
+            </select>
+          </label>
           <button
             className="btn primary"
-            onClick={async () => feedback(await window.api.exportar.listadoTrabajadoresPdf(empresa.id))}
+            onClick={async () =>
+              feedback(await window.api.exportar.listadoTrabajadoresPdf(empresa.id, filtroListado))
+            }
           >
             📄 Listado PDF
           </button>
           <button
             className="btn"
-            onClick={async () => feedback(await window.api.exportar.listadoTrabajadoresExcel(empresa.id))}
+            onClick={async () =>
+              feedback(await window.api.exportar.listadoTrabajadoresExcel(empresa.id, filtroListado))
+            }
           >
             📊 Listado Excel
           </button>

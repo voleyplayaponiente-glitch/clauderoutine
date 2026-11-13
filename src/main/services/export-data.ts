@@ -1,7 +1,7 @@
 // Reúne y calcula los datos de un cuadrante mensual para exportarlo.
 import { empresas, centros, trabajadores, cuadrantes } from '../db/repos'
-import { resumenMesTrabajador, horasDia, horasCentroMes } from '../../shared/calculos'
-import { horaAMinutos } from '../../shared/fechas'
+import { resumenMesTrabajador, horasDia, horasCentroMes, trabajadorDeBaja } from '../../shared/calculos'
+import { horaAMinutos, hoyIso } from '../../shared/fechas'
 import { colorTrabajador } from '../../shared/colores'
 import type { Centro, Empresa, Trabajador, Turno } from '../../shared/types'
 
@@ -102,15 +102,23 @@ export function datosCuadranteCentros(
 }
 
 // ---- Listado de trabajadores (datos personales + centros; para PRL/mutua) ----
+export type FiltroListado = 'alta' | 'baja' | 'todos'
+
 export interface FilaListadoTrabajador {
   t: Trabajador
   /** nombres de sus centros, el principal primero */
   centros: Array<{ nombre: string; principal: boolean }>
+  /** de baja = ficha inactiva o fecha de baja ya alcanzada (regla compartida) */
+  deBaja: boolean
 }
 
-export function datosListadoTrabajadores(empresaId: number): {
+export function datosListadoTrabajadores(
+  empresaId: number,
+  filtro: FiltroListado = 'alta'
+): {
   empresa: Empresa
   filas: FilaListadoTrabajador[]
+  filtro: FiltroListado
 } {
   const empresa = empresas.obtener(empresaId)
   if (!empresa) throw new Error('Empresa no encontrada')
@@ -120,6 +128,9 @@ export function datosListadoTrabajadores(empresaId: number): {
     if (!porTrab.has(a.trabajador_id)) porTrab.set(a.trabajador_id, [])
     porTrab.get(a.trabajador_id)!.push({ nombre: a.centro_nombre, principal: a.es_principal === 1 })
   }
-  const filas = lista.map((t) => ({ t, centros: porTrab.get(t.id) ?? [] }))
-  return { empresa, filas }
+  const hoy = hoyIso()
+  const filas = lista
+    .map((t) => ({ t, centros: porTrab.get(t.id) ?? [], deBaja: trabajadorDeBaja(t, hoy) }))
+    .filter((f) => (filtro === 'todos' ? true : filtro === 'baja' ? f.deBaja : !f.deBaja))
+  return { empresa, filas, filtro }
 }

@@ -269,10 +269,14 @@ export function htmlCuadranteCentros(
 }
 
 /** Listado de trabajadores con datos personales y centros (para PRL/mutua). */
-export function htmlListadoTrabajadores(empresaId: number, conBoton = false): string {
-  const d = datosListadoTrabajadores(empresaId)
+export function htmlListadoTrabajadores(
+  empresaId: number,
+  conBoton = false,
+  filtro: 'alta' | 'baja' | 'todos' = 'alta'
+): string {
+  const d = datosListadoTrabajadores(empresaId, filtro)
   const filas = d.filas
-    .map(({ t, centros }) => {
+    .map(({ t, centros, deBaja }) => {
       const centrosTxt = centros
         .map((c) => (c.principal ? `<b>${esc(c.nombre)}</b>` : esc(c.nombre)))
         .join('<br/>')
@@ -289,7 +293,7 @@ export function htmlListadoTrabajadores(empresaId: number, conBoton = false): st
         <td>${t.fecha_alta ? isoALocal(t.fecha_alta) : ''}</td>
         <td class="num">${numEs(t.horas_contrato_semanales, 1)}</td>
         <td>${centrosTxt}</td>
-        <td>${t.activo ? 'Activo' : 'Baja' + (t.fecha_baja ? ' ' + isoALocal(t.fecha_baja) : '')}</td>
+        <td>${deBaja ? 'Baja' + (t.fecha_baja ? ' ' + isoALocal(t.fecha_baja) : '') : 'Activo'}</td>
       </tr>`
     })
     .join('')
@@ -303,7 +307,7 @@ export function htmlListadoTrabajadores(empresaId: number, conBoton = false): st
   <body>
     ${conBoton ? BOTON_IMPRIMIR : ''}
     <h1>${esc(d.empresa.razon_social)}</h1>
-    <h2>Listado de trabajadores — datos personales y centros de trabajo · emitido el ${isoALocal(hoyIso())}</h2>
+    <h2>Listado de trabajadores ${filtro === 'alta' ? 'DE ALTA' : filtro === 'baja' ? 'DE BAJA' : '(todos)'} — datos personales y centros de trabajo · emitido el ${isoALocal(hoyIso())}</h2>
     <table>
       <colgroup>
         <col style="width:3.5%"/><col style="width:11%"/><col style="width:6.5%"/><col style="width:8%"/>

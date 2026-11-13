@@ -45,7 +45,7 @@ export function exportarCuadranteCentrosPdf(empresaId: number, anio: number, mes
   return generarPdf(html, `cuadrante-centros-${anio}-${String(mes).padStart(2, '0')}.pdf`)
 }
 
-export function exportarListadoTrabajadoresPdf(empresaId: number) {
-  const html = htmlListadoTrabajadores(empresaId)
-  return generarPdf(html, 'listado-trabajadores.pdf')
+export function exportarListadoTrabajadoresPdf(empresaId: number, filtro: 'alta' | 'baja' | 'todos' = 'alta') {
+  const html = htmlListadoTrabajadores(empresaId, false, filtro)
+  return generarPdf(html, `listado-trabajadores-${filtro}.pdf`)
 }

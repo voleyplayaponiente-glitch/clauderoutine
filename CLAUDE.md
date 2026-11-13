@@ -211,7 +211,11 @@ y Excel (`bufferListadoTrabajadoresExcel`) con TODOS los datos personales (códi
 DNI/NIE, NSS, dirección, teléfono, email), categoría, tipo+contrato, fecha alta, h/sem, centro(s) de
 trabajo (principal en negrita/●, consulta agrupada `trabajadores.centrosDeEmpresa`) y estado
 (Activo/Baja+fecha); pie RGPD y total. Endpoints `/api/export/trabajadores-{pdf,excel}`; también en
-escritorio. Nota entorno: en el contenedor nuevo Chromium está en
+escritorio. **Fase 14 (13/11/2026):** corregido el estado — un trabajador cuenta como DE BAJA si su
+ficha está inactiva O su `fecha_baja` ya llegó (helper compartido `trabajadorDeBaja` en calculos.ts,
+con tests → 37; la ficha no tiene casilla "activo", la fecha manda); el listado tiene **filtro**
+alta (por defecto) / baja / todos (`&filtro=` en endpoints, selector en la tarjeta, título del
+documento según filtro). Nota entorno: en el contenedor nuevo Chromium está en
 `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` (la ruta cambia entre contenedores: hacer
 `ls /opt/pw-browsers/`).
 

@@ -271,8 +271,11 @@ export async function bufferCuadranteCentrosExcel(
 }
 
 /** Listado de trabajadores con datos personales y centros (para PRL/mutua). */
-export async function bufferListadoTrabajadoresExcel(empresaId: number): Promise<Buffer> {
-  const d = datosListadoTrabajadores(empresaId)
+export async function bufferListadoTrabajadoresExcel(
+  empresaId: number,
+  filtro: 'alta' | 'baja' | 'todos' = 'alta'
+): Promise<Buffer> {
+  const d = datosListadoTrabajadores(empresaId, filtro)
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Trabajadores', {
     pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
@@ -283,7 +286,7 @@ export async function bufferListadoTrabajadoresExcel(empresaId: number): Promise
     { width: 8 }, { width: 30 }, { width: 12 }
   ]
   ws.mergeCells('A1:M1')
-  ws.getCell('A1').value = `${d.empresa.razon_social} — Listado de trabajadores (datos personales y centros de trabajo)`
+  ws.getCell('A1').value = `${d.empresa.razon_social} — Listado de trabajadores ${filtro === 'alta' ? 'DE ALTA' : filtro === 'baja' ? 'DE BAJA' : '(todos)'} (datos personales y centros de trabajo)`
   ws.getCell('A1').font = { bold: true, size: 13 }
   ws.mergeCells('A2:M2')
   ws.getCell('A2').value =
@@ -300,7 +303,7 @@ export async function bufferListadoTrabajadoresExcel(empresaId: number): Promise
     c.border = { bottom: { style: 'thin' } }
   })
 
-  for (const { t, centros } of d.filas) {
+  for (const { t, centros, deBaja } of d.filas) {
     const fila = ws.addRow([
       t.codigo,
       `${t.apellidos}, ${t.nombre}`,
@@ -314,7 +317,7 @@ export async function bufferListadoTrabajadoresExcel(empresaId: number): Promise
       t.fecha_alta ? isoALocal(t.fecha_alta) : '',
       t.horas_contrato_semanales,
       centros.map((c) => (c.principal ? `● ${c.nombre}` : c.nombre)).join('\n'),
-      t.activo ? 'Activo' : 'Baja' + (t.fecha_baja ? ' ' + isoALocal(t.fecha_baja) : '')
+      deBaja ? 'Baja' + (t.fecha_baja ? ' ' + isoALocal(t.fecha_baja) : '') : 'Activo'
     ])
     fila.alignment = { vertical: 'top', wrapText: true }
   }

@@ -49,13 +49,13 @@ export async function exportarCuadranteCentrosExcel(empresaId: number, anio: num
   return { ok: true, ruta: res.filePath }
 }
 
-export async function exportarListadoTrabajadoresExcel(empresaId: number) {
+export async function exportarListadoTrabajadoresExcel(empresaId: number, filtro: 'alta' | 'baja' | 'todos' = 'alta') {
   const res = await dialog.showSaveDialog({
     title: 'Guardar listado de trabajadores',
-    defaultPath: 'listado-trabajadores.xlsx',
+    defaultPath: `listado-trabajadores-${filtro}.xlsx`,
     filters: [{ name: 'Excel', extensions: ['xlsx'] }]
   })
   if (res.canceled || !res.filePath) return { ok: false }
-  await writeFile(res.filePath, await bufferListadoTrabajadoresExcel(empresaId))
+  await writeFile(res.filePath, await bufferListadoTrabajadoresExcel(empresaId, filtro))
   return { ok: true, ruta: res.filePath }
 }

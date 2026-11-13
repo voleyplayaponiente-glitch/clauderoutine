@@ -95,10 +95,10 @@ export const api: ApiGestor = {
       inv('export:cuadranteCentrosPdf', empresaId, anio, mes, centroId),
     cuadranteCentrosExcel: (empresaId: number, anio: number, mes: number, centroId?: number): Promise<ResultadoOperacion> =>
       inv('export:cuadranteCentrosExcel', empresaId, anio, mes, centroId),
-    listadoTrabajadoresPdf: (empresaId: number): Promise<ResultadoOperacion> =>
-      inv('export:listadoTrabajadoresPdf', empresaId),
-    listadoTrabajadoresExcel: (empresaId: number): Promise<ResultadoOperacion> =>
-      inv('export:listadoTrabajadoresExcel', empresaId)
+    listadoTrabajadoresPdf: (empresaId: number, filtro?: 'alta' | 'baja' | 'todos'): Promise<ResultadoOperacion> =>
+      inv('export:listadoTrabajadoresPdf', empresaId, filtro),
+    listadoTrabajadoresExcel: (empresaId: number, filtro?: 'alta' | 'baja' | 'todos'): Promise<ResultadoOperacion> =>
+      inv('export:listadoTrabajadoresExcel', empresaId, filtro)
   },
   backup: {
     exportar: (): Promise<ResultadoOperacion> => inv('backup:exportar'),

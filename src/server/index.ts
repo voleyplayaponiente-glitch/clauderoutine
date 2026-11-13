@@ -222,10 +222,13 @@ app.get('/api/export/cuadrante-centros-excel', async (req, res) => {
 })
 
 // Listado de trabajadores (datos personales + centros; para PRL/mutua)
+const filtroListado = (v: unknown): 'alta' | 'baja' | 'todos' =>
+  v === 'baja' || v === 'todos' ? v : 'alta'
+
 app.get('/api/export/trabajadores-pdf', (req, res) => {
   try {
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.end(htmlListadoTrabajadores(nInt(req.query.empresa), true))
+    res.end(htmlListadoTrabajadores(nInt(req.query.empresa), true, filtroListado(req.query.filtro)))
   } catch (e) {
     res.status(500).send((e as Error).message)
   }
@@ -233,7 +236,7 @@ app.get('/api/export/trabajadores-pdf', (req, res) => {
 
 app.get('/api/export/trabajadores-excel', async (req, res) => {
   try {
-    const buf = await bufferListadoTrabajadoresExcel(nInt(req.query.empresa))
+    const buf = await bufferListadoTrabajadoresExcel(nInt(req.query.empresa), filtroListado(req.query.filtro))
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader('Content-Disposition', 'attachment; filename="listado-trabajadores.xlsx"')
     res.end(buf)
